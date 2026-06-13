@@ -184,10 +184,12 @@
 
                         <div class="form-group">
                             <label for="input-competencia" class="form-label">Competencia</label>
+                            <select id="select-cneb-competencia" class="form-select hidden" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
                             <textarea id="input-competencia" class="form-textarea" rows="2" placeholder="Competencia curricular..."></textarea>
                         </div>
                         <div class="form-group">
                             <label for="input-capacidad" class="form-label">Capacidad</label>
+                            <select id="select-cneb-capacidad" class="form-select hidden" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
                             <textarea id="input-capacidad" class="form-textarea" rows="2" placeholder="Capacidades a desarrollar..."></textarea>
                         </div>
                         <div class="form-group">
@@ -196,6 +198,7 @@
                         </div>
                         <div class="form-group">
                             <label for="input-enfoque" class="form-label">Enfoque Transversal</label>
+                            <select id="select-cneb-enfoque" class="form-select" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
                             <input type="text" id="input-enfoque" class="form-input" placeholder="Ej: Enfoque de derechos">
                         </div>
                     </fieldset>
@@ -216,6 +219,15 @@
                                 <span class="icon">📂</span> Cargar
                             </button>
                         </div>
+                        <div class="form-actions-row">
+                            <button type="button" id="btn-export-json" class="btn btn-ghost btn-full btn-sm" title="Exportar sesión a archivo JSON">
+                                <span class="icon">📥</span> Exportar JSON
+                            </button>
+                            <button type="button" id="btn-import-json" class="btn btn-ghost btn-full btn-sm" title="Importar sesión desde archivo JSON">
+                                <span class="icon">📤</span> Importar JSON
+                            </button>
+                        </div>
+                        <input type="file" id="input-import-file" class="hidden" accept=".json">
                         <button type="button" id="btn-new" class="btn btn-ghost btn-full btn-sm">
                             <span class="icon">🗑️</span> Nueva sesión
                         </button>

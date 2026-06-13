@@ -1,4 +1,7 @@
 project_id = "koptglmifwpzrfzvipnm"
 
 [functions.deepseek-router]
-verify_jwt = false
+verify_jwt = true
+
+[functions.pablito-mailer]
+verify_jwt = true

@@ -13,7 +13,7 @@ const Templates = (() => {
      * @returns {string} HTML string
      */
     function render(type, data, editable = true) {
-        const ce = editable ? 'contenteditable="true"' : '';
+        const ce = `contenteditable="${editable ? 'true' : 'false'}"`;
         const m = data.metadata || {};
         const p = data.proposito || {};
         const momentos = data.momentos || {};

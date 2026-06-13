@@ -54,6 +54,14 @@
         inputCapacidad: $('#input-capacidad'),
         inputDesempeno: $('#input-desempeno'),
         inputEnfoque: $('#input-enfoque'),
+        // CNEB Dropdowns
+        selectCnebCompetencia: $('#select-cneb-competencia'),
+        selectCnebCapacidad: $('#select-cneb-capacidad'),
+        selectCnebEnfoque: $('#select-cneb-enfoque'),
+        // Import/Export
+        btnExportJson: $('#btn-export-json'),
+        btnImportJson: $('#btn-import-json'),
+        inputImportFile: $('#input-import-file'),
         // Other
         editModeBadge: $('#edit-mode-badge'),
         savedList: $('#saved-list'),
@@ -104,6 +112,16 @@
         // Render saved sessions list
         renderSavedList();
 
+        // Load curriculum database
+        loadCurriculum();
+
+        // Sync local and cloud sessions in the background
+        if (window.Storage && typeof Storage.syncSessions === 'function') {
+            Storage.syncSessions().then(() => {
+                renderSavedList();
+            }).catch(e => console.warn('[Sync] Sync failed at startup:', e));
+        }
+
         console.log('🚀 Space Lab initialized');
     }
 
@@ -125,6 +143,16 @@
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
         DOM.btnNew.addEventListener('click', handleNew);
         DOM.btnCleanFormat.addEventListener('click', handleCleanFormat);
+
+        // CNEB Curriculum dropdowns
+        DOM.inputArea.addEventListener('change', handleAreaChange);
+        DOM.selectCnebCompetencia.addEventListener('change', handleCompetenciaChange);
+        DOM.selectCnebCapacidad.addEventListener('change', handleCapacidadChange);
+
+        // Import / Export JSON
+        DOM.btnExportJson.addEventListener('click', handleExportJson);
+        DOM.btnImportJson.addEventListener('click', () => DOM.inputImportFile.click());
+        DOM.inputImportFile.addEventListener('change', handleImportJson);
 
         // Mobile sidebar
         DOM.btnMenuMobile.addEventListener('click', toggleSidebar);
@@ -193,6 +221,9 @@
         if (session.template) {
             DOM.selectTemplate.value = session.template;
         }
+
+        // Sync curriculum selectors with loaded area
+        handleAreaChange();
     }
 
     // ═══════════════════════════════════════
@@ -303,13 +334,17 @@
     // EDIT MODE
     // ═══════════════════════════════════════
 
-    function toggleEditMode() {
-        AppState.editMode = !AppState.editMode;
-
+    function enforceEditMode() {
         const editables = DOM.sessionSheet.querySelectorAll('[contenteditable]');
         editables.forEach(el => {
             el.setAttribute('contenteditable', AppState.editMode ? 'true' : 'false');
         });
+    }
+
+    function toggleEditMode() {
+        AppState.editMode = !AppState.editMode;
+
+        enforceEditMode();
 
         // Update UI
         const btnLabel = DOM.btnToggleEdit.querySelector('.btn-label');
@@ -402,6 +437,12 @@
         AppState.currentSession.lastSaved = new Date().toISOString();
 
         Storage.setCurrentSession(AppState.currentSession);
+
+        // If this session already exists in the saved list, auto-save it there too
+        if (Storage.getSession(AppState.currentSession.id)) {
+            Storage.saveSession(AppState.currentSession);
+            renderSavedList();
+        }
     }
 
     function loadLastSession() {
@@ -411,6 +452,7 @@
             populateForm(current);
 
             DOM.sessionSheet.innerHTML = current.htmlContent;
+            enforceEditMode();
             DOM.emptyState.classList.add('hidden');
             DOM.printPreview.classList.remove('hidden');
 
@@ -491,6 +533,7 @@
 
         if (session.htmlContent) {
             DOM.sessionSheet.innerHTML = session.htmlContent;
+            enforceEditMode();
         } else {
             renderSession(session);
         }
@@ -528,6 +571,10 @@
         DOM.sessionSheet.innerHTML = '';
         DOM.printPreview.classList.add('hidden');
         DOM.emptyState.classList.remove('hidden');
+
+        // Hide CNEB selectors
+        DOM.selectCnebCompetencia.classList.add('hidden');
+        DOM.selectCnebCapacidad.classList.add('hidden');
 
         Storage.clearCurrentSession();
         Toast.info('Nueva sesión iniciada');
@@ -600,8 +647,22 @@
 
         const editables = DOM.sessionSheet.querySelectorAll('[contenteditable]');
         editables.forEach(el => {
-            // Strip all HTML, keep only text
-            el.textContent = el.textContent;
+            let html = el.innerHTML;
+            // Normalize common line break tags to temporary newlines
+            html = html.replace(/<br\s*\/?>/gi, '\n');
+            html = html.replace(/<\/div>\s*<div>/gi, '\n');
+            html = html.replace(/<div>/gi, '');
+            html = html.replace(/<\/div>/gi, '');
+            html = html.replace(/<\/p>\s*<p>/gi, '\n');
+            html = html.replace(/<p>/gi, '');
+            html = html.replace(/<\/p>/gi, '');
+
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const plainText = temp.textContent;
+
+            // Restore linebreaks as <br> while removing style cruft
+            el.innerHTML = plainText.trim().replace(/\n/g, '<br>');
         });
 
         Toast.success('Formato limpiado');
@@ -708,6 +769,122 @@
         window.addEventListener('resize', resize);
         resize();
         draw();
+    }
+
+    // ═══════════════════════════════════════
+    // CNEB CURRICULUM INTEGRATION & IMPORT/EXPORT
+    // ═══════════════════════════════════════
+
+    let curriculumData = null;
+
+    async function loadCurriculum() {
+        try {
+            const response = await fetch('data/competencias.json');
+            curriculumData = await response.json();
+
+            populateEnfoques();
+
+            // Sync with existing selection if any
+            if (DOM.inputArea.value) {
+                handleAreaChange();
+            }
+
+            console.log('📚 CNEB curriculum database loaded');
+        } catch (e) {
+            console.warn('⚠️ Could not load CNEB curriculum json:', e);
+        }
+    }
+
+    function populateEnfoques() {
+        if (!curriculumData || !curriculumData.enfoques_transversales) return;
+        
+        DOM.selectCnebEnfoque.innerHTML = '<option value="">-- Seleccionar Enfoque Oficial --</option>' +
+            curriculumData.enfoques_transversales.map(e => `<option value="${escHTML(e)}">${escHTML(e)}</option>`).join('');
+    }
+
+    function handleAreaChange() {
+        const area = DOM.inputArea.value;
+
+        if (!curriculumData || !curriculumData.areas || !curriculumData.areas[area]) {
+            DOM.selectCnebCompetencia.classList.add('hidden');
+            DOM.selectCnebCapacidad.classList.add('hidden');
+            return;
+        }
+
+        const areaInfo = curriculumData.areas[area];
+
+        DOM.selectCnebCompetencia.innerHTML = '<option value="">-- Seleccionar Competencia Oficial --</option>' +
+            areaInfo.competencias.map((c, i) => `<option value="${i}">${escHTML(c.nombre)}</option>`).join('');
+
+        DOM.selectCnebCompetencia.classList.remove('hidden');
+        DOM.selectCnebCapacidad.classList.add('hidden');
+    }
+
+    function handleCompetenciaChange() {
+        const area = DOM.inputArea.value;
+        const compIdx = DOM.selectCnebCompetencia.value;
+
+        if (compIdx === '' || !curriculumData || !curriculumData.areas || !curriculumData.areas[area]) {
+            DOM.selectCnebCapacidad.classList.add('hidden');
+            return;
+        }
+
+        const comp = curriculumData.areas[area].competencias[compIdx];
+
+        // Fill textarea
+        DOM.inputCompetencia.value = comp.nombre;
+
+        // Populate capacities select
+        DOM.selectCnebCapacidad.innerHTML = '<option value="">-- Seleccionar Capacidad Oficial --</option>' +
+            comp.capacidades.map(c => `<option value="${escHTML(c)}">${escHTML(c)}</option>`).join('');
+
+        DOM.selectCnebCapacidad.classList.remove('hidden');
+    }
+
+    function handleCapacidadChange() {
+        const capValue = DOM.selectCnebCapacidad.value;
+        if (!capValue) return;
+
+        const currentText = DOM.inputCapacidad.value.trim();
+        if (currentText) {
+            if (!currentText.includes(capValue)) {
+                DOM.inputCapacidad.value = currentText + '\n• ' + capValue;
+            }
+        } else {
+            DOM.inputCapacidad.value = '• ' + capValue;
+        }
+    }
+
+    function handleExportJson() {
+        if (!AppState.currentSession) {
+            Toast.warning('No hay sesión para exportar');
+            return;
+        }
+        saveCurrentState();
+        Storage.exportAsJSON(AppState.currentSession);
+        Toast.success('Sesión exportada correctamente');
+    }
+
+    async function handleImportJson(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const session = await Storage.importFromJSON(file);
+            if (!session.id || !session.template || !session.metadata) {
+                throw new Error('El archivo no tiene la estructura de Space Lab');
+            }
+
+            Storage.saveSession(session);
+            loadSession(session.id);
+            renderSavedList();
+
+            Toast.success('Sesión importada correctamente');
+        } catch (err) {
+            Toast.error('Error al importar sesión: ' + err.message);
+        } finally {
+            DOM.inputImportFile.value = '';
+        }
     }
 
     // ═══════════════════════════════════════
