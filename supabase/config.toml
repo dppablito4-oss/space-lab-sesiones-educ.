@@ -1,0 +1,4 @@
+project_id = "koptglmifwpzrfzvipnm"
+
+[functions.deepseek-router]
+verify_jwt = false
