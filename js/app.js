@@ -87,6 +87,11 @@
             AuthUi.init();
         }
 
+        // Initialize Chatbot if available
+        if (window.Chatbot) {
+            Chatbot.init();
+        }
+
         // Global callback to refresh session lists after login/logout
         window.appReloadSessions = () => {
             renderSavedList();

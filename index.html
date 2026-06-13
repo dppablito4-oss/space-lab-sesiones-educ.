@@ -292,6 +292,44 @@
         </main>
     </div>
 
+    <!-- ═══════════ FLOATING CHATBOT WIDGET ═══════════ -->
+    <div id="chatbot-container" class="chatbot-container no-print">
+        <!-- Chat Bubble Button -->
+        <button id="chatbot-bubble" class="chatbot-bubble" title="Preguntar a Copilot">
+            <span class="icon">🤖</span>
+            <span class="pulse-ring"></span>
+        </button>
+
+        <!-- Chat Window -->
+        <div id="chatbot-window" class="chatbot-window glass-card hidden">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <span class="chatbot-dot"></span>
+                    <div>
+                        <h4 class="chatbot-title">Space Assistant</h4>
+                        <span class="chatbot-subtitle">DeepSeek Copilot</span>
+                    </div>
+                </div>
+                <button id="btn-close-chatbot" class="btn-close-chat">✕</button>
+            </div>
+            
+            <div id="chatbot-messages" class="chatbot-messages">
+                <div class="chat-message bot">
+                    <div class="message-bubble">
+                        ¡Hola! Soy tu asistente pedagógico de Space Lab. ¿En qué puedo ayudarte hoy con tus sesiones o el Currículo Nacional? 🇵🇪🚀
+                    </div>
+                </div>
+            </div>
+
+            <div class="chatbot-input-container">
+                <input type="text" id="chatbot-input" placeholder="Pregunta algo sobre tu sesión..." autocomplete="off">
+                <button id="btn-send-chat" class="btn btn-accent btn-icon-only">
+                    <span class="icon">➡️</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══════════ AUTH MODAL ═══════════ -->
     <div id="auth-modal" class="load-modal hidden">
         <div class="load-modal-content glass-card" style="max-width: 400px; padding: 2.5rem; text-align: center; position: relative;">
@@ -345,6 +383,7 @@
     <script src="js/storage.js"></script>
     <script src="js/templates.js"></script>
     <script src="js/ai-copilot.js"></script>
+    <script src="js/chatbot.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
