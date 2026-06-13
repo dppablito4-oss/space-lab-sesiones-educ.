@@ -3,7 +3,7 @@
    Space Lab — Sesiones Educativas
    ═══════════════════════════════════════════════════ */
 
-const Chatbot = (() => {
+window.Chatbot = (() => {
     
     let container = null;
     let bubble = null;
