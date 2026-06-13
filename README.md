@@ -12,14 +12,6 @@ La aplicación está configurada para desplegarse automáticamente en GitHub Pag
 
 * **URL Personalizada:** `https://sesiones.sypablitodp.site`
 
-### Configuración DNS
-Para apuntar tu dominio personalizado (`sypablitodp.site`) a esta aplicación en GitHub Pages, debes agregar el siguiente registro en tu proveedor de DNS (ej. Cloudflare, Namecheap):
-
-| Tipo | Host | Valor / Destino | TTL |
-| :--- | :--- | :--- | :--- |
-| **CNAME** | `sesiones` | `dppablito4-oss.github.io` | Automático / 1 hora |
-
----
 
 ## 🎯 Objetivo
 
