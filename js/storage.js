@@ -39,6 +39,18 @@ const Storage = (() => {
             }
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+
+            // Sincronización asíncrona con Supabase en background si está logueado
+            if (window.SupabaseClient && typeof SupabaseClient.saveSessionCloud === 'function') {
+                SupabaseClient.getCurrentUser().then(user => {
+                    if (user) {
+                        SupabaseClient.saveSessionCloud(session)
+                            .then(() => console.log('[Storage] Sincronizado en la nube:', session.id))
+                            .catch(err => console.warn('[Storage] Error al subir a la nube:', err));
+                    }
+                });
+            }
+
             return true;
         } catch (e) {
             console.error('[Storage] Error saving session:', e);
@@ -50,6 +62,18 @@ const Storage = (() => {
         try {
             const sessions = getAllSessions().filter(s => s.id !== id);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+
+            // Sincronización asíncrona con Supabase en background
+            if (window.SupabaseClient && typeof SupabaseClient.deleteSessionCloud === 'function') {
+                SupabaseClient.getCurrentUser().then(user => {
+                    if (user) {
+                        SupabaseClient.deleteSessionCloud(id)
+                            .then(() => console.log('[Storage] Eliminado de la nube:', id))
+                            .catch(err => console.warn('[Storage] Error al borrar de la nube:', err));
+                    }
+                });
+            }
+
             return true;
         } catch (e) {
             console.error('[Storage] Error deleting session:', e);
@@ -190,6 +214,54 @@ const Storage = (() => {
         });
     }
 
+    async function syncSessions() {
+        if (!window.SupabaseClient) return;
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) return;
+
+        try {
+            // 1. Obtener sesiones locales
+            const localSessions = getAllSessions();
+            
+            // 2. Obtener sesiones de la nube
+            const cloudSessions = await SupabaseClient.getSessionsCloud();
+
+            // 3. Fusionar sin duplicados. Si hay conflicto, prevalece la versión más reciente (lastSaved)
+            const mergedMap = new Map();
+
+            // Agregar primero locales
+            localSessions.forEach(s => mergedMap.set(s.id, s));
+
+            // Agregar/sobreescribir con las de la nube si son más recientes
+            cloudSessions.forEach(s => {
+                const existing = mergedMap.get(s.id);
+                if (!existing || new Date(s.lastSaved || 0) > new Date(existing.lastSaved || 0)) {
+                    mergedMap.set(s.id, s);
+                }
+            });
+
+            const mergedSessions = Array.from(mergedMap.values());
+            
+            // Ordenar por fecha
+            mergedSessions.sort((a, b) => new Date(b.lastSaved || 0) - new Date(a.lastSaved || 0));
+
+            // Guardar el resultado consolidado en LocalStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSessions));
+
+            // 4. Subir a la nube aquellas que falten o sean más recientes localmente
+            for (const session of mergedSessions) {
+                const cloudVersion = cloudSessions.find(cs => cs.id === session.id);
+                if (!cloudVersion || new Date(session.lastSaved || 0) > new Date(cloudVersion.lastSaved || 0)) {
+                    await SupabaseClient.saveSessionCloud(session);
+                }
+            }
+
+            console.log('🔄 Sesiones sincronizadas con Supabase con éxito');
+        } catch (e) {
+            console.error('[Storage] Error al sincronizar sesiones:', e);
+        }
+    }
+
     return {
         getAllSessions,
         getSession,
@@ -205,6 +277,7 @@ const Storage = (() => {
         updateSaveIndicator,
         generateId,
         exportAsJSON,
-        importFromJSON
+        importFromJSON,
+        syncSessions
     };
 })();

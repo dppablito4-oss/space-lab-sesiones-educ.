@@ -82,6 +82,17 @@
             saveCurrentState();
         });
 
+        // Initialize Auth UI if available
+        if (window.AuthUi) {
+            AuthUi.init();
+        }
+
+        // Global callback to refresh session lists after login/logout
+        window.appReloadSessions = () => {
+            renderSavedList();
+            loadLastSession();
+        };
+
         // Load last session if exists
         loadLastSession();
 
@@ -90,6 +101,7 @@
 
         console.log('🚀 Space Lab initialized');
     }
+
 
     // ═══════════════════════════════════════
     // EVENT BINDING

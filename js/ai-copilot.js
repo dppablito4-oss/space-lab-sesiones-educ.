@@ -51,7 +51,9 @@ const AiCopilot = (() => {
      * Check if API is configured
      */
     function isConfigured() {
-        return CONFIG.apiKey && CONFIG.apiKey.length > 10;
+        const hasLocalKey = CONFIG.apiKey && CONFIG.apiKey.length > 10;
+        const hasSupabase = !!(window.SupabaseClient && SupabaseClient.client);
+        return hasLocalKey || hasSupabase;
     }
 
     // ─── SYSTEM PROMPT ───
@@ -100,17 +102,44 @@ FORMATO DE RESPUESTA (JSON):
   }
 }`;
 
-    /**
-     * Generate session content using AI
-     * @param {Object} metadata - Session metadata from the form
-     * @returns {Object} Parsed session data
-     */
     async function generateSession(metadata) {
+        const userPrompt = buildPrompt(metadata);
+
+        // 1. Intentar llamar a la Edge Function de Supabase si está disponible
+        if (window.SupabaseClient && SupabaseClient.client) {
+            try {
+                console.log('[AI] Llamando a Edge Function deepseek-router...');
+                const { data, error } = await SupabaseClient.client.functions.invoke('deepseek-router', {
+                    body: { prompt: userPrompt, systemPrompt: SYSTEM_PROMPT }
+                });
+
+                if (error) throw error;
+
+                // Si la función retorna un string de JSON
+                let resultObj = data;
+                if (typeof data === 'string') {
+                    resultObj = parseAIResponse(data);
+                } else if (data && typeof data === 'object') {
+                    // Si ya viene como objeto parsed
+                    resultObj = deepCleanStrings(data);
+                }
+
+                if (resultObj) {
+                    return resultObj;
+                }
+            } catch (err) {
+                console.warn('[AI] Falló Edge Function, intentando fallback local:', err);
+                // Si falla y no tenemos API key local, relanzar el error
+                if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
+                    throw new Error('Error al conectar con la IA de Supabase: ' + (err.message || err));
+                }
+            }
+        }
+
+        // 2. Fallback local (OpenRouter/API Key directa en cliente)
         if (!isConfigured()) {
             throw new Error('API_NOT_CONFIGURED');
         }
-
-        const userPrompt = buildPrompt(metadata);
 
         try {
             const response = await fetch(CONFIG.endpoint, {
@@ -145,7 +174,6 @@ FORMATO DE RESPUESTA (JSON):
                 throw new Error('La IA no devolvió contenido');
             }
 
-            // Parse and validate the JSON response
             const parsed = parseAIResponse(content);
             return parsed;
 

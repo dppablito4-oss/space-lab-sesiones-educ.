@@ -76,6 +76,9 @@
                     <span class="icon">🖨️</span>
                     <span class="btn-label">Imprimir</span>
                 </button>
+                <div id="auth-header-container" class="auth-header-container">
+                    <!-- Dinámico por auth-ui.js -->
+                </div>
                 <button id="btn-menu-mobile" class="btn btn-icon mobile-only" title="Menú">
                     <span class="icon">☰</span>
                 </button>
@@ -289,10 +292,56 @@
         </main>
     </div>
 
+    <!-- ═══════════ AUTH MODAL ═══════════ -->
+    <div id="auth-modal" class="load-modal hidden">
+        <div class="load-modal-content glass-card" style="max-width: 400px; padding: 2.5rem; text-align: center; position: relative;">
+            <button id="btn-close-auth" class="btn btn-ghost btn-sm" style="position: absolute; top: 1rem; right: 1rem;">✕</button>
+            <div class="load-modal-header" style="justify-content: center; margin-bottom: 1.5rem; border-bottom: none; padding-bottom: 0;">
+                <h3 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+                    Acceso a la Nube 🌌
+                </h3>
+            </div>
+            
+            <!-- Step 1: Input Email -->
+            <div id="auth-step-email" class="auth-step">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">
+                    Ingresa tu correo para iniciar sesión o registrarte con un código OTP seguro.
+                </p>
+                <div class="form-group" style="text-align: left; margin-bottom: 1.5rem;">
+                    <label for="auth-email" class="form-label">Correo Electrónico</label>
+                    <input type="email" id="auth-email" class="form-select" placeholder="tu-correo@ejemplo.com" required style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                </div>
+                <button id="btn-send-otp" class="btn btn-accent btn-full" style="padding: 0.8rem; width: 100%;">
+                    Enviar Código OTP 📨
+                </button>
+            </div>
+
+            <!-- Step 2: Input OTP Token -->
+            <div id="auth-step-otp" class="auth-step hidden">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    Hemos enviado un código de seguridad de 6 dígitos a <strong id="auth-sent-email-label" style="color: var(--text-color);"></strong>.
+                </p>
+                <div class="form-group" style="text-align: left; margin-bottom: 1.5rem;">
+                    <label for="auth-otp" class="form-label">Código de 6 dígitos</label>
+                    <input type="text" id="auth-otp" class="form-select" placeholder="123456" maxlength="6" required style="text-align: center; letter-spacing: 0.5rem; font-size: 1.25rem; font-weight: 700; width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                </div>
+                <button id="btn-verify-otp" class="btn btn-primary btn-full" style="padding: 0.8rem; margin-bottom: 1rem; width: 100%;">
+                    Verificar Código 🔑
+                </button>
+                <button id="btn-auth-back" class="btn btn-ghost btn-full btn-sm" style="width: 100%;">
+                    ⬅️ Cambiar Correo
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
     <script src="js/components/toast.js"></script>
     <script src="js/components/confirm-dialog.js"></script>
     <script src="js/components/loader.js"></script>
+    <script src="js/auth-ui.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/templates.js"></script>
     <script src="js/ai-copilot.js"></script>
