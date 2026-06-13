@@ -15,12 +15,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS para profiles
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile" ON public.profiles
     FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles
     FOR SELECT USING (
         EXISTS (
@@ -28,6 +31,7 @@ CREATE POLICY "Admins can view all profiles" ON public.profiles
         )
     );
 
+DROP POLICY IF EXISTS "Admins can update profiles" ON public.profiles;
 CREATE POLICY "Admins can update profiles" ON public.profiles
     FOR UPDATE USING (
         EXISTS (
@@ -52,7 +56,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
@@ -72,18 +77,23 @@ CREATE TABLE IF NOT EXISTS public.sesiones (
 ALTER TABLE public.sesiones ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS para sesiones
+DROP POLICY IF EXISTS "Users can view their own sessions" ON public.sesiones;
 CREATE POLICY "Users can view their own sessions" ON public.sesiones
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own sessions" ON public.sesiones;
 CREATE POLICY "Users can insert their own sessions" ON public.sesiones
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own sessions" ON public.sesiones;
 CREATE POLICY "Users can update their own sessions" ON public.sesiones
     FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own sessions" ON public.sesiones;
 CREATE POLICY "Users can delete their own sessions" ON public.sesiones
     FOR DELETE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all sessions" ON public.sesiones;
 CREATE POLICY "Admins can view all sessions" ON public.sesiones
     FOR SELECT USING (
         EXISTS (
@@ -105,6 +115,7 @@ CREATE TABLE IF NOT EXISTS public.corporate_email_settings (
 ALTER TABLE public.corporate_email_settings ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS para SMTP settings (solo para administradores)
+DROP POLICY IF EXISTS "Admins can view SMTP settings" ON public.corporate_email_settings;
 CREATE POLICY "Admins can view SMTP settings" ON public.corporate_email_settings
     FOR SELECT USING (
         EXISTS (
@@ -112,6 +123,7 @@ CREATE POLICY "Admins can view SMTP settings" ON public.corporate_email_settings
         )
     );
 
+DROP POLICY IF EXISTS "Admins can modify SMTP settings" ON public.corporate_email_settings;
 CREATE POLICY "Admins can modify SMTP settings" ON public.corporate_email_settings
     FOR ALL USING (
         EXISTS (
@@ -133,6 +145,7 @@ CREATE TABLE IF NOT EXISTS public.security_logs (
 ALTER TABLE public.security_logs ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS para security_logs
+DROP POLICY IF EXISTS "Admins can view logs" ON public.security_logs;
 CREATE POLICY "Admins can view logs" ON public.security_logs
     FOR SELECT USING (
         EXISTS (
@@ -140,5 +153,6 @@ CREATE POLICY "Admins can view logs" ON public.security_logs
         )
     );
 
+DROP POLICY IF EXISTS "Anyone can insert security logs" ON public.security_logs;
 CREATE POLICY "Anyone can insert security logs" ON public.security_logs
     FOR INSERT WITH CHECK (true);
