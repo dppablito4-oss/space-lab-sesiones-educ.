@@ -81,23 +81,33 @@ window.Chatbot = (() => {
             });
             promptText += `\nDocente: ${text}\nAsistente:`;
 
+            let invokedCloud = false;
+
             // Llamar a Supabase Edge Function
             if (window.SupabaseClient && SupabaseClient.client) {
-                console.log('[Chatbot] Enviando mensaje a deepseek-router...');
-                const { data, error } = await SupabaseClient.client.functions.invoke('deepseek-router', {
-                    body: { prompt: promptText }
-                });
+                try {
+                    console.log('[Chatbot] Enviando mensaje a deepseek-router...');
+                    const { data, error } = await SupabaseClient.client.functions.invoke('deepseek-router', {
+                        body: { prompt: promptText }
+                    });
 
-                if (error) throw error;
-                
-                if (typeof data === 'string') {
-                    responseText = data;
-                } else if (data && typeof data === 'object') {
-                    responseText = data.choices?.[0]?.message?.content || data.response || JSON.stringify(data);
-                } else {
-                    responseText = 'No pude procesar la respuesta del servidor.';
+                    if (error) throw error;
+                    
+                    if (typeof data === 'string') {
+                        responseText = data;
+                    } else if (data && typeof data === 'object') {
+                        responseText = data.choices?.[0]?.message?.content || data.response || JSON.stringify(data);
+                    } else {
+                        responseText = 'No pude procesar la respuesta del servidor.';
+                    }
+                    invokedCloud = true;
+                } catch (cloudErr) {
+                    console.warn('[Chatbot] Falló llamada a Edge Function:', cloudErr);
+                    // Si falla, permitimos continuar al fallback de OpenRouter local
                 }
-            } else {
+            }
+
+            if (!invokedCloud) {
                 // Fallback local a OpenRouter
                 if (window.AiCopilot && window.AiCopilot.isConfigured()) {
                     console.log('[Chatbot] Fallback local a OpenRouter...');
@@ -128,6 +138,17 @@ window.Chatbot = (() => {
                         throw new Error('Configuración de IA no encontrada');
                     }
                 } else {
+                    // Si no está configurada la API key local, mostramos un prompt para configurarla
+                    if (window.AiCopilot && typeof window.AiCopilot.showConfigPrompt === 'function') {
+                        Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenRouter.');
+                        const configured = window.AiCopilot.showConfigPrompt();
+                        if (configured) {
+                            // Reintentar tras configurar
+                            removeTypingIndicator(typingId);
+                            inputField.value = text; // restaurar texto del usuario
+                            return handleSendMessage();
+                        }
+                    }
                     responseText = '⚠️ Para chatear con DeepSeek, por favor inicia sesión o configura una API Key de OpenRouter.';
                 }
             }
