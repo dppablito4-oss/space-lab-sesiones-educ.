@@ -72,7 +72,7 @@ window.Chatbot = (() => {
             let responseText = '';
 
             // Formatear prompt con historial
-            let promptText = `Actúa como un asistente educativo experto para docentes de colegio en Perú de acuerdo a los lineamientos del Currículo Nacional (MINEDU). Sé conciso, amable y pedagógico.`;
+            let promptText = `Actúa como un asistente educativo experto para docentes de colegio en Perú de acuerdo a los lineamientos del Currículo Nacional (MINEDU). Sé conciso, amable y pedagógico. Si el usuario te pide que generes, crees o diseñes una sesión de aprendizaje completa, indícale amablemente que debe Iniciar Sesión o Registrarse en la esquina superior derecha de la pantalla para poder acceder al generador oficial, editar directamente sobre la hoja A4 y guardar su trabajo en la nube.`;
             
             // Adjuntar historial
             promptText += `\n\nHistorial de la conversación:`;
