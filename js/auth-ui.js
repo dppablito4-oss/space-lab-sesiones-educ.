@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   AUTH UI — Interfaz y Lógica de Autenticación OTP
+   AUTH UI — Interfaz y Lógica de Autenticación
    Space Lab — Sesiones Educativas
    ═══════════════════════════════════════════════════ */
 
@@ -7,34 +7,46 @@ window.AuthUi = (() => {
     
     // referencias DOM
     let modal = null;
-    let stepEmail = null;
-    let stepOtp = null;
+    let authForm = null;
     let inputEmail = null;
-    let inputOtp = null;
-    let labelSentEmail = null;
-    let btnSendOtp = null;
-    let btnVerifyOtp = null;
-    let btnBack = null;
+    let inputPassword = null;
+    let inputConfirmPassword = null;
+    let inputUsername = null;
+    let checkboxTerms = null;
+    let btnSubmit = null;
+    let btnToggle = null;
     let btnClose = null;
-    let btnLoginTrigger = null;
     let authHeaderContainer = null;
+    
+    let authTitle = null;
+    let authSubtitle = null;
+    let groupUsername = null;
+    let groupConfirmPassword = null;
+    let groupTerms = null;
+    let toggleText = null;
 
-    let targetEmail = '';
+    let isLoginMode = true;
 
     function init() {
         modal = document.getElementById('auth-modal');
-        stepEmail = document.getElementById('auth-step-email');
-        stepOtp = document.getElementById('auth-step-otp');
+        authForm = document.getElementById('auth-form');
         inputEmail = document.getElementById('auth-email');
-        inputOtp = document.getElementById('auth-otp');
-        labelSentEmail = document.getElementById('auth-sent-email-label');
-        btnSendOtp = document.getElementById('btn-send-otp');
-        btnVerifyOtp = document.getElementById('btn-verify-otp');
-        btnBack = document.getElementById('btn-auth-back');
+        inputPassword = document.getElementById('auth-password');
+        inputConfirmPassword = document.getElementById('auth-confirm-password');
+        inputUsername = document.getElementById('auth-username');
+        checkboxTerms = document.getElementById('auth-terms');
+        btnSubmit = document.getElementById('btn-submit-auth');
+        btnToggle = document.getElementById('auth-toggle-mode');
         btnClose = document.getElementById('btn-close-auth');
         authHeaderContainer = document.getElementById('auth-header-container');
 
-        // Insertar login trigger si no existe
+        authTitle = document.getElementById('auth-title');
+        authSubtitle = document.getElementById('auth-subtitle');
+        groupUsername = document.getElementById('auth-group-username');
+        groupConfirmPassword = document.getElementById('auth-group-confirm-password');
+        groupTerms = document.getElementById('auth-group-terms');
+        toggleText = document.getElementById('auth-toggle-text');
+
         if (!authHeaderContainer) {
             console.warn('[AuthUi] #auth-header-container no encontrado en el DOM');
             return;
@@ -45,119 +57,181 @@ window.AuthUi = (() => {
     }
 
     function bindEvents() {
-        // Enviar OTP
-        btnSendOtp.addEventListener('click', handleSendOtp);
-        // Verificar OTP
-        btnVerifyOtp.addEventListener('click', handleVerifyOtp);
-        // Volver al paso de email
-        btnBack.addEventListener('click', () => {
-            showStep('email');
+        // Alternar modo
+        btnToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            setMode(!isLoginMode);
         });
+
+        // Enviar formulario
+        authForm.addEventListener('submit', handleAuthSubmit);
+
         // Cerrar modal
         btnClose.addEventListener('click', closeModal);
         modal.addEventListener('click', (e) => {
             if (e.target === modal) closeModal();
         });
-
-        // Eventos teclado
-        inputEmail.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSendOtp();
-            }
-        });
-
-        inputOtp.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleVerifyOtp();
-            }
-        });
     }
 
-    function showStep(step) {
-        if (step === 'email') {
-            stepEmail.classList.remove('hidden');
-            stepOtp.classList.add('hidden');
-            inputOtp.value = '';
+    function setMode(isLogin) {
+        isLoginMode = isLogin;
+        
+        // Limpiar inputs
+        inputEmail.value = '';
+        inputPassword.value = '';
+        inputConfirmPassword.value = '';
+        inputUsername.value = '';
+        checkboxTerms.checked = false;
+
+        if (isLogin) {
+            authTitle.textContent = 'Iniciar Sesión 🌌';
+            authSubtitle.textContent = 'Ingresa con tu correo y contraseña para sincronizar tus sesiones en la nube.';
+            btnSubmit.textContent = 'Iniciar Sesión 🚪';
+            toggleText.textContent = '¿No tienes una cuenta?';
+            btnToggle.textContent = 'Créala aquí';
+
+            groupUsername.classList.add('hidden');
+            groupConfirmPassword.classList.add('hidden');
+            groupTerms.classList.add('hidden');
+
+            inputUsername.removeAttribute('required');
+            inputConfirmPassword.removeAttribute('required');
         } else {
-            stepEmail.classList.add('hidden');
-            stepOtp.classList.remove('hidden');
-            labelSentEmail.textContent = targetEmail;
-            inputOtp.focus();
+            authTitle.textContent = 'Crear Cuenta 🚀';
+            authSubtitle.textContent = 'Regístrate gratis para guardar y respaldar tus sesiones en la nube.';
+            btnSubmit.textContent = 'Crear Cuenta 🔑';
+            toggleText.textContent = '¿Ya tienes una cuenta?';
+            btnToggle.textContent = 'Inicia sesión aquí';
+
+            groupUsername.classList.remove('hidden');
+            groupConfirmPassword.classList.remove('hidden');
+            groupTerms.classList.remove('hidden');
+
+            inputUsername.setAttribute('required', 'required');
+            inputConfirmPassword.setAttribute('required', 'required');
         }
+        
+        setTimeout(() => inputEmail.focus(), 50);
     }
 
     function openModal() {
-        showStep('email');
-        inputEmail.value = '';
+        setMode(true); // Empezar por defecto en Login
         modal.classList.remove('hidden');
-        inputEmail.focus();
     }
 
     function closeModal() {
         modal.classList.add('hidden');
     }
 
-    async function handleSendOtp() {
+    async function handleAuthSubmit(e) {
+        e.preventDefault();
+        
         const email = inputEmail.value.trim();
+        const password = inputPassword.value;
+
         if (!email || !validateEmail(email)) {
             Toast.warning('Por favor ingresa un correo electrónico válido');
             return;
         }
 
-        targetEmail = email;
-        btnSendOtp.disabled = true;
-        btnSendOtp.textContent = 'Enviando...';
-
-        try {
-            await SupabaseClient.sendOtp(email);
-            Toast.success('¡Código OTP enviado! Revisa tu bandeja de entrada.');
-            showStep('otp');
-        } catch (e) {
-            Toast.error('Error al enviar OTP: ' + e.message);
-        } finally {
-            btnSendOtp.disabled = false;
-            btnSendOtp.textContent = 'Enviar Código OTP 📨';
-        }
-    }
-
-    async function handleVerifyOtp() {
-        const otp = inputOtp.value.trim();
-        if (otp.length < 6) {
-            Toast.warning('El código OTP debe tener 6 dígitos');
+        if (password.length < 6) {
+            Toast.warning('La contraseña debe tener al menos 6 caracteres');
             return;
         }
 
-        btnVerifyOtp.disabled = true;
-        btnVerifyOtp.textContent = 'Verificando...';
+        btnSubmit.disabled = true;
 
-        try {
-            const result = await SupabaseClient.verifyOtp(targetEmail, otp);
-            if (result.user) {
-                Toast.success('¡Sesión iniciada correctamente en la nube!');
-                closeModal();
-                
-                // Ejecutar sincronización de sesiones locales a la nube
-                if (window.Storage && typeof window.Storage.syncSessions === 'function') {
-                    await window.Storage.syncSessions();
+        if (isLoginMode) {
+            btnSubmit.textContent = 'Iniciando sesión...';
+            try {
+                const result = await SupabaseClient.signIn(email, password);
+                if (result.user) {
+                    Toast.success('¡Sesión iniciada correctamente en la nube!');
+                    closeModal();
+                    await afterSuccessAuth();
+                } else {
+                    Toast.error('Credenciales incorrectas');
                 }
-                
-                // Recargar cabecera y lista
-                await checkSessionState();
-                
-                // Disparar recarga de sesiones en la UI principal
-                if (window.appReloadSessions) {
-                    window.appReloadSessions();
-                }
-            } else {
-                Toast.error('Código incorrecto o expirado');
+            } catch (err) {
+                Toast.error('Error al iniciar sesión: ' + err.message);
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Iniciar Sesión 🚪';
             }
-        } catch (e) {
-            Toast.error('Error de verificación: ' + e.message);
-        } finally {
-            btnVerifyOtp.disabled = false;
-            btnVerifyOtp.textContent = 'Verificar Código 🔑';
+        } else {
+            // Modo Registro
+            const username = inputUsername.value.trim();
+            const confirmPassword = inputConfirmPassword.value;
+            const acceptedTerms = checkboxTerms.checked;
+
+            if (username.length < 3) {
+                Toast.warning('El apodo debe tener al menos 3 caracteres');
+                btnSubmit.disabled = false;
+                return;
+            }
+
+            if (/\s/.test(username)) {
+                Toast.warning('El apodo no puede tener espacios. Usa guiones (ej. mi-apodo)');
+                btnSubmit.disabled = false;
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                Toast.warning('Las contraseñas no coinciden');
+                btnSubmit.disabled = false;
+                return;
+            }
+
+            if (!acceptedTerms) {
+                Toast.warning('Debes aceptar los Términos y Condiciones');
+                btnSubmit.disabled = false;
+                return;
+            }
+
+            btnSubmit.textContent = 'Creando cuenta...';
+            try {
+                const result = await SupabaseClient.signUp(email, password, username);
+                if (result.user) {
+                    Toast.success('¡Cuenta creada con éxito!');
+                    
+                    // Auto-login instantáneo si confirmación de correo está apagada
+                    try {
+                        const loginResult = await SupabaseClient.signIn(email, password);
+                        if (loginResult.user) {
+                            Toast.success('¡Sesión iniciada automáticamente!');
+                            closeModal();
+                            await afterSuccessAuth();
+                        } else {
+                            setMode(true);
+                        }
+                    } catch (loginErr) {
+                        Toast.info('Por favor inicia sesión con tu nueva cuenta');
+                        setMode(true);
+                    }
+                } else {
+                    Toast.error('No se pudo registrar la cuenta');
+                }
+            } catch (err) {
+                Toast.error('Error al registrar cuenta: ' + err.message);
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Crear Cuenta 🔑';
+            }
+        }
+    }
+
+    async function afterSuccessAuth() {
+        // Ejecutar sincronización de sesiones locales a la nube
+        if (window.Storage && typeof window.Storage.syncSessions === 'function') {
+            await window.Storage.syncSessions();
+        }
+        
+        // Recargar cabecera y lista
+        await checkSessionState();
+        
+        // Disparar recarga de sesiones en la UI principal
+        if (window.appReloadSessions) {
+            window.appReloadSessions();
         }
     }
 
@@ -167,11 +241,12 @@ window.AuthUi = (() => {
         if (user) {
             const role = await SupabaseClient.getUserRole(user.id);
             const isAdmin = role === 'superadmin' || role === 'admin';
+            const displayName = user.user_metadata?.username || truncateEmail(user.email);
 
             authHeaderContainer.innerHTML = `
                 <div class="user-menu-container">
                     <span class="user-email-tag" title="${user.email}">
-                        👤 ${truncateEmail(user.email)}
+                        👤 ${displayName}
                     </span>
                     ${isAdmin ? `
                         <a href="admin.html" class="btn btn-accent btn-sm" style="text-decoration: none;">

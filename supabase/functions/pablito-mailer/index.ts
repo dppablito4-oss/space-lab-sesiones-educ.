@@ -117,20 +117,28 @@ serve(async (req) => {
     let port = 465;
     let secure = true;
 
-    if (smtpEmail.endsWith("@outlook.com") || smtpEmail.endsWith("@hotmail.com")) {
+    if (smtpEmail.endsWith("@outlook.com") || smtpEmail.endsWith("@hotmail.com") || smtpEmail.endsWith("@outlook.es")) {
       hostname = "smtp-mail.outlook.com";
       port = 587;
       secure = false;
     }
 
     console.log(`[SMTP] Conectando a ${hostname}:${port}...`);
-    await smtpClient.connect({
-      hostname,
-      port,
-      username: smtpEmail,
-      password: smtpAppPassword,
-      secure,
-    });
+    if (secure) {
+      await smtpClient.connectTLS({
+        hostname,
+        port,
+        username: smtpEmail,
+        password: smtpAppPassword,
+      });
+    } else {
+      await smtpClient.connect({
+        hostname,
+        port,
+        username: smtpEmail,
+        password: smtpAppPassword,
+      });
+    }
 
     console.log(`[SMTP] Enviando ${emails.length} correos...`);
     let sentCount = 0;

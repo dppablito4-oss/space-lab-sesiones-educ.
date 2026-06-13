@@ -148,6 +148,7 @@
         DOM.inputArea.addEventListener('change', handleAreaChange);
         DOM.selectCnebCompetencia.addEventListener('change', handleCompetenciaChange);
         DOM.selectCnebCapacidad.addEventListener('change', handleCapacidadChange);
+        DOM.selectCnebEnfoque.addEventListener('change', handleEnfoqueChange);
 
         // Import / Export JSON
         DOM.btnExportJson.addEventListener('click', handleExportJson);
@@ -853,6 +854,12 @@
         } else {
             DOM.inputCapacidad.value = '• ' + capValue;
         }
+    }
+
+    function handleEnfoqueChange() {
+        const enfoqueValue = DOM.selectCnebEnfoque.value;
+        if (!enfoqueValue) return;
+        DOM.inputEnfoque.value = enfoqueValue;
     }
 
     function handleExportJson() {

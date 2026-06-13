@@ -30,7 +30,52 @@ window.SupabaseClient = (() => {
     // ─── AUTHENTICATION HELPERS ───
 
     /**
-     * Envía un correo electrónico con código OTP
+     * Registra un nuevo usuario con correo, contraseña y apodo
+     */
+    async function signUp(email, password, username) {
+        if (!supabase) throw new Error('Supabase no inicializado');
+        const { data, error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password: password,
+            options: {
+                data: {
+                    username: username.trim().toLowerCase()
+                }
+            }
+        });
+        if (error) throw error;
+
+        // Registrar log de seguridad si se crea el usuario
+        if (data?.user) {
+            await logAction('REGISTER_SUCCESS', `Usuario registrado: ${email} con apodo: ${username}`);
+            // Asegurar perfil
+            await ensureUserProfile(data.user);
+        }
+        return data;
+    }
+
+    /**
+     * Inicia sesión con correo y contraseña
+     */
+    async function signIn(email, password) {
+        if (!supabase) throw new Error('Supabase no inicializado');
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password
+        });
+        if (error) throw error;
+
+        // Registrar log de seguridad
+        if (data?.user) {
+            await logAction('LOGIN_SUCCESS', `Usuario ingresó correctamente con contraseña: ${email}`);
+            // Asegurar perfil por si acaso
+            await ensureUserProfile(data.user);
+        }
+        return data;
+    }
+
+    /**
+     * Envía un correo electrónico con código OTP (Mantenido por compatibilidad)
      */
     async function sendOtp(email) {
         if (!supabase) throw new Error('Supabase no inicializado');
@@ -45,7 +90,7 @@ window.SupabaseClient = (() => {
     }
 
     /**
-     * Verifica el código OTP ingresado por el usuario
+     * Verifica el código OTP ingresado por el usuario (Mantenido por compatibilidad)
      */
     async function verifyOtp(email, token) {
         if (!supabase) throw new Error('Supabase no inicializado');
@@ -86,9 +131,11 @@ window.SupabaseClient = (() => {
             const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             if (!data) {
                 const isMaster = user.email === 'pabloclsa87@gmail.com';
+                const username = user.user_metadata?.username || user.email.split('@')[0];
                 await supabase.from('profiles').insert([{
                     id: user.id,
                     email: user.email,
+                    username: username,
                     role: isMaster ? 'superadmin' : 'user'
                 }]);
             }
@@ -225,6 +272,8 @@ window.SupabaseClient = (() => {
 
     return {
         get client() { return supabase; },
+        signUp,
+        signIn,
         sendOtp,
         verifyOtp,
         logout,

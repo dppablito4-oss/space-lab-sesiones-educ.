@@ -7,12 +7,27 @@
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
+    username TEXT,
     role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'superadmin')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Asegurar columna username en instalaciones existentes
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT;
+
 -- Habilitar RLS en profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Función auxiliar para verificar si el usuario es administrador sin entrar en bucle RLS (SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Políticas de RLS para profiles
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
@@ -25,28 +40,21 @@ CREATE POLICY "Users can insert their own profile" ON public.profiles
 
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
-        )
-    );
+    FOR SELECT USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Admins can update profiles" ON public.profiles;
 CREATE POLICY "Admins can update profiles" ON public.profiles
-    FOR UPDATE USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
-        )
-    );
+    FOR UPDATE USING (public.is_admin());
 
 -- Trigger para crear perfil automáticamente cuando se registra un usuario en Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email, role)
+    INSERT INTO public.profiles (id, email, username, role)
     VALUES (
         new.id,
         new.email,
+        COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
         CASE 
             WHEN new.email = 'pabloclsa87@gmail.com' THEN 'superadmin'
             ELSE 'user'
@@ -95,11 +103,7 @@ CREATE POLICY "Users can delete their own sessions" ON public.sesiones
 
 DROP POLICY IF EXISTS "Admins can view all sessions" ON public.sesiones;
 CREATE POLICY "Admins can view all sessions" ON public.sesiones
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
-        )
-    );
+    FOR SELECT USING (public.is_admin());
 
 
 -- 3. Tabla de Configuración de Correo Corporativo (SMTP)
@@ -117,19 +121,11 @@ ALTER TABLE public.corporate_email_settings ENABLE ROW LEVEL SECURITY;
 -- Políticas de RLS para SMTP settings (solo para administradores)
 DROP POLICY IF EXISTS "Admins can view SMTP settings" ON public.corporate_email_settings;
 CREATE POLICY "Admins can view SMTP settings" ON public.corporate_email_settings
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
-        )
-    );
+    FOR SELECT USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Admins can modify SMTP settings" ON public.corporate_email_settings;
 CREATE POLICY "Admins can modify SMTP settings" ON public.corporate_email_settings
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
-        )
-    );
+    FOR ALL USING (public.is_admin());
 
 
 -- 4. Tabla de Logs de Seguridad
@@ -147,11 +143,7 @@ ALTER TABLE public.security_logs ENABLE ROW LEVEL SECURITY;
 -- Políticas de RLS para security_logs
 DROP POLICY IF EXISTS "Admins can view logs" ON public.security_logs;
 CREATE POLICY "Admins can view logs" ON public.security_logs
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
-        )
-    );
+    FOR SELECT USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Anyone can insert security logs" ON public.security_logs;
 CREATE POLICY "Anyone can insert security logs" ON public.security_logs
