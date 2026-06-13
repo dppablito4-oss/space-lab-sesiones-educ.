@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Space Lab — Generador automático de sesiones de aprendizaje con formato MINEDU. Edita, guarda e imprime tus sesiones educativas.">
+    <title>Space Lab — Sesiones Educativas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+    <!-- ═══════════ TOAST CONTAINER ═══════════ -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ═══════════ CONFIRM DIALOG ═══════════ -->
+    <div id="confirm-dialog" class="confirm-overlay hidden">
+        <div class="confirm-card glass-card">
+            <div class="confirm-icon">⚠️</div>
+            <h3 id="confirm-title">¿Estás seguro?</h3>
+            <p id="confirm-message">Esta acción no se puede deshacer.</p>
+            <div class="confirm-actions">
+                <button id="confirm-cancel" class="btn btn-ghost">Cancelar</button>
+                <button id="confirm-accept" class="btn btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ LOADER OVERLAY ═══════════ -->
+    <div id="loader-overlay" class="loader-overlay hidden">
+        <div class="loader-content">
+            <div class="loader-spinner">
+                <div class="orbit"></div>
+                <div class="orbit orbit-2"></div>
+                <div class="orbit orbit-3"></div>
+                <div class="core"></div>
+            </div>
+            <p id="loader-text" class="loader-text">Generando sesión con IA...</p>
+        </div>
+    </div>
+
+    <!-- ═══════════ BACKGROUND PARTICLES ═══════════ -->
+    <canvas id="space-bg" class="space-background"></canvas>
+
+    <!-- ═══════════ MAIN APP ═══════════ -->
+    <div class="app-wrapper">
+        
+        <!-- ─── HEADER ─── -->
+        <header class="app-header glass-card">
+            <div class="header-brand">
+                <div class="brand-icon">🚀</div>
+                <div>
+                    <h1 class="brand-title">Space Lab</h1>
+                    <span class="brand-subtitle">Sesiones Educativas</span>
+                </div>
+            </div>
+            <nav class="header-actions">
+                <div class="save-indicator" id="save-indicator">
+                    <span class="save-dot"></span>
+                    <span class="save-text">Sin cambios</span>
+                </div>
+                <button id="btn-toggle-edit" class="btn btn-icon" title="Modo edición / lectura">
+                    <span class="icon">✏️</span>
+                    <span class="btn-label">Editar</span>
+                </button>
+                <button id="btn-preview" class="btn btn-icon" title="Vista previa de impresión">
+                    <span class="icon">👁️</span>
+                    <span class="btn-label">Vista Previa</span>
+                </button>
+                <button id="btn-print" class="btn btn-primary" title="Imprimir sesión">
+                    <span class="icon">🖨️</span>
+                    <span class="btn-label">Imprimir</span>
+                </button>
+                <button id="btn-menu-mobile" class="btn btn-icon mobile-only" title="Menú">
+                    <span class="icon">☰</span>
+                </button>
+            </nav>
+        </header>
+
+        <!-- ─── MAIN CONTENT ─── -->
+        <main class="app-main">
+
+            <!-- ═══ SIDEBAR: Formulario ═══ -->
+            <aside id="sidebar" class="sidebar glass-card">
+                <div class="sidebar-header">
+                    <h2 class="sidebar-title">📋 Configuración</h2>
+                    <button id="btn-close-sidebar" class="btn btn-ghost btn-sm mobile-only">✕</button>
+                </div>
+
+                <form id="session-form" class="session-form" autocomplete="off">
+                    
+                    <!-- Plantilla -->
+                    <div class="form-group">
+                        <label for="select-template" class="form-label">Tipo de Sesión</label>
+                        <select id="select-template" class="form-select">
+                            <option value="estandar">📄 Sesión Estándar MINEDU</option>
+                            <option value="laboratorio">🔬 Sesión de Laboratorio</option>
+                            <option value="refuerzo">📚 Sesión de Refuerzo</option>
+                        </select>
+                    </div>
+
+                    <!-- Datos Generales -->
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">🏫 Datos Generales</legend>
+                        
+                        <div class="form-group">
+                            <label for="input-institucion" class="form-label">Institución Educativa</label>
+                            <input type="text" id="input-institucion" class="form-input" placeholder="I.E. N° 000 — Nombre">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-docente" class="form-label">Docente</label>
+                                <input type="text" id="input-docente" class="form-input" placeholder="Nombre completo">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-fecha" class="form-label">Fecha</label>
+                                <input type="date" id="input-fecha" class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-grado" class="form-label">Grado</label>
+                                <select id="input-grado" class="form-select">
+                                    <option value="">Seleccionar</option>
+                                    <option value="1°">1° Grado</option>
+                                    <option value="2°">2° Grado</option>
+                                    <option value="3°">3° Grado</option>
+                                    <option value="4°">4° Grado</option>
+                                    <option value="5°">5° Grado</option>
+                                    <option value="6°">6° Grado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-seccion" class="form-label">Sección</label>
+                                <input type="text" id="input-seccion" class="form-input" placeholder='A, B, C...'>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-area" class="form-label">Área Curricular</label>
+                                <select id="input-area" class="form-select">
+                                    <option value="">Seleccionar</option>
+                                    <option value="Comunicación">Comunicación</option>
+                                    <option value="Matemática">Matemática</option>
+                                    <option value="Ciencia y Tecnología">Ciencia y Tecnología</option>
+                                    <option value="Personal Social">Personal Social</option>
+                                    <option value="Arte y Cultura">Arte y Cultura</option>
+                                    <option value="Educación Física">Educación Física</option>
+                                    <option value="Educación Religiosa">Educación Religiosa</option>
+                                    <option value="Inglés">Inglés</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-duracion" class="form-label">Duración</label>
+                                <input type="text" id="input-duracion" class="form-input" placeholder="90 min">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="input-unidad" class="form-label">Unidad Didáctica</label>
+                            <input type="text" id="input-unidad" class="form-input" placeholder="Unidad N° — Título">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="input-titulo" class="form-label">Título de la Sesión</label>
+                            <input type="text" id="input-titulo" class="form-input" placeholder="Título descriptivo de la sesión">
+                        </div>
+                    </fieldset>
+
+                    <!-- Propósito -->
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">🎯 Propósito de Aprendizaje</legend>
+
+                        <div class="form-group">
+                            <label for="input-competencia" class="form-label">Competencia</label>
+                            <textarea id="input-competencia" class="form-textarea" rows="2" placeholder="Competencia curricular..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-capacidad" class="form-label">Capacidad</label>
+                            <textarea id="input-capacidad" class="form-textarea" rows="2" placeholder="Capacidades a desarrollar..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-desempeno" class="form-label">Desempeño</label>
+                            <textarea id="input-desempeno" class="form-textarea" rows="2" placeholder="Desempeños esperados..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-enfoque" class="form-label">Enfoque Transversal</label>
+                            <input type="text" id="input-enfoque" class="form-input" placeholder="Ej: Enfoque de derechos">
+                        </div>
+                    </fieldset>
+
+                    <!-- Acciones -->
+                    <div class="form-actions">
+                        <button type="button" id="btn-generate-ai" class="btn btn-accent btn-full">
+                            <span class="icon">🤖</span> Generar con IA
+                        </button>
+                        <button type="button" id="btn-generate" class="btn btn-primary btn-full">
+                            <span class="icon">📄</span> Generar Sesión
+                        </button>
+                        <div class="form-actions-row">
+                            <button type="button" id="btn-save" class="btn btn-ghost btn-full">
+                                <span class="icon">💾</span> Guardar
+                            </button>
+                            <button type="button" id="btn-load" class="btn btn-ghost btn-full">
+                                <span class="icon">📂</span> Cargar
+                            </button>
+                        </div>
+                        <button type="button" id="btn-new" class="btn btn-ghost btn-full btn-sm">
+                            <span class="icon">🗑️</span> Nueva sesión
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Sesiones Guardadas -->
+                <div class="saved-sessions">
+                    <h3 class="saved-title">📁 Sesiones Guardadas</h3>
+                    <ul id="saved-list" class="saved-list">
+                        <li class="saved-empty">No hay sesiones guardadas</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- ═══ PREVIEW AREA ═══ -->
+            <section id="preview-area" class="preview-area">
+                
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state">
+                    <div class="empty-icon">🚀</div>
+                    <h2 class="empty-title">¡Bienvenido a Space Lab!</h2>
+                    <p class="empty-text">Completa el formulario y genera tu primera sesión de aprendizaje.</p>
+                    <div class="empty-steps">
+                        <div class="step-item">
+                            <span class="step-num">1</span>
+                            <span>Llena los datos generales</span>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">2</span>
+                            <span>Clic en <strong>Generar Sesión</strong></span>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">3</span>
+                            <span>Edita directamente en la hoja</span>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-num">4</span>
+                            <span>Imprime o exporta tu sesión</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Print Preview Container (hidden by default) -->
+                <div id="print-preview" class="print-preview hidden">
+                    <!-- Session Preview Mode Toggle -->
+                    <div class="preview-toolbar no-print">
+                        <span class="preview-badge" id="edit-mode-badge">✏️ Modo Edición</span>
+                        <button id="btn-clean-format" class="btn btn-ghost btn-sm" title="Limpiar formato pegado">
+                            <span class="icon">🧹</span> Limpiar Formato
+                        </button>
+                    </div>
+
+                    <!-- The actual A4 sheet -->
+                    <div id="session-sheet" class="session-sheet a4-page">
+                        <!-- Content rendered by templates.js -->
+                    </div>
+                </div>
+
+                <!-- Saved Sessions Modal -->
+                <div id="load-modal" class="load-modal hidden">
+                    <div class="load-modal-content glass-card">
+                        <div class="load-modal-header">
+                            <h3>📂 Cargar Sesión Guardada</h3>
+                            <button id="btn-close-load" class="btn btn-ghost btn-sm">✕</button>
+                        </div>
+                        <ul id="load-list" class="load-list">
+                            <li class="saved-empty">No hay sesiones guardadas</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/components/toast.js"></script>
+    <script src="js/components/confirm-dialog.js"></script>
+    <script src="js/components/loader.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/templates.js"></script>
+    <script src="js/ai-copilot.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

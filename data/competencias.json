@@ -1,0 +1,249 @@
+{
+    "areas": {
+        "Comunicación": {
+            "competencias": [
+                {
+                    "nombre": "Se comunica oralmente en su lengua materna",
+                    "capacidades": [
+                        "Obtiene información del texto oral",
+                        "Infiere e interpreta información del texto oral",
+                        "Adecúa, organiza y desarrolla las ideas de forma coherente y cohesionada",
+                        "Utiliza recursos no verbales y paraverbales de forma estratégica",
+                        "Interactúa estratégicamente con distintos interlocutores",
+                        "Reflexiona y evalúa la forma, el contenido y contexto del texto oral"
+                    ]
+                },
+                {
+                    "nombre": "Lee diversos tipos de textos escritos en su lengua materna",
+                    "capacidades": [
+                        "Obtiene información del texto escrito",
+                        "Infiere e interpreta información del texto",
+                        "Reflexiona y evalúa la forma, el contenido y contexto del texto"
+                    ]
+                },
+                {
+                    "nombre": "Escribe diversos tipos de textos en su lengua materna",
+                    "capacidades": [
+                        "Adecúa el texto a la situación comunicativa",
+                        "Organiza y desarrolla las ideas de forma coherente y cohesionada",
+                        "Utiliza convenciones del lenguaje escrito de forma pertinente",
+                        "Reflexiona y evalúa la forma, el contenido y contexto del texto escrito"
+                    ]
+                }
+            ]
+        },
+        "Matemática": {
+            "competencias": [
+                {
+                    "nombre": "Resuelve problemas de cantidad",
+                    "capacidades": [
+                        "Traduce cantidades a expresiones numéricas",
+                        "Comunica su comprensión sobre los números y las operaciones",
+                        "Usa estrategias y procedimientos de estimación y cálculo",
+                        "Argumenta afirmaciones sobre las relaciones numéricas y las operaciones"
+                    ]
+                },
+                {
+                    "nombre": "Resuelve problemas de regularidad, equivalencia y cambio",
+                    "capacidades": [
+                        "Traduce datos y condiciones a expresiones algebraicas y gráficas",
+                        "Comunica su comprensión sobre las relaciones algebraicas",
+                        "Usa estrategias y procedimientos para encontrar equivalencias y reglas generales",
+                        "Argumenta afirmaciones sobre relaciones de cambio y equivalencia"
+                    ]
+                },
+                {
+                    "nombre": "Resuelve problemas de forma, movimiento y localización",
+                    "capacidades": [
+                        "Modela objetos con formas geométricas y sus transformaciones",
+                        "Comunica su comprensión sobre las formas y relaciones geométricas",
+                        "Usa estrategias y procedimientos para orientarse en el espacio",
+                        "Argumenta afirmaciones sobre relaciones geométricas"
+                    ]
+                },
+                {
+                    "nombre": "Resuelve problemas de gestión de datos e incertidumbre",
+                    "capacidades": [
+                        "Representa datos con gráficos y medidas estadísticas o probabilísticas",
+                        "Comunica su comprensión de los conceptos estadísticos y probabilísticos",
+                        "Usa estrategias y procedimientos para recopilar y procesar datos",
+                        "Sustenta conclusiones o decisiones con base en la información obtenida"
+                    ]
+                }
+            ]
+        },
+        "Ciencia y Tecnología": {
+            "competencias": [
+                {
+                    "nombre": "Indaga mediante métodos científicos para construir conocimientos",
+                    "capacidades": [
+                        "Problematiza situaciones para hacer indagación",
+                        "Diseña estrategias para hacer indagación",
+                        "Genera y registra datos e información",
+                        "Analiza datos e información",
+                        "Evalúa y comunica el proceso y resultados de su indagación"
+                    ]
+                },
+                {
+                    "nombre": "Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo",
+                    "capacidades": [
+                        "Comprende y usa conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo",
+                        "Evalúa las implicancias del saber y del quehacer científico y tecnológico"
+                    ]
+                },
+                {
+                    "nombre": "Diseña y construye soluciones tecnológicas para resolver problemas de su entorno",
+                    "capacidades": [
+                        "Determina una alternativa de solución tecnológica",
+                        "Diseña la alternativa de solución tecnológica",
+                        "Implementa y valida la alternativa de solución tecnológica",
+                        "Evalúa y comunica el funcionamiento y los impactos de su alternativa de solución tecnológica"
+                    ]
+                }
+            ]
+        },
+        "Personal Social": {
+            "competencias": [
+                {
+                    "nombre": "Construye su identidad",
+                    "capacidades": [
+                        "Se valora a sí mismo",
+                        "Autorregula sus emociones",
+                        "Reflexiona y argumenta éticamente",
+                        "Vive su sexualidad de manera integral y responsable"
+                    ]
+                },
+                {
+                    "nombre": "Convive y participa democráticamente en la búsqueda del bien común",
+                    "capacidades": [
+                        "Interactúa con todas las personas",
+                        "Construye normas y asume acuerdos y leyes",
+                        "Maneja conflictos de manera constructiva",
+                        "Delibera sobre asuntos públicos",
+                        "Participa en acciones que promueven el bienestar común"
+                    ]
+                },
+                {
+                    "nombre": "Construye interpretaciones históricas",
+                    "capacidades": [
+                        "Interpreta críticamente fuentes diversas",
+                        "Comprende el tiempo histórico",
+                        "Elabora explicaciones sobre procesos históricos"
+                    ]
+                },
+                {
+                    "nombre": "Gestiona responsablemente el espacio y el ambiente",
+                    "capacidades": [
+                        "Comprende las relaciones entre los elementos naturales y sociales",
+                        "Maneja fuentes de información para comprender el espacio geográfico y el ambiente",
+                        "Genera acciones para conservar el ambiente local y global"
+                    ]
+                }
+            ]
+        },
+        "Arte y Cultura": {
+            "competencias": [
+                {
+                    "nombre": "Aprecia de manera crítica manifestaciones artístico-culturales",
+                    "capacidades": [
+                        "Percibe manifestaciones artístico-culturales",
+                        "Contextualiza manifestaciones artístico-culturales",
+                        "Reflexiona creativa y críticamente sobre manifestaciones artístico-culturales"
+                    ]
+                },
+                {
+                    "nombre": "Crea proyectos desde los lenguajes artísticos",
+                    "capacidades": [
+                        "Explora y experimenta los lenguajes artísticos",
+                        "Aplica procesos creativos",
+                        "Evalúa y comunica sus procesos y proyectos"
+                    ]
+                }
+            ]
+        },
+        "Educación Física": {
+            "competencias": [
+                {
+                    "nombre": "Se desenvuelve de manera autónoma a través de su motricidad",
+                    "capacidades": [
+                        "Comprende su cuerpo",
+                        "Se expresa corporalmente"
+                    ]
+                },
+                {
+                    "nombre": "Asume una vida saludable",
+                    "capacidades": [
+                        "Comprende las relaciones entre la actividad física, alimentación, postura e higiene personal y del ambiente, y la salud",
+                        "Incorpora prácticas que mejoran su calidad de vida"
+                    ]
+                },
+                {
+                    "nombre": "Interactúa a través de sus habilidades sociomotrices",
+                    "capacidades": [
+                        "Se relaciona utilizando sus habilidades sociomotrices",
+                        "Crea y aplica estrategias y tácticas de juego"
+                    ]
+                }
+            ]
+        },
+        "Educación Religiosa": {
+            "competencias": [
+                {
+                    "nombre": "Construye su identidad como persona humana, amada por Dios, digna, libre y trascendente",
+                    "capacidades": [
+                        "Conoce a Dios y asume su identidad religiosa y espiritual como persona digna, libre y trascendente",
+                        "Cultiva y valora las manifestaciones religiosas de su entorno argumentando su fe de manera comprensible y respetuosa"
+                    ]
+                },
+                {
+                    "nombre": "Asume la experiencia del encuentro personal y comunitario con Dios en su proyecto de vida en coherencia con su creencia religiosa",
+                    "capacidades": [
+                        "Transforma su entorno desde el encuentro personal y comunitario con Dios y desde la fe que profesa",
+                        "Actúa coherentemente en razón de su fe según los principios de su conciencia moral en situaciones concretas de la vida"
+                    ]
+                }
+            ]
+        },
+        "Inglés": {
+            "competencias": [
+                {
+                    "nombre": "Se comunica oralmente en inglés como lengua extranjera",
+                    "capacidades": [
+                        "Obtiene información de textos orales",
+                        "Infiere e interpreta información de textos orales",
+                        "Adecúa, organiza y desarrolla las ideas de forma coherente y cohesionada",
+                        "Utiliza recursos no verbales y paraverbales de forma estratégica",
+                        "Interactúa estratégicamente con distintos interlocutores",
+                        "Reflexiona y evalúa la forma, el contenido y contexto del texto oral"
+                    ]
+                },
+                {
+                    "nombre": "Lee diversos tipos de textos escritos en inglés como lengua extranjera",
+                    "capacidades": [
+                        "Obtiene información del texto escrito",
+                        "Infiere e interpreta información del texto",
+                        "Reflexiona y evalúa la forma, el contenido y contexto del texto"
+                    ]
+                },
+                {
+                    "nombre": "Escribe diversos tipos de textos en inglés como lengua extranjera",
+                    "capacidades": [
+                        "Adecúa el texto a la situación comunicativa",
+                        "Organiza y desarrolla las ideas de forma coherente y cohesionada",
+                        "Utiliza convenciones del lenguaje escrito de forma pertinente",
+                        "Reflexiona y evalúa la forma, el contenido y contexto del texto escrito"
+                    ]
+                }
+            ]
+        }
+    },
+    "enfoques_transversales": [
+        "Enfoque de derechos",
+        "Enfoque inclusivo o de atención a la diversidad",
+        "Enfoque intercultural",
+        "Enfoque de igualdad de género",
+        "Enfoque ambiental",
+        "Enfoque de orientación al bien común",
+        "Enfoque de búsqueda de la excelencia"
+    ]
+}
