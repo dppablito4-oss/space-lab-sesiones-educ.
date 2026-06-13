@@ -52,8 +52,14 @@ const AiCopilot = (() => {
      */
     function isConfigured() {
         const hasLocalKey = CONFIG.apiKey && CONFIG.apiKey.length > 10;
-        const hasSupabase = !!(window.SupabaseClient && SupabaseClient.client);
-        return hasLocalKey || hasSupabase;
+        let hasSavedSession = false;
+        for (let i = 0; i < localStorage.length; i++) {
+            if (localStorage.key(i).includes('-auth-token')) {
+                hasSavedSession = true;
+                break;
+            }
+        }
+        return hasLocalKey || hasSavedSession;
     }
 
     // ─── SYSTEM PROMPT ───
@@ -129,19 +135,26 @@ FORMATO DE RESPUESTA (JSON):
                 }
             } catch (err) {
                 console.warn('[AI] Falló Edge Function, intentando fallback local:', err);
-                // Si falla y no tenemos API key local, relanzar el error
+                
+                // Si falla la llamada a la nube y no tenemos API key local configurada
                 if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
-                    throw new Error('Error al conectar con la IA de Supabase: ' + (err.message || err));
+                    // Mostrar alerta amigable indicando que no está la Edge Function y abriendo prompt
+                    Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenRouter.');
+                    const configured = showConfigPrompt();
+                    if (!configured) {
+                        throw new Error('Debes configurar una API Key de OpenRouter/OpenAI para poder generar sesiones con IA.');
+                    }
                 }
             }
         }
 
         // 2. Fallback local (OpenRouter/API Key directa en cliente)
-        if (!isConfigured()) {
+        if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
             throw new Error('API_NOT_CONFIGURED');
         }
 
         try {
+            console.log('[AI] Conectando a OpenRouter local...');
             const response = await fetch(CONFIG.endpoint, {
                 method: 'POST',
                 headers: {
@@ -166,6 +179,7 @@ FORMATO DE RESPUESTA (JSON):
                 console.error('[AI] API Error:', response.status, errBody);
                 throw new Error(`Error del servidor: ${response.status}`);
             }
+
 
             const data = await response.json();
             const content = data.choices?.[0]?.message?.content;
