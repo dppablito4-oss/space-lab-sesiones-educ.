@@ -734,3 +734,6 @@ const Templates = (() => {
 
     return { render };
 })();
+
+window.Templates = Templates;
+

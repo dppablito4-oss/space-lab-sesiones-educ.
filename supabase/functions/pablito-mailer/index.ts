@@ -74,7 +74,7 @@ serve(async (req) => {
     // 2. Cargar configuración SMTP corporativa de la BD
     const { data: smtpConfig, error: smtpError } = await supabaseClient
       .from("corporate_email_settings")
-      .select("smtp_email, smtp_app_password")
+      .select("smtp_email, smtp_app_password, smtp_host, smtp_port, smtp_secure")
       .eq("id", 1)
       .single();
 
@@ -85,7 +85,13 @@ serve(async (req) => {
       );
     }
 
-    const { smtp_email: smtpEmail, smtp_app_password: smtpAppPassword } = smtpConfig;
+    const { 
+      smtp_email: smtpEmail, 
+      smtp_app_password: smtpAppPassword,
+      smtp_host: smtpHost,
+      smtp_port: smtpPort,
+      smtp_secure: smtpSecure
+    } = smtpConfig;
 
     // 3. Cargar destinatarios
     let emails: string[] = [];
@@ -112,18 +118,11 @@ serve(async (req) => {
     // 4. Configurar cliente SMTP y enviar correos
     const smtpClient = new SmtpClient();
     
-    // Determinar configuración SMTP basada en el proveedor
-    let hostname = "smtp.gmail.com";
-    let port = 465;
-    let secure = true;
+    const hostname = smtpHost || "smtp.gmail.com";
+    const port = Number(smtpPort) || 465;
+    const secure = smtpSecure !== undefined ? smtpSecure : true;
 
-    if (smtpEmail.endsWith("@outlook.com") || smtpEmail.endsWith("@hotmail.com") || smtpEmail.endsWith("@outlook.es")) {
-      hostname = "smtp-mail.outlook.com";
-      port = 587;
-      secure = false;
-    }
-
-    console.log(`[SMTP] Conectando a ${hostname}:${port}...`);
+    console.log(`[SMTP] Conectando a ${hostname}:${port} (secure: ${secure})...`);
     if (secure) {
       await smtpClient.connectTLS({
         hostname,

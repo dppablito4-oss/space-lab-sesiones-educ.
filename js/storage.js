@@ -281,3 +281,6 @@ const Storage = (() => {
         syncSessions
     };
 })();
+
+window.StorageManager = Storage;
+

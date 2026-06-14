@@ -79,7 +79,7 @@ window.Chatbot = (() => {
             chatHistory.slice(-6).forEach(msg => {
                 promptText += `\n${msg.sender === 'user' ? 'Docente' : 'Asistente'}: ${msg.text}`;
             });
-            promptText += `\nDocente: ${text}\nAsistente:`;
+            promptText += `\nAsistente:`;
 
             let invokedCloud = false;
 

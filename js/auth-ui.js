@@ -222,8 +222,8 @@ window.AuthUi = (() => {
 
     async function afterSuccessAuth() {
         // Ejecutar sincronización de sesiones locales a la nube
-        if (window.Storage && typeof window.Storage.syncSessions === 'function') {
-            await window.Storage.syncSessions();
+        if (window.StorageManager && typeof window.StorageManager.syncSessions === 'function') {
+            await window.StorageManager.syncSessions();
         }
         
         // Recargar cabecera y lista

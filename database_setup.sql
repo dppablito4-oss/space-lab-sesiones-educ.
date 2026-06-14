@@ -121,9 +121,17 @@ CREATE TABLE IF NOT EXISTS public.corporate_email_settings (
     id INT PRIMARY KEY DEFAULT 1,
     smtp_email TEXT NOT NULL,
     smtp_app_password TEXT NOT NULL,
+    smtp_host TEXT NOT NULL DEFAULT 'smtp.gmail.com',
+    smtp_port INT NOT NULL DEFAULT 465,
+    smtp_secure BOOLEAN NOT NULL DEFAULT true,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     CONSTRAINT single_row CHECK (id = 1)
 );
+
+-- Asegurar columnas SMTP dinámicas si la tabla ya existe
+ALTER TABLE public.corporate_email_settings ADD COLUMN IF NOT EXISTS smtp_host TEXT NOT NULL DEFAULT 'smtp.gmail.com';
+ALTER TABLE public.corporate_email_settings ADD COLUMN IF NOT EXISTS smtp_port INT NOT NULL DEFAULT 465;
+ALTER TABLE public.corporate_email_settings ADD COLUMN IF NOT EXISTS smtp_secure BOOLEAN NOT NULL DEFAULT true;
 
 -- Habilitar RLS en corporate_email_settings
 ALTER TABLE public.corporate_email_settings ENABLE ROW LEVEL SECURITY;
@@ -177,3 +185,13 @@ CREATE POLICY "Public Access to Logos" ON storage.objects
 DROP POLICY IF EXISTS "Auth Users Upload Logos" ON storage.objects;
 CREATE POLICY "Auth Users Upload Logos" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'logos' AND auth.role() = 'authenticated');
+
+-- Permitir a usuarios autenticados actualizar logos
+DROP POLICY IF EXISTS "Auth Users Update Logos" ON storage.objects;
+CREATE POLICY "Auth Users Update Logos" ON storage.objects
+    FOR UPDATE USING (bucket_id = 'logos' AND auth.role() = 'authenticated');
+
+-- Permitir a usuarios autenticados eliminar logos
+DROP POLICY IF EXISTS "Auth Users Delete Logos" ON storage.objects;
+CREATE POLICY "Auth Users Delete Logos" ON storage.objects
+    FOR DELETE USING (bucket_id = 'logos' AND auth.role() = 'authenticated');

@@ -42,6 +42,7 @@
         // Form
         form: $('#session-form'),
         selectTemplate: $('#select-template'),
+        selectMethodology: $('#select-methodology'),
         inputInstitucion: $('#input-institucion'),
         inputDre: $('#input-dre'),
         inputUgel: $('#input-ugel'),
@@ -101,6 +102,22 @@
         // Setup auto-save
         Storage.setupAutoSave(() => {
             saveCurrentState();
+        });
+
+        // Listen for form inputs to auto-save metadata changes
+        DOM.form.addEventListener('input', () => {
+            if (AppState.currentSession) {
+                const data = getFormData();
+                AppState.currentSession.metadata = {
+                    ...AppState.currentSession.metadata,
+                    ...data.metadata
+                };
+                AppState.currentSession.proposito = {
+                    ...AppState.currentSession.proposito,
+                    ...data.proposito
+                };
+                Storage.triggerAutoSave();
+            }
         });
 
         // Initialize Auth UI if available
@@ -229,6 +246,7 @@
                 duracion: DOM.inputDuracion.value,
                 unidad: DOM.inputUnidad.value,
                 titulo: DOM.inputTitulo.value,
+                methodology: DOM.selectMethodology.value,
                 logo_regional_url: logoUrl
             },
             proposito: {
@@ -271,6 +289,7 @@
         if (session.template) {
             DOM.selectTemplate.value = session.template;
         }
+        DOM.selectMethodology.value = m.methodology || '';
 
         // Sync curriculum selectors with loaded area
         handleAreaChange();
@@ -698,25 +717,61 @@
 
         const editables = DOM.sessionSheet.querySelectorAll('[contenteditable]');
         editables.forEach(el => {
-            let html = el.innerHTML;
-            // Normalize common line break tags to temporary newlines
-            html = html.replace(/<br\s*\/?>/gi, '\n');
-            html = html.replace(/<\/div>\s*<div>/gi, '\n');
-            html = html.replace(/<div>/gi, '');
-            html = html.replace(/<\/div>/gi, '');
-            html = html.replace(/<\/p>\s*<p>/gi, '\n');
-            html = html.replace(/<p>/gi, '');
-            html = html.replace(/<\/p>/gi, '');
-
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
-            const plainText = temp.textContent;
-
-            // Restore linebreaks as <br> while removing style cruft
-            el.innerHTML = plainText.trim().replace(/\n/g, '<br>');
+            // Utilizar el DOMParser del navegador para limpiar de manera robusta
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(el.innerHTML, 'text/html');
+            
+            // Lista de etiquetas permitidas
+            const allowedTags = ['STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'P', 'BR'];
+            
+            // Función recursiva para sanear nodos
+            function sanitizeNode(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return node.cloneNode(true);
+                }
+                
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = node.tagName;
+                    
+                    // Si la etiqueta está permitida, recreamos el elemento sin atributos
+                    if (allowedTags.includes(tagName)) {
+                        const newEl = document.createElement(tagName);
+                        
+                        // Recursivamente sanear y añadir hijos
+                        node.childNodes.forEach(child => {
+                            const cleanChild = sanitizeNode(child);
+                            if (cleanChild) newEl.appendChild(cleanChild);
+                        });
+                        return newEl;
+                    } else {
+                        // Si la etiqueta no está permitida (ej: span, div, font, table, etc.),
+                        // extraemos recursivamente sus hijos y los retornamos en un DocumentFragment
+                        const fragment = document.createDocumentFragment();
+                        node.childNodes.forEach(child => {
+                            const cleanChild = sanitizeNode(child);
+                            if (cleanChild) fragment.appendChild(cleanChild);
+                        });
+                        return fragment;
+                    }
+                }
+                return null;
+            }
+            
+            const cleanFragment = document.createDocumentFragment();
+            doc.body.childNodes.forEach(child => {
+                const cleanChild = sanitizeNode(child);
+                if (cleanChild) cleanFragment.appendChild(cleanChild);
+            });
+            
+            // Reemplazar el HTML original
+            el.innerHTML = '';
+            el.appendChild(cleanFragment);
+            
+            // Limpieza de espacios en blanco
+            el.innerHTML = el.innerHTML.trim();
         });
 
-        Toast.success('Formato limpiado');
+        Toast.success('Formato limpiado (conservando negritas y listas)');
     }
 
     // ═══════════════════════════════════════

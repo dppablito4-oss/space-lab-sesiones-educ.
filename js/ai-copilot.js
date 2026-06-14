@@ -62,6 +62,46 @@ const AiCopilot = (() => {
         return hasLocalKey || hasSavedSession;
     }
 
+    // ─── METODOLOGÍAS DIDÁCTICAS PROMPTS ───
+    const METHODOLOGY_PROMPTS = {
+        polya: `La secuencia didáctica del momento de DESARROLLO debe estructurarse rigurosamente bajo las fases del Método de Polya para la resolución de problemas:
+1. **Comprender el problema:** Los estudiantes identifican datos, incógnitas y condiciones del reto.
+2. **Concebir un plan:** Proponer estrategias, esquemas, dibujos, analogías o buscar problemas similares resueltos.
+3. **Ejecutar el plan:** Desarrollar las operaciones, cálculos o razonamiento lógico justificando cada paso.
+4. **Mirar atrás (Reflexión):** Verificar el resultado obtenido, explorar otros métodos de resolución y consolidar el aprendizaje.
+Asegúrate de incluir preguntas y actividades específicas para cada uno de estos 4 pasos en la secuencia.`,
+        
+        erca: `La secuencia didáctica del momento de DESARROLLO debe estructurarse estrictamente bajo el ciclo ERCA:
+1. **Experiencia:** Actividad vivencial, exploración física, o recuperación de una situación real relacionada al tema.
+2. **Reflexión:** Los estudiantes analizan lo experimentado, exponen sus puntos de vista, y discuten las primeras interrogantes.
+3. **Conceptualización:** Sistematización teórica de los conceptos claves científicos, reglas o ideas principales guiados por el docente.
+4. **Aplicación:** Resolución de retos prácticos, ejercicios o situaciones cotidianas donde apliquen lo aprendido.
+Describe explícitamente estas fases en las actividades de desarrollo.`,
+        
+        abp: `La secuencia didáctica del momento de DESARROLLO debe estructurarse bajo los principios del Aprendizaje Basado en Proyectos (ABP):
+1. **Lanzamiento / Desafío:** Planteamiento del reto, pregunta orientadora o necesidad real del proyecto.
+2. **Indagación / Investigación:** Búsqueda activa de información, lectura o recolección de datos sobre la problemática.
+3. **Desarrollo del Producto:** Trabajo colaborativo donde los estudiantes diseñan, crean o esbozan el entregable/producto del proyecto.
+4. **Difusión y Evaluación:** Espacio donde socializan sus productos y reciben retroalimentación crítica constructiva de sus pares.`,
+        
+        flipped: `La secuencia didáctica del momento de DESARROLLO debe estructurarse bajo el enfoque de Aula Invertida (Flipped Classroom):
+1. **Conexión de saberes externos:** Puesta en común del contenido estudiado autónomamente antes de la clase (videos, lecturas previas).
+2. **Aplicación guiada / Taller activo:** Dinámica de alta exigencia cognitiva donde se resuelven dudas complejas y se trabaja en proyectos o retos colaborativos.
+3. **Consolidación y retroalimentación interactiva:** Sistematización del saber aplicado en el taller y evaluación formativa en vivo.`,
+        
+        indagacion: `La secuencia didáctica del momento de DESARROLLO debe estructurarse siguiendo el Método de Indagación Científica (STEAM/Ciencia):
+1. **Problematización de situaciones:** Formulación de preguntas investigables e hipótesis explicativas.
+2. **Diseño de estrategias para hacer indagación:** Elaboración del plan de acción experimental o metodológico.
+3. **Generación, registro y análisis de datos:** Actividad práctica de experimentación, observación directa o recolección de evidencia empírica.
+4. **Estructuración del saber construido y comunicación:** Contraste de hipótesis, síntesis de conclusiones y comunicación de aprendizajes.`,
+        
+        cooperativo: `La secuencia didáctica del momento de DESARROLLO debe centrarse en el Aprendizaje Cooperativo:
+1. **Organización de equipos y roles:** Formación de grupos heterogéneos y asignación de roles (coordinador, secretario, portavoz, gestor del tiempo).
+2. **Interdependencia positiva:** Actividades diseñadas para que los estudiantes se necesiten mutuamente para lograr el éxito grupal (ej: rompecabezas, lectura compartida).
+3. **Interacción promotora:** Fomentar el diálogo cercano y la explicación mutua de conceptos entre compañeros.
+4. **Autoevaluación grupal:** Reflexión final sobre el desempeño cooperativo del equipo.`
+    };
+
     // ─── SYSTEM PROMPT ───
     const SYSTEM_PROMPT = `Eres un asistente educativo experto en el diseño de sesiones de aprendizaje de educación básica (Inicial, Primaria, Secundaria) según el Currículo Nacional del Perú (MINEDU) y el CNEB. Tu tarea es generar la planificación de una sesión de aprendizaje detallada, extensa e interactiva.
 
@@ -145,12 +185,18 @@ FORMATO DE RESPUESTA (JSON):
     async function generateSession(metadata) {
         const userPrompt = buildPrompt(metadata);
 
+        // Construir prompt de sistema dinámico basado en la metodología didáctica elegida
+        let dynamicSystemPrompt = SYSTEM_PROMPT;
+        if (metadata.methodology && METHODOLOGY_PROMPTS[metadata.methodology]) {
+            dynamicSystemPrompt += `\n\n⚠️ INSTRUCCIÓN CRÍTICA DE METODOLOGÍA DIDÁCTICA REQUERIDA:\n${METHODOLOGY_PROMPTS[metadata.methodology]}`;
+        }
+
         // 1. Intentar llamar a la Edge Function de Supabase si está disponible
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
                 console.log('[AI] Llamando a Edge Function deepseek-router...');
                 const { data, error } = await SupabaseClient.client.functions.invoke('deepseek-router', {
-                    body: { prompt: userPrompt, systemPrompt: SYSTEM_PROMPT }
+                    body: { prompt: userPrompt, systemPrompt: dynamicSystemPrompt }
                 });
 
                 if (error) throw error;
@@ -200,7 +246,7 @@ FORMATO DE RESPUESTA (JSON):
                 body: JSON.stringify({
                     model: CONFIG.model,
                     messages: [
-                        { role: 'system', content: SYSTEM_PROMPT },
+                        { role: 'system', content: dynamicSystemPrompt },
                         { role: 'user', content: userPrompt }
                     ],
                     max_tokens: CONFIG.maxTokens,
@@ -346,3 +392,6 @@ FORMATO DE RESPUESTA (JSON):
         loadConfig
     };
 })();
+
+window.AiCopilot = AiCopilot;
+

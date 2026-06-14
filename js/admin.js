@@ -107,7 +107,7 @@
         try {
             const { data, error } = await SupabaseClient.client
                 .from('corporate_email_settings')
-                .select('smtp_email')
+                .select('smtp_email, smtp_host, smtp_port, smtp_secure')
                 .eq('id', 1)
                 .maybeSingle();
 
@@ -115,6 +115,9 @@
             
             if (data) {
                 document.getElementById('smtp-email').value = data.smtp_email || '';
+                document.getElementById('smtp-host').value = data.smtp_host || 'smtp.gmail.com';
+                document.getElementById('smtp-port').value = data.smtp_port || 465;
+                document.getElementById('smtp-secure').checked = data.smtp_secure !== undefined ? data.smtp_secure : true;
             }
         } catch (e) {
             console.error('[Admin] Error al cargar configuración SMTP:', e);
@@ -283,8 +286,11 @@
             e.preventDefault();
             const email = document.getElementById('smtp-email').value.trim();
             const password = smtpPass.value.trim();
+            const host = document.getElementById('smtp-host').value.trim();
+            const port = parseInt(document.getElementById('smtp-port').value.trim(), 10);
+            const secure = document.getElementById('smtp-secure').checked;
 
-            if (!email || !password) {
+            if (!email || !password || !host || isNaN(port)) {
                 Toast.warning('Completa todos los campos de SMTP');
                 return;
             }
@@ -300,6 +306,9 @@
                         id: 1,
                         smtp_email: email,
                         smtp_app_password: password,
+                        smtp_host: host,
+                        smtp_port: port,
+                        smtp_secure: secure,
                         updated_at: new Date().toISOString()
                     });
 
