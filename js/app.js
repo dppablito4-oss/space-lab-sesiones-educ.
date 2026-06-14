@@ -348,7 +348,7 @@
             const session = {
                 id: AppState.currentSession?.id || Storage.generateId(),
                 template: DOM.selectTemplate.value,
-                metadata: formData.metadata,
+                metadata: { ...formData.metadata },
                 proposito: aiData.proposito || formData.proposito,
                 momentos: aiData.momentos || {},
                 evaluacion: aiData.evaluacion || {},
@@ -356,6 +356,12 @@
             };
 
             AppState.currentSession = session;
+
+            // Update form with AI-generated title
+            if (aiData.titulo_sesion_retador) {
+                DOM.inputTitulo.value = aiData.titulo_sesion_retador;
+                session.metadata.titulo = aiData.titulo_sesion_retador;
+            }
 
             // Update form with AI-generated propósito
             if (aiData.proposito) {

@@ -319,7 +319,7 @@ const Templates = (() => {
                                 <span>• Problematización</span>
                                 <span>• Propósito y organización</span>
                             </div>
-                            <div class="momento-time">TIEMPO:</div>
+                            <div class="momento-time">TIEMPO: ${esc(momentos.inicio?.tiempo_total || '')}</div>
                         </td>
                         <td class="momento-content-cell" ${ce}>
                             ${inicioContent}
@@ -337,7 +337,7 @@ const Templates = (() => {
                                 <span>Gestión y Acompañamiento del Desarrollo de las Competencias</span>
                                 <span>(Procesos didácticos del Área — monitoreo y retroalimentación)</span>
                             </div>
-                            <div class="momento-time">TIEMPO:</div>
+                            <div class="momento-time">TIEMPO: ${esc(momentos.desarrollo?.tiempo_total || '')}</div>
                         </td>
                         <td class="momento-content-cell" ${ce}>
                             ${desarrolloContent}
@@ -353,7 +353,7 @@ const Templates = (() => {
                                 <span>• Evaluación</span>
                                 <span>• Extensión</span>
                             </div>
-                            <div class="momento-time">TIEMPO:</div>
+                            <div class="momento-time">TIEMPO: ${esc(momentos.cierre?.tiempo_total || '')}</div>
                         </td>
                         <td class="momento-content-cell" ${ce}>
                             ${cierreContent}
@@ -419,6 +419,11 @@ const Templates = (() => {
 
     // ── Build DESARROLLO moment content ──
     function buildMomentoDesarrollo(desarrollo, ce) {
+        if (!desarrollo || typeof desarrollo !== 'object') {
+            return `<div class="momento-section">No hay actividades de desarrollo registradas.</div>`;
+        }
+
+        // Fallback: old format with single 'actividades' field
         if (typeof desarrollo.actividades === 'string' && desarrollo.actividades.length > 0) {
             return `
                 <div class="momento-section">
@@ -434,6 +439,88 @@ const Templates = (() => {
                 </div>`;
         }
 
+        // Dynamically find and sort keys starting with 'proceso_' or 'paso_'
+        const keys = Object.keys(desarrollo)
+            .filter(k => k.startsWith('proceso_') || k.startsWith('paso_'))
+            .sort((a, b) => {
+                const numA = parseInt(a.replace(/^\D+/g, ''), 10) || 0;
+                const numB = parseInt(b.replace(/^\D+/g, ''), 10) || 0;
+                return numA - numB;
+            });
+
+        if (keys.length > 0) {
+            const mappings = {
+                // Matemática (Polya)
+                'familiarizacion': 'Familiarización con el problema',
+                'busqueda_estrategias': 'Búsqueda y ejecución de estrategias',
+                'socializacion': 'Socialización de representaciones',
+                'formalizacion_reflexion': 'Reflexión y Formalización',
+                
+                // Ciclo ERCA
+                'experiencia': 'Experiencia',
+                'reflexion': 'Reflexión',
+                'conceptualizacion': 'Conceptualización',
+                'aplicacion': 'Aplicación',
+                
+                // ABP
+                'lanzamiento': 'Lanzamiento / Desafío',
+                'indagacion': 'Indagación / Investigación',
+                'desarrollo_producto': 'Desarrollo del Producto',
+                'difusion_evaluacion': 'Difusión y Evaluación',
+                
+                // Flipped Classroom
+                'conexion_externa': 'Conexión de saberes externos',
+                'aplicacion_guiada': 'Aplicación guiada / Taller activo',
+                'consolidacion_retroalimentacion': 'Consolidación y retroalimentación interactiva',
+                
+                // Indagación STEAM
+                'problematizacion': 'Problematización de situaciones',
+                'diseno_estrategias': 'Diseño de estrategias para hacer indagación',
+                'generacion_analisis_datos': 'Generación, registro y análisis de datos',
+                'estructuracion_comunicacion': 'Estructuración del saber construido y comunicación',
+                
+                // Cooperativo
+                'organizacion_roles': 'Organización de equipos y roles',
+                'interdependencia_positiva': 'Interdependencia positiva',
+                'interaccion_promotora': 'Interacción promotora',
+                'autoevaluacion_grupal': 'Autoevaluación grupal'
+            };
+
+            let html = `
+                <div class="momento-section">
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase;">
+                            GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
+                        </div>
+                    </div>`;
+
+            keys.forEach(key => {
+                const value = desarrollo[key];
+                if (!value) return;
+
+                // Extract base key without prefix like 'proceso_1_' or 'paso_1_'
+                const cleanKey = key.replace(/^(proceso|paso)_\d+_/, '');
+                
+                // Get title from mappings or fallback
+                let title = mappings[cleanKey];
+                if (!title) {
+                    title = cleanKey
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                }
+
+                html += `
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title">${esc(title)}</div>
+                        <div>${escHtml(value)}</div>
+                    </div>`;
+            });
+
+            html += `</div>`;
+            return html;
+        }
+
+        // Fallback for default empty state
         return `
             <div class="momento-section">
                 <div class="momento-subsection">
@@ -544,17 +631,17 @@ const Templates = (() => {
                     <tr>
                         <td class="moment-label" style="background:#ecfdf5;">HIPÓTESIS</td>
                         <td ${ce}>${esc(momentos.inicio?.actividades || '• Planteamiento del problema.\n• Formulación de hipótesis.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.inicio?.tiempo || '15 min')}</td>
+                        <td class="time-cell" ${ce}>${esc(momentos.inicio?.tiempo || momentos.inicio?.tiempo_total || '15 min')}</td>
                     </tr>
                     <tr>
                         <td class="moment-label" style="background:#ecfdf5;">EXPERIMENTACIÓN</td>
-                        <td ${ce}>${esc(momentos.desarrollo?.actividades || '• Ejecución del experimento.\n• Registro de datos y observaciones.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.desarrollo?.tiempo || '50 min')}</td>
+                        <td ${ce}>${escHtml(compileDesarrolloText(momentos.desarrollo) || '• Ejecución del experimento.\n• Registro de datos y observaciones.')}</td>
+                        <td class="time-cell" ${ce}>${esc(momentos.desarrollo?.tiempo || momentos.desarrollo?.tiempo_total || '50 min')}</td>
                     </tr>
                     <tr>
                         <td class="moment-label" style="background:#ecfdf5;">RESULTADOS</td>
                         <td ${ce}>${esc(momentos.cierre?.actividades || '• Análisis de resultados.\n• Conclusiones y validación de hipótesis.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.cierre?.tiempo || '25 min')}</td>
+                        <td class="time-cell" ${ce}>${esc(momentos.cierre?.tiempo || momentos.cierre?.tiempo_total || '25 min')}</td>
                     </tr>
                 </tbody>
             </table>
@@ -659,19 +746,19 @@ const Templates = (() => {
                     <tr>
                         <td class="moment-label" style="background:#fef3c7;">REPASO</td>
                         <td ${ce}>${esc(momentos.inicio?.actividades || '• Retroalimentación del tema anterior.\n• Aclarar dudas previas.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.inicio?.tiempo || '10 min')}</td>
+                        <td class="time-cell" ${ce}>${esc(momentos.inicio?.tiempo || momentos.inicio?.tiempo_total || '10 min')}</td>
                         <td class="resources-cell" ${ce}>${esc(momentos.inicio?.recursos || '')}</td>
                     </tr>
                     <tr>
                         <td class="moment-label" style="background:#fef3c7;">PRÁCTICA</td>
-                        <td ${ce}>${esc(momentos.desarrollo?.actividades || '• Ejercicios diferenciados por nivel.\n• Trabajo guiado con acompañamiento.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.desarrollo?.tiempo || '25 min')}</td>
+                        <td ${ce}>${escHtml(compileDesarrolloText(momentos.desarrollo) || '• Ejercicios diferenciados por nivel.\n• Trabajo guiado con acompañamiento.')}</td>
+                        <td class="time-cell" ${ce}>${esc(momentos.desarrollo?.tiempo || momentos.desarrollo?.tiempo_total || '25 min')}</td>
                         <td class="resources-cell" ${ce}>${esc(momentos.desarrollo?.recursos || '')}</td>
                     </tr>
                     <tr>
                         <td class="moment-label" style="background:#fef3c7;">AVANCE</td>
                         <td ${ce}>${esc(momentos.cierre?.actividades || '• Verificar avance respecto al diagnóstico.\n• Compromiso para la siguiente sesión.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.cierre?.tiempo || '10 min')}</td>
+                        <td class="time-cell" ${ce}>${esc(momentos.cierre?.tiempo || momentos.cierre?.tiempo_total || '10 min')}</td>
                         <td class="resources-cell" ${ce}>${esc(momentos.cierre?.recursos || '')}</td>
                     </tr>
                 </tbody>
@@ -730,6 +817,54 @@ const Templates = (() => {
         }
         // Otherwise treat as plain text with newlines
         return esc(str);
+    }
+
+    // ─── HELPER: Compile decomposed development keys into HTML for non-standard templates ───
+    function compileDesarrolloText(desarrollo) {
+        if (!desarrollo || typeof desarrollo !== 'object') return '';
+        if (typeof desarrollo.actividades === 'string') return desarrollo.actividades;
+
+        const keys = Object.keys(desarrollo)
+            .filter(k => k.startsWith('proceso_') || k.startsWith('paso_'))
+            .sort((a, b) => {
+                const numA = parseInt(a.replace(/^\D+/g, ''), 10) || 0;
+                const numB = parseInt(b.replace(/^\D+/g, ''), 10) || 0;
+                return numA - numB;
+            });
+
+        if (keys.length === 0) return '';
+
+        const mappings = {
+            'familiarizacion': 'Familiarización con el problema',
+            'busqueda_estrategias': 'Búsqueda y ejecución de estrategias',
+            'socializacion': 'Socialización de representaciones',
+            'formalizacion_reflexion': 'Reflexión y Formalización',
+            'experiencia': 'Experiencia',
+            'reflexion': 'Reflexión',
+            'conceptualizacion': 'Conceptualización',
+            'aplicacion': 'Aplicación',
+            'lanzamiento': 'Lanzamiento / Desafío',
+            'indagacion': 'Indagación / Investigación',
+            'desarrollo_producto': 'Desarrollo del Producto',
+            'difusion_evaluacion': 'Difusión y Evaluación',
+            'conexion_externa': 'Conexión de saberes externos',
+            'aplicacion_guiada': 'Aplicación guiada / Taller activo',
+            'consolidacion_retroalimentacion': 'Consolidación y retroalimentación interactiva',
+            'problematizacion': 'Problematización de situaciones',
+            'diseno_estrategias': 'Diseño de estrategias para hacer indagación',
+            'generacion_analisis_datos': 'Generación, registro y análisis de datos',
+            'estructuracion_comunicacion': 'Estructuración del saber construido y comunicación',
+            'organizacion_roles': 'Organización de equipos y roles',
+            'interdependencia_positiva': 'Interdependencia positiva',
+            'interaccion_promotora': 'Interacción promotora',
+            'autoevaluacion_grupal': 'Autoevaluación grupal'
+        };
+
+        return keys.map(key => {
+            const cleanKey = key.replace(/^(proceso|paso)_\d+_/, '');
+            let title = mappings[cleanKey] || cleanKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return `<strong>${title}:</strong><br>${desarrollo[key]}`;
+        }).join('<br><br>');
     }
 
     return { render };

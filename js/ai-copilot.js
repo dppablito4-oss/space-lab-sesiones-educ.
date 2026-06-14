@@ -12,8 +12,8 @@ const AiCopilot = (() => {
         endpoint: 'https://openrouter.ai/api/v1/chat/completions',
         apiKey: '', // Se configura desde la UI
         model: 'deepseek/deepseek-chat', // DeepSeek V3 vía OpenRouter (barato y bueno)
-        maxTokens: 2000,
-        temperature: 0.7
+        maxTokens: 4000, // Ajuste clave para evitar JSONs rotos
+        temperature: 0.5 // Bajarlo ayuda a que sea más estricto con el formato JSON
     };
 
     /**
@@ -64,42 +64,46 @@ const AiCopilot = (() => {
 
     // ─── METODOLOGÍAS DIDÁCTICAS PROMPTS ───
     const METHODOLOGY_PROMPTS = {
-        polya: `La secuencia didáctica del momento de DESARROLLO debe estructurarse rigurosamente bajo las fases del Método de Polya para la resolución de problemas:
-1. **Comprender el problema:** Los estudiantes identifican datos, incógnitas y condiciones del reto.
-2. **Concebir un plan:** Proponer estrategias, esquemas, dibujos, analogías o buscar problemas similares resueltos.
-3. **Ejecutar el plan:** Desarrollar las operaciones, cálculos o razonamiento lógico justificando cada paso.
-4. **Mirar atrás (Reflexión):** Verificar el resultado obtenido, explorar otros métodos de resolución y consolidar el aprendizaje.
-Asegúrate de incluir preguntas y actividades específicas para cada uno de estos 4 pasos en la secuencia.`,
+        polya: `La secuencia didáctica del momento de DESARROLLO debe estructurarse rigurosamente bajo los procesos didácticos oficiales de Matemática de MINEDU:
+1. **Familiarización con el problema:** Los estudiantes leen de forma colectiva el reto, identifican datos y comprenden la situación.
+2. **Búsqueda y ejecución de estrategias:** Los alumnos proponen planes, eligen herramientas, organizan equipos y ejecutan soluciones.
+3. **Socialización de representaciones:** Los estudiantes comparten e intercambian en la pizarra sus representaciones (gráficas, simbólicas, concretas).
+4. **Reflexión y Formalización:** Momento donde el docente consolida conceptualmente el aprendizaje y los estudiantes reflexionan sobre sus dificultades y aciertos.
+Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves: "proceso_1_familiarizacion", "proceso_2_busqueda_estrategias", "proceso_3_socializacion" y "proceso_4_formalizacion_reflexion".`,
         
         erca: `La secuencia didáctica del momento de DESARROLLO debe estructurarse estrictamente bajo el ciclo ERCA:
 1. **Experiencia:** Actividad vivencial, exploración física, o recuperación de una situación real relacionada al tema.
 2. **Reflexión:** Los estudiantes analizan lo experimentado, exponen sus puntos de vista, y discuten las primeras interrogantes.
 3. **Conceptualización:** Sistematización teórica de los conceptos claves científicos, reglas o ideas principales guiados por el docente.
 4. **Aplicación:** Resolución de retos prácticos, ejercicios o situaciones cotidianas donde apliquen lo aprendido.
-Describe explícitamente estas fases en las actividades de desarrollo.`,
+Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves: "proceso_1_experiencia", "proceso_2_reflexion", "proceso_3_conceptualizacion" y "proceso_4_aplicacion".`,
         
         abp: `La secuencia didáctica del momento de DESARROLLO debe estructurarse bajo los principios del Aprendizaje Basado en Proyectos (ABP):
 1. **Lanzamiento / Desafío:** Planteamiento del reto, pregunta orientadora o necesidad real del proyecto.
 2. **Indagación / Investigación:** Búsqueda activa de información, lectura o recolección de datos sobre la problemática.
 3. **Desarrollo del Producto:** Trabajo colaborativo donde los estudiantes diseñan, crean o esbozan el entregable/producto del proyecto.
-4. **Difusión y Evaluación:** Espacio donde socializan sus productos y reciben retroalimentación crítica constructiva de sus pares.`,
+4. **Difusión y Evaluación:** Espacio donde socializan sus productos y reciben retroalimentación crítica constructiva de sus pares.
+Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves: "proceso_1_lanzamiento", "proceso_2_indagacion", "proceso_3_desarrollo_producto" y "proceso_4_difusion_evaluacion".`,
         
         flipped: `La secuencia didáctica del momento de DESARROLLO debe estructurarse bajo el enfoque de Aula Invertida (Flipped Classroom):
 1. **Conexión de saberes externos:** Puesta en común del contenido estudiado autónomamente antes de la clase (videos, lecturas previas).
 2. **Aplicación guiada / Taller activo:** Dinámica de alta exigencia cognitiva donde se resuelven dudas complejas y se trabaja en proyectos o retos colaborativos.
-3. **Consolidación y retroalimentación interactiva:** Sistematización del saber aplicado en el taller y evaluación formativa en vivo.`,
+3. **Consolidación y retroalimentación interactiva:** Sistematización del saber aplicado en el taller y evaluación formativa en vivo.
+Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves: "proceso_1_conexion_externa", "proceso_2_aplicacion_guiada" y "proceso_3_consolidacion_retroalimentacion".`,
         
         indagacion: `La secuencia didáctica del momento de DESARROLLO debe estructurarse siguiendo el Método de Indagación Científica (STEAM/Ciencia):
 1. **Problematización de situaciones:** Formulación de preguntas investigables e hipótesis explicativas.
 2. **Diseño de estrategias para hacer indagación:** Elaboración del plan de acción experimental o metodológico.
 3. **Generación, registro y análisis de datos:** Actividad práctica de experimentación, observación directa o recolección de evidencia empírica.
-4. **Estructuración del saber construido y comunicación:** Contraste de hipótesis, síntesis de conclusiones y comunicación de aprendizajes.`,
+4. **Estructuración del saber construido y comunicación:** Contraste de hipótesis, síntesis de conclusiones y comunicación de aprendizajes.
+Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves: "proceso_1_problematizacion", "proceso_2_diseno_estrategias", "proceso_3_generacion_analisis_datos" y "proceso_4_estructuracion_comunicacion".`,
         
         cooperativo: `La secuencia didáctica del momento de DESARROLLO debe centrarse en el Aprendizaje Cooperativo:
 1. **Organización de equipos y roles:** Formación de grupos heterogéneos y asignación de roles (coordinador, secretario, portavoz, gestor del tiempo).
 2. **Interdependencia positiva:** Actividades diseñadas para que los estudiantes se necesiten mutuamente para lograr el éxito grupal (ej: rompecabezas, lectura compartida).
 3. **Interacción promotora:** Fomentar el diálogo cercano y la explicación mutua de conceptos entre compañeros.
-4. **Autoevaluación grupal:** Reflexión final sobre el desempeño cooperativo del equipo.`
+4. **Autoevaluación grupal:** Reflexión final sobre el desempeño cooperativo del equipo.
+Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves: "proceso_1_organizacion_roles", "proceso_2_interdependencia_positiva", "proceso_3_interaccion_promotora" y "proceso_4_autoevaluacion_grupal".`
     };
 
     // ─── SYSTEM PROMPT ───
@@ -108,12 +112,13 @@ Describe explícitamente estas fases en las actividades de desarrollo.`,
 REGLAS DE FORMATO Y CONTENIDO:
 1. Responde ÚNICAMENTE en formato JSON válido. No envíes explicaciones, código markdown ni backticks \`\`\`.
 2. Las actividades de los momentos (inicio, desarrollo, cierre) deben contener marcado HTML básico (como <strong>, <ul>, <li>, <p>, <br>) para estructurar el texto, listas y preguntas con excelente visualización. No uses etiquetas como <html>, <body>, ni clases CSS complejas.
-3. El contenido del DESARROLLO debe ser extremadamente detallado, largo y completo, cubriendo todos los procesos didácticos del área curricular (por ejemplo, en Matemática: familiarización con el problema, búsqueda y ejecución de estrategias, socialización de representaciones, formalización, reflexión, transferencia; en Comunicación: antes de la lectura, durante la lectura, después de la lectura, etc.). Esto debe ocupar de 2 a 4 páginas de impresión, por lo tanto, sé minucioso.
+3. El desarrollo de la sesión debe dividirse rigurosamente en sub-procesos didácticos separados en claves independientes de JSON (proceso_1, proceso_2, etc.), describiendo detalladamente la interacción en el aula.
 4. Genera múltiples capacidades y criterios de evaluación adecuados a la competencia.
 5. Adapta la complejidad y tono de las actividades al Grado, Nivel (Inicial, Primaria, Secundaria) y Área curricular indicados.
 
 FORMATO DE RESPUESTA (JSON):
 {
+  "titulo_sesion_retador": "Frase de acción de la sesión (ej: Representamos con números enteros los goles a favor y en contra...)",
   "proposito": {
     "competencia": "Nombre oficial de la competencia (ej. Resuelve problemas de cantidad)",
     "estandar": "Texto completo del Estándar de Aprendizaje del ciclo correspondiente",
@@ -167,7 +172,10 @@ FORMATO DE RESPUESTA (JSON):
       "tiempo_total": "15 min"
     },
     "desarrollo": {
-      "actividades": "Contenido sumamente extenso y estructurado con etiquetas HTML. Debe guiar paso a paso por los Procesos Didácticos del área curricular (como familiarización con el problema, búsqueda de estrategias, socialización, formalización y transferencia). Incluye preguntas específicas de retroalimentación, explicaciones de conceptos clave, problemas con sus respectivas respuestas y métodos de resolución.",
+      "proceso_1_familiarizacion": "Texto detallado en HTML para la lectura y comprensión del reto.",
+      "proceso_2_busqueda_estrategias": "Texto detallado en HTML sobre cómo plantearán y ejecutarán la solución.",
+      "proceso_3_socializacion": "Texto detallado en HTML sobre la exposición y debate de representaciones.",
+      "proceso_4_formalizacion_reflexion": "Texto detallado en HTML con la explicación científica/matemática consolidada y reflexión sobre lo aprendido.",
       "tiempo_total": "65 min"
     },
     "cierre": {
@@ -180,7 +188,8 @@ FORMATO DE RESPUESTA (JSON):
     "evidencia": "Evidencia/producto esperado",
     "instrumento": "Lista de Cotejo / Rúbrica"
   }
-}`;
+}
+`;
 
     async function generateSession(metadata) {
         const userPrompt = buildPrompt(metadata);
@@ -207,7 +216,7 @@ FORMATO DE RESPUESTA (JSON):
                     resultObj = parseAIResponse(data);
                 } else if (data && typeof data === 'object') {
                     // Si ya viene como objeto parsed
-                    resultObj = deepCleanStrings(data);
+                    resultObj = normalizeSessionData(deepCleanStrings(data));
                 }
 
                 if (resultObj) {
@@ -324,7 +333,7 @@ FORMATO DE RESPUESTA (JSON):
             const parsed = JSON.parse(cleaned);
             
             // Clean excessive newlines from all string values
-            return deepCleanStrings(parsed);
+            return normalizeSessionData(deepCleanStrings(parsed));
         } catch (e) {
             console.error('[AI] Failed to parse JSON:', cleaned);
             throw new Error('La IA devolvió una respuesta con formato incorrecto. Intenta de nuevo.');
@@ -351,6 +360,53 @@ FORMATO DE RESPUESTA (JSON):
             }
             return result;
         }
+        return obj;
+    }
+
+    /**
+     * Normalize dynamic session keys (e.g. momentos.desarrollo proceso_X_ keys)
+     */
+    function normalizeSessionData(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+
+        if (obj.momentos && obj.momentos.desarrollo && typeof obj.momentos.desarrollo === 'object') {
+            const desarrollo = obj.momentos.desarrollo;
+            const newDesarrollo = {};
+            let index = 1;
+
+            // 1. Copy standard non-process keys
+            if (desarrollo.tiempo_total) newDesarrollo.tiempo_total = desarrollo.tiempo_total;
+            if (desarrollo.actividades) newDesarrollo.actividades = desarrollo.actividades;
+
+            // 2. Identify and sort process/step keys
+            const otherKeys = Object.keys(desarrollo).filter(k => k !== 'tiempo_total' && k !== 'actividades');
+
+            otherKeys.sort((a, b) => {
+                const numA = parseInt(a.replace(/^\D+/g, ''), 10);
+                const numB = parseInt(b.replace(/^\D+/g, ''), 10);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                }
+                // Fallback to alphabetical if no numbers
+                return a.localeCompare(b);
+            });
+
+            // 3. Normalize keys to 'proceso_X_[name]' format
+            otherKeys.forEach(key => {
+                const val = desarrollo[key];
+                // Strip existing prefix 'proceso_1_', 'proceso_', 'paso_1_', 'paso_'
+                const cleanKey = key
+                    .replace(/^(proceso|paso)_\d+_/, '')
+                    .replace(/^(proceso|paso)_/, '');
+
+                const standardKey = `proceso_${index}_${cleanKey}`;
+                newDesarrollo[standardKey] = val;
+                index++;
+            });
+
+            obj.momentos.desarrollo = newDesarrollo;
+        }
+
         return obj;
     }
 
