@@ -82,76 +82,135 @@
     /* ─── Tables ─── */
     .session-sheet .session-header-table,
     .session-sheet .content-table,
-    .session-sheet .eval-table {
+    .session-sheet .eval-table,
+    .session-sheet .official-header-table,
+    .session-sheet .momentos-table {
         width: 100%;
         border-collapse: collapse;
         page-break-inside: auto;
+    }
+
+    /* Repeat table header on every page */
+    .session-sheet table thead {
+        display: table-header-group !important;
     }
 
     .session-sheet .session-header-table td,
     .session-sheet .content-table th,
     .session-sheet .content-table td,
     .session-sheet .eval-table th,
-    .session-sheet .eval-table td {
-        border: 1px solid #333 !important;
+    .session-sheet .eval-table td,
+    .session-sheet .official-header-table td,
+    .session-sheet .momentos-table th,
+    .session-sheet .momentos-table td {
+        border: 1px solid #000 !important;
         padding: 4px 6px;
-        font-size: 9pt;
+        font-size: 8.5pt;
+        color: #000 !important;
+        background: transparent !important;
     }
 
     .session-sheet .content-table tr,
-    .session-sheet .eval-table tr {
+    .session-sheet .eval-table tr,
+    .session-sheet .official-header-table tr {
         break-inside: avoid;
         page-break-inside: avoid;
     }
 
-    /* ─── Header cells ─── */
-    .session-sheet .label-cell {
-        background: #e8e8f0 !important;
-        font-weight: 700;
-        font-size: 8pt;
-        color: #000 !important;
+    /* Allow momentos table rows to split across pages */
+    .session-sheet .momentos-table tr {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
     }
 
+    /* ─── Header cells ─── */
+    .session-sheet .label-cell,
+    .session-sheet .momentos-table th,
     .session-sheet .content-table th,
     .session-sheet .eval-table th {
-        background: #e8e8f0 !important;
-        color: #000 !important;
+        background: #f1f5f9 !important;
         font-weight: 700;
         font-size: 8pt;
+        color: #000 !important;
     }
 
     /* ─── Title bar ─── */
-    .session-sheet .session-title-bar {
-        background: #1e3a5f !important;
-        color: #fff !important;
-        padding: 6px 10px;
-        border-radius: 0;
+    .session-sheet .session-title-bar-official {
+        text-align: center;
+        font-size: 12pt;
+        font-weight: 800;
+        color: #000 !important;
         margin: 8px 0;
-        font-size: 11pt;
-        font-weight: 700;
+        text-transform: uppercase;
     }
 
     /* ─── Section titles ─── */
-    .session-sheet .section-title {
-        background: #e8e8f0 !important;
+    .session-sheet .subsection-title-bar {
+        background: #e2e8f0 !important;
         color: #000 !important;
-        padding: 4px 8px;
-        margin: 8px 0 4px;
-        border-left: 3px solid #1e3a5f !important;
-        border-radius: 0;
+        padding: 4px 6px;
+        margin: 10px 0 4px;
+        border-left: 3px solid #000 !important;
+        font-size: 8.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .session-sheet .subsection-content-box {
+        border: 1px solid #000 !important;
+        padding: 6px 8px;
         font-size: 9pt;
+        margin-bottom: 8px;
+        background: transparent !important;
+        white-space: pre-wrap;
     }
 
     /* ─── Moment labels ─── */
-    .session-sheet .moment-label {
-        background: #e8e8f0 !important;
+    .session-sheet .momento-label-cell {
+        background: #f8fafc !important;
+        width: 120px;
+    }
+
+    .session-sheet .momento-name {
+        font-weight: 700;
+        font-size: 9pt;
+        color: #000 !important;
+        text-transform: uppercase;
+    }
+
+    .session-sheet .momento-sublabels {
+        font-size: 7.5pt;
+        color: #333 !important;
+        line-height: 1.2;
+    }
+
+    .session-sheet .momento-time {
+        font-weight: 700;
+        font-size: 8pt;
+        color: #000 !important;
+    }
+
+    .session-sheet .eval-column-cell {
+        background: #f8fafc !important;
+        width: 30px;
+        vertical-align: middle !important;
+        text-align: center;
+    }
+
+    .session-sheet .eval-vertical-text {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        text-transform: uppercase;
+        font-weight: 700;
+        font-size: 8pt;
+        letter-spacing: 0.25em;
         color: #000 !important;
     }
 
     /* ─── Logo ─── */
-    .session-sheet .logo-cell img {
-        max-width: 15mm;
-        max-height: 15mm;
+    .session-sheet .official-logo-img {
+        max-width: 14mm;
+        max-height: 12mm;
     }
 
     /* ─── Contenteditable: remove editing styles ─── */

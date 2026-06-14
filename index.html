@@ -115,6 +115,17 @@
                             <label for="input-institucion" class="form-label">Institución Educativa</label>
                             <input type="text" id="input-institucion" class="form-input" placeholder="I.E. N° 000 — Nombre">
                         </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-dre" class="form-label">DRE</label>
+                                <input type="text" id="input-dre" class="form-input" placeholder="DRE Ucayali">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ugel" class="form-label">UGEL</label>
+                                <input type="text" id="input-ugel" class="form-input" placeholder="UGEL Padre Abad">
+                            </div>
+                        </div>
                         
                         <div class="form-row">
                             <div class="form-group">
@@ -129,9 +140,27 @@
 
                         <div class="form-row">
                             <div class="form-group">
+                                <label for="input-nivel" class="form-label">Nivel</label>
+                                <select id="input-nivel" class="form-select">
+                                    <option value="SECUNDARIA">Secundaria</option>
+                                    <option value="PRIMARIA">Primaria</option>
+                                    <option value="INICIAL">Inicial</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-numero-sesion" class="form-label">N° de Sesión</label>
+                                <input type="text" id="input-numero-sesion" class="form-input" placeholder="03">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label for="input-grado" class="form-label">Grado</label>
                                 <select id="input-grado" class="form-select">
                                     <option value="">Seleccionar</option>
+                                    <option value="3 años">3 años (Inicial)</option>
+                                    <option value="4 años">4 años (Inicial)</option>
+                                    <option value="5 años">5 años (Inicial)</option>
                                     <option value="1°">1° Grado</option>
                                     <option value="2°">2° Grado</option>
                                     <option value="3°">3° Grado</option>
@@ -197,9 +226,14 @@
                             <textarea id="input-desempeno" class="form-textarea" rows="2" placeholder="Desempeños esperados..."></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="input-enfoque" class="form-label">Enfoque Transversal</label>
+                            <label for="input-enfoque" class="form-label">Enfoque Transversal 1</label>
                             <select id="select-cneb-enfoque" class="form-select" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
                             <input type="text" id="input-enfoque" class="form-input" placeholder="Ej: Enfoque de derechos">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-enfoque2" class="form-label">Enfoque Transversal 2</label>
+                            <select id="select-cneb-enfoque2" class="form-select" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
+                            <input type="text" id="input-enfoque2" class="form-input" placeholder="Ej: Enfoque ambiental">
                         </div>
                     </fieldset>
 

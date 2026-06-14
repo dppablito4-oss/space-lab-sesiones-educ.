@@ -18,6 +18,9 @@ const Templates = (() => {
         const p = data.proposito || {};
         const momentos = data.momentos || {};
         const evalData = data.evaluacion || {};
+        const ct = data.competencias_transversales || {};
+        const enfoques = data.enfoques || [];
+        const recursos = data.recursos || {};
 
         switch (type) {
             case 'laboratorio':
@@ -25,171 +28,433 @@ const Templates = (() => {
             case 'refuerzo':
                 return renderRefuerzo(m, p, momentos, evalData, ce);
             default:
-                return renderEstandar(m, p, momentos, evalData, ce);
+                return renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, ce);
         }
     }
 
     // ═══════════════════════════════════════
-    // SESIÓN ESTÁNDAR MINEDU
+    // SESIÓN ESTÁNDAR MINEDU (Formato PDF Oficial)
     // ═══════════════════════════════════════
 
-    function renderEstandar(m, p, momentos, evalData, ce) {
+    function renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, ce) {
+
+        // Build enfoques rows (at least 2)
+        let enfoquesRows = '';
+        if (enfoques && enfoques.length > 0) {
+            enfoques.forEach(enf => {
+                enfoquesRows += `
+                    <tr>
+                        <td ${ce}>${esc(enf.nombre || '')}</td>
+                        <td ${ce}>${esc(enf.valor || '')}</td>
+                        <td ${ce}>${esc(enf.actitudes || '')}</td>
+                    </tr>`;
+            });
+        } else {
+            // Default 2 rows from form data
+            enfoquesRows = `
+                <tr>
+                    <td ${ce}>${esc(p.enfoque || 'Enfoque Búsqueda de la Excelencia')}</td>
+                    <td ${ce}>${esc(p.enfoque_valor || 'Equidad y Justicia')}</td>
+                    <td ${ce}>${esc(p.enfoque_actitudes || 'Dialoga con tus compañeros para resolver desacuerdos y escucha con atención.')}</td>
+                </tr>
+                <tr>
+                    <td ${ce}>${esc(p.enfoque2 || 'Enfoque ambiental')}</td>
+                    <td ${ce}>${esc(p.enfoque2_valor || 'Justicia y solidaridad (orientados a la ecoeficiencia)')}</td>
+                    <td ${ce}>${esc(p.enfoque2_actitudes || 'Reduce el uso de materiales desechables, reutilizando cuadernos, hojas y envases cuando sea posible durante las actividades del aula.')}</td>
+                </tr>`;
+        }
+
+        // Build competencias transversales
+        const ticItems = ct.tic && ct.tic.length > 0 ? ct.tic : [
+            'Personaliza entornos virtuales',
+            'Gestiona información del entorno virtual',
+            'Interactúa en entornos virtuales',
+            'Crea objetos virtuales en diversos formatos'
+        ];
+        const autonomaItems = ct.autonoma && ct.autonoma.length > 0 ? ct.autonoma : [
+            'Define metas de aprendizaje',
+            'Organiza acciones estratégicas para alcanzar sus metas',
+            'Monitorea y ajusta su desempeño durante el proceso de aprendizaje'
+        ];
+
+        // Build capacidades rows
+        const capacidades = Array.isArray(p.capacidades) ? p.capacidades : (p.capacidad ? [p.capacidad] : ['']);
+        const criterios = Array.isArray(p.criterios_evaluacion) ? p.criterios_evaluacion : (p.desempeno ? [p.desempeno] : ['']);
+
+        let capacidadesHtml = '';
+        capacidades.forEach(cap => {
+            capacidadesHtml += `<li ${ce}>${esc(cap)}</li>`;
+        });
+
+        let criteriosHtml = '';
+        criterios.forEach(crit => {
+            criteriosHtml += `<li ${ce}>${esc(crit)}</li>`;
+        });
+
+        // ── MOMENTOS: Build rich HTML content ──
+        const inicioContent = buildMomentoInicio(momentos.inicio || {}, ce);
+        const desarrolloContent = buildMomentoDesarrollo(momentos.desarrollo || {}, ce);
+        const cierreContent = buildMomentoCierre(momentos.cierre || {}, ce);
+
         return `
-            <!-- HEADER INSTITUCIONAL -->
+            <!-- ════════ HEADER INSTITUCIONAL OFICIAL ════════ -->
+            <table class="official-header-table">
+                <tr>
+                    <td class="official-logo-cell" rowspan="2">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png" alt="Escudo del Perú" class="official-logo-img">
+                    </td>
+                    <td class="official-entity-cell" ${ce}>
+                        <strong>PERÚ</strong>
+                    </td>
+                    <td class="official-entity-cell" ${ce}>
+                        Ministerio<br>de Educación
+                    </td>
+                    <td class="official-entity-cell" ${ce}>
+                        ${esc(m.dre || 'Dirección Regional de Educación de Ucayali')}
+                    </td>
+                    <td class="official-entity-cell" ${ce}>
+                        ${esc(m.ugel || 'Unidad de Gestión Educativa Local de Padre Abad')}
+                    </td>
+                    <td class="official-entity-cell" ${ce}>
+                        Área de Gestión<br>Pedagógica
+                    </td>
+                    <td class="official-logo-cell" rowspan="2">
+                        <img src="https://sesiones.sypablitodp.site/assets/logo.png" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};">
+                    </td>
+                </tr>
+            </table>
+
+            <!-- ════════ TÍTULO PRINCIPAL ════════ -->
+            <div class="session-title-bar-official">
+                <span ${ce}>SESIÓN DE APRENDIZAJE N° ${esc(m.numero_sesion || '01')}</span>
+            </div>
+
+            <!-- ════════ DATOS GENERALES ════════ -->
             <table class="session-header-table">
                 <tr>
-                    <td class="logo-cell" rowspan="4">
-                        <div ${ce} style="font-size:24px; text-align:center;">🏫</div>
-                    </td>
                     <td class="label-cell">Institución Educativa</td>
-                    <td class="value-cell" ${ce}>${esc(m.institucion || 'I.E. N° — Nombre')}</td>
-                    <td class="label-cell">Fecha</td>
-                    <td class="value-cell" ${ce}>${esc(m.fecha || '')}</td>
+                    <td class="value-cell" ${ce} colspan="3">${esc(m.institucion || 'I.E. N° — Nombre')}</td>
+                    <td class="label-cell">Nivel</td>
+                    <td class="value-cell" ${ce}>${esc(m.nivel || 'SECUNDARIA')}</td>
                 </tr>
                 <tr>
                     <td class="label-cell">Docente</td>
-                    <td class="value-cell" ${ce}>${esc(m.docente || '')}</td>
-                    <td class="label-cell">Duración</td>
-                    <td class="value-cell" ${ce}>${esc(m.duracion || '90 min')}</td>
-                </tr>
-                <tr>
-                    <td class="label-cell">Grado y Sección</td>
-                    <td class="value-cell" ${ce}>${esc(m.grado || '')} "${esc(m.seccion || '')}"</td>
+                    <td class="value-cell" ${ce} colspan="3">${esc(m.docente || '')}</td>
                     <td class="label-cell">Área</td>
                     <td class="value-cell" ${ce}>${esc(m.area || '')}</td>
                 </tr>
                 <tr>
-                    <td class="label-cell">Unidad Didáctica</td>
-                    <td class="value-cell" colspan="3" ${ce}>${esc(m.unidad || '')}</td>
+                    <td class="label-cell">Grado</td>
+                    <td class="value-cell" ${ce}>${esc(m.grado || '')}</td>
+                    <td class="label-cell">Sección</td>
+                    <td class="value-cell" ${ce}>${esc(m.seccion || '')}</td>
+                    <td class="label-cell">Unidad/<br>Proyecto</td>
+                    <td class="value-cell" ${ce}>${esc(m.unidad || '')}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell" colspan="4" style="text-align: left;">
+                        <strong>Fecha</strong>&nbsp;&nbsp;
+                        <span ${ce} style="font-weight:400">${esc(m.fecha || '')}</span>
+                    </td>
+                    <td class="label-cell">Duración</td>
+                    <td class="value-cell" ${ce}>${esc(m.duracion || '4 horas pedagógicas')}</td>
                 </tr>
             </table>
 
-            <!-- TÍTULO -->
-            <div class="session-title-bar">
-                <span ${ce}>${esc(m.titulo || 'SESIÓN DE APRENDIZAJE')}</span>
+            <!-- ════════ TÍTULO DE LA SESIÓN ════════ -->
+            <div class="subsection-title-bar">TÍTULO DE LA SESIÓN</div>
+            <div class="subsection-content-box" ${ce}>
+                ${esc(m.titulo || 'Título de la sesión de aprendizaje')}
             </div>
 
-            <!-- PROPÓSITO DE APRENDIZAJE -->
-            <div class="section-title">I. Propósito de Aprendizaje</div>
+            <!-- ════════ PROPÓSITO DE LA SESIÓN ════════ -->
+            <div class="subsection-title-bar">PROPÓSITO DE LA SESIÓN</div>
+            <div class="subsection-content-box" ${ce}>
+                ${escHtml(p.proposito_texto || p.desempeno || 'Describir el propósito de la sesión...')}
+            </div>
+
+            <!-- ════════ CONOCIMIENTOS ════════ -->
+            <div class="subsection-title-bar">CONOCIMIENTOS</div>
+            <div class="subsection-content-box" ${ce}>
+                ${escHtml(p.conocimientos || 'Temas y subtemas que se abordarán...')}
+            </div>
+
+            <!-- ════════ PROPÓSITOS DE APRENDIZAJE ════════ -->
+            <div class="subsection-title-bar">PROPÓSITOS DE APRENDIZAJE</div>
+
+            <!-- Competencia y Estándar -->
             <table class="content-table">
+                <tr>
+                    <td class="label-cell" style="width: 160px">Competencia</td>
+                    <td ${ce}><strong>${esc(p.competencia || 'Nombre de la competencia')}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Estándar de aprendizaje</td>
+                    <td ${ce} style="font-size:10px; line-height:1.4">${escHtml(p.estandar || 'Estándar de aprendizaje correspondiente al ciclo...')}</td>
+                </tr>
+            </table>
+
+            <!-- Tabla de Competencias / Capacidades / Criterios / Producto / Instrumento -->
+            <table class="content-table propositos-table">
                 <thead>
                     <tr>
-                        <th style="width:25%">Competencia</th>
-                        <th style="width:25%">Capacidad</th>
-                        <th style="width:30%">Desempeño</th>
-                        <th style="width:20%">Enfoque Transversal</th>
+                        <th>COMPETENCIAS</th>
+                        <th>CAPACIDADES</th>
+                        <th>CRITERIOS DE EVALUACIÓN</th>
+                        <th>PRODUCTO /<br>EVIDENCIA</th>
+                        <th>INSTRUMENTOS DE<br>EVALUACIÓN</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td ${ce}>${esc(p.competencia || 'Escribe aquí la competencia...')}</td>
-                        <td ${ce}>${esc(p.capacidad || 'Escribe aquí la capacidad...')}</td>
-                        <td ${ce}>${esc(p.desempeno || 'Escribe aquí el desempeño...')}</td>
-                        <td ${ce}>${esc(p.enfoque || 'Escribe aquí el enfoque...')}</td>
+                        <td ${ce} rowspan="${Math.max(capacidades.length, 1)}" style="vertical-align:top; font-weight:600">
+                            ${esc(p.competencia || 'Resuelve problemas de cantidad')}
+                        </td>
+                        <td ${ce} style="vertical-align:top">
+                            <ul class="session-list">${capacidadesHtml || '<li>Capacidades...</li>'}</ul>
+                        </td>
+                        <td ${ce} style="vertical-align:top">
+                            <ul class="session-list">${criteriosHtml || '<li>Criterios...</li>'}</ul>
+                        </td>
+                        <td ${ce} rowspan="${Math.max(capacidades.length, 1)}" style="vertical-align:top">
+                            ${esc(p.producto_evidencia || 'Desarrollo de actividades de la ficha de actividades.\n\nResolución de la pág. XX del texto escolar Minedu')}
+                        </td>
+                        <td ${ce} rowspan="${Math.max(capacidades.length, 1)}" style="vertical-align:top">
+                            ${esc(p.instrumento || 'Lista de Cotejo')}
+                        </td>
                     </tr>
                 </tbody>
             </table>
 
-            <!-- PREPARACIÓN -->
-            <div class="section-title">II. Preparación de la Sesión</div>
-            <table class="content-table">
+            <!-- ════════ COMPETENCIAS TRANSVERSALES ════════ -->
+            <table class="content-table ct-table">
                 <thead>
                     <tr>
-                        <th style="width:50%">¿Qué necesitamos hacer antes de la sesión?</th>
-                        <th style="width:50%">¿Qué recursos o materiales se utilizarán?</th>
+                        <th style="width: 35%">COMPETENCIAS TRANSVERSALES</th>
+                        <th>DESEMPEÑOS PRECISADOS<br>PRODUCTO / EVIDENCIA<br>INSTRUMENTOS DE EVALUACIÓN</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td ${ce}>${esc(momentos.preparacion?.antes || 'Preparar materiales, revisar fichas...')}</td>
-                        <td ${ce}>${esc(momentos.preparacion?.recursos || 'Cuaderno, pizarra, fichas de trabajo...')}</td>
+                        <td class="ct-label" ${ce}>Se desenvuelve en los entornos virtuales generados por las TIC</td>
+                        <td ${ce}>
+                            <ul class="session-list">
+                                ${ticItems.map(i => `<li>${esc(i)}</li>`).join('')}
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="ct-label" ${ce}>Gestiona su aprendizaje de manera autónoma</td>
+                        <td ${ce}>
+                            <ul class="session-list">
+                                ${autonomaItems.map(i => `<li>${esc(i)}</li>`).join('')}
+                            </ul>
+                        </td>
                     </tr>
                 </tbody>
             </table>
 
-            <!-- MOMENTOS DE LA SESIÓN -->
-            <div class="section-title">III. Momentos de la Sesión</div>
-            <table class="content-table">
+            <!-- ════════ ENFOQUES TRANSVERSALES ════════ -->
+            <table class="content-table enfoques-table">
                 <thead>
                     <tr>
-                        <th style="width:80px">Momento</th>
-                        <th>Estrategias / Actividades</th>
-                        <th style="width:60px">Tiempo</th>
-                        <th style="width:120px">Recursos</th>
+                        <th style="width:30%">Enfoque(s) transversal(es)</th>
+                        <th style="width:20%">Valores</th>
+                        <th>Actitudes o acciones observables</th>
                     </tr>
                 </thead>
                 <tbody>
+                    ${enfoquesRows}
+                </tbody>
+            </table>
+
+            <!-- ════════ RECURSOS Y MATERIALES ════════ -->
+            <table class="content-table recursos-table">
+                <tbody>
                     <tr>
-                        <td class="moment-label">INICIO</td>
-                        <td ${ce}>${esc(momentos.inicio?.actividades || '• Motivación y recojo de saberes previos.\n• Comunicar el propósito de la sesión.\n• Establecer acuerdos de convivencia.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.inicio?.tiempo || '15 min')}</td>
-                        <td class="resources-cell" ${ce}>${esc(momentos.inicio?.recursos || 'Pizarra, imágenes')}</td>
+                        <td class="label-cell" style="width:35%">Páginas de: Texto de, otros textos de consulta/ Enlace web, etc.</td>
+                        <td ${ce}>${escHtml(recursos.paginas_consulta || 'https://www.perueduca.pe/#/home/materiales-educativos')}</td>
                     </tr>
                     <tr>
-                        <td class="moment-label">DESARROLLO</td>
-                        <td ${ce}>${esc(momentos.desarrollo?.actividades || '• Presentación de la situación significativa.\n• Trabajo individual o en equipo.\n• Acompañamiento y retroalimentación.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.desarrollo?.tiempo || '60 min')}</td>
-                        <td class="resources-cell" ${ce}>${esc(momentos.desarrollo?.recursos || 'Fichas, cuaderno')}</td>
+                        <td class="label-cell">Materiales y recursos</td>
+                        <td ${ce}>${esc(recursos.materiales || 'Ficha de actividades, Texto de Minedu')}</td>
                     </tr>
                     <tr>
-                        <td class="moment-label">CIERRE</td>
-                        <td ${ce}>${esc(momentos.cierre?.actividades || '• Metacognición: ¿Qué aprendimos hoy?\n• Evaluación formativa.\n• Extensión para casa.')}</td>
-                        <td class="time-cell" ${ce}>${esc(momentos.cierre?.tiempo || '15 min')}</td>
-                        <td class="resources-cell" ${ce}>${esc(momentos.cierre?.recursos || 'Cuaderno')}</td>
+                        <td class="label-cell">Actividades de Refuerzo Escolar (N° ficha y Título)</td>
+                        <td ${ce}>${esc(recursos.actividades_refuerzo || '')}</td>
                     </tr>
                 </tbody>
             </table>
 
-            <!-- EVALUACIÓN -->
-            <div class="section-title">IV. Evaluación</div>
-            <table class="eval-table">
+            <!-- ════════ MOMENTOS DE LA SESIÓN ════════ -->
+            <div class="page-break-before"></div>
+
+            <table class="momentos-table">
                 <thead>
                     <tr>
-                        <th style="width:30%">Criterio de Evaluación</th>
-                        <th style="width:40%">Evidencia de Aprendizaje</th>
-                        <th style="width:30%">Instrumento</th>
+                        <th class="momentos-header-left" style="width: 120px">MOMENTOS DE<br>LA SESIÓN</th>
+                        <th class="momentos-header-center">ESTRATEGIAS / ACTIVIDADES</th>
+                        <th class="momentos-header-eval" style="width: 30px">
+                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- INICIO -->
                     <tr>
-                        <td ${ce}>${esc(evalData.criterio || 'Criterio basado en el desempeño...')}</td>
-                        <td ${ce}>${esc(evalData.evidencia || 'Producción escrita, participación oral...')}</td>
-                        <td ${ce}>${esc(evalData.instrumento || 'Lista de cotejo, rúbrica...')}</td>
+                        <td class="momento-label-cell">
+                            <div class="momento-name">INICIO:</div>
+                            <div class="momento-sublabels">
+                                <span>• Saberes Previos</span>
+                                <span>• Problematización</span>
+                                <span>• Propósito y organización</span>
+                            </div>
+                            <div class="momento-time">TIEMPO:</div>
+                        </td>
+                        <td class="momento-content-cell" ${ce}>
+                            ${inicioContent}
+                        </td>
+                        <td class="eval-column-cell" rowspan="3">
+                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                        </td>
+                    </tr>
+
+                    <!-- DESARROLLO -->
+                    <tr>
+                        <td class="momento-label-cell">
+                            <div class="momento-name">DESARROLLO:</div>
+                            <div class="momento-sublabels">
+                                <span>Gestión y Acompañamiento del Desarrollo de las Competencias</span>
+                                <span>(Procesos didácticos del Área — monitoreo y retroalimentación)</span>
+                            </div>
+                            <div class="momento-time">TIEMPO:</div>
+                        </td>
+                        <td class="momento-content-cell" ${ce}>
+                            ${desarrolloContent}
+                        </td>
+                    </tr>
+
+                    <!-- CIERRE -->
+                    <tr>
+                        <td class="momento-label-cell">
+                            <div class="momento-name">CIERRE:</div>
+                            <div class="momento-sublabels">
+                                <span>• Metacognición</span>
+                                <span>• Evaluación</span>
+                                <span>• Extensión</span>
+                            </div>
+                            <div class="momento-time">TIEMPO:</div>
+                        </td>
+                        <td class="momento-content-cell" ${ce}>
+                            ${cierreContent}
+                        </td>
                     </tr>
                 </tbody>
             </table>
 
-            <!-- REFLEXIÓN DOCENTE -->
-            <div class="section-title">V. Reflexión Docente</div>
-            <table class="content-table">
-                <thead>
-                    <tr>
-                        <th>¿Qué lograron los estudiantes?</th>
-                        <th>¿Qué dificultades se presentaron?</th>
-                        <th>¿Qué puedo mejorar?</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td ${ce}>${esc(evalData.logros || '')}</td>
-                        <td ${ce}>${esc(evalData.dificultades || '')}</td>
-                        <td ${ce}>${esc(evalData.mejoras || '')}</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div style="margin-top: 24px; display: flex; justify-content: space-between; padding: 0 40px;">
+            <!-- ════════ FIRMAS ════════ -->
+            <div style="margin-top: 32px; display: flex; justify-content: space-between; padding: 0 40px;">
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 160px; margin: 0 auto;"></div>
+                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
                     <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">Firma del Docente</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 160px; margin: 0 auto;"></div>
+                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
                     <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">V°B° Director(a)</div>
                 </div>
             </div>
         `;
     }
+
+    // ── Build INICIO moment content ──
+    function buildMomentoInicio(inicio, ce) {
+        if (inicio.saberes_previos || inicio.motivacion || inicio.problematizacion) {
+            return `
+                <div class="momento-section">
+                    ${inicio.motivacion ? `
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title">Motivación (5 min)</div>
+                        <div>${escHtml(inicio.motivacion)}</div>
+                    </div>` : ''}
+
+                    ${inicio.saberes_previos ? `
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title">Saberes previos (${inicio.saberes_tiempo || '8 min'})</div>
+                        <div>${escHtml(inicio.saberes_previos)}</div>
+                    </div>` : ''}
+
+                    ${inicio.problematizacion ? `
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title">Problematización (${inicio.problematizacion_tiempo || '5 min'})</div>
+                        <div>${escHtml(inicio.problematizacion)}</div>
+                    </div>` : ''}
+
+                    ${inicio.proposito_organizacion ? `
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title">Propósito y organización (${inicio.proposito_tiempo || '5 min'})</div>
+                        <div>${escHtml(inicio.proposito_organizacion)}</div>
+                    </div>` : ''}
+                </div>`;
+        }
+
+        // Fallback: old format with single 'actividades' field
+        return `<div class="momento-section">${escHtml(inicio.actividades || '• El docente empieza la sesión saludando muy cordialmente a los estudiantes.\n• Se consensuan los acuerdos de convivencia para la interacción en clases.\n• Motivación: actividad inicial.\n• Saberes previos: preguntas exploratorias.\n• Problematización: situación significativa.\n• Propósito y organización: comunicar el propósito de la sesión y los criterios de evaluación.')}</div>`;
+    }
+
+    // ── Build DESARROLLO moment content ──
+    function buildMomentoDesarrollo(desarrollo, ce) {
+        if (typeof desarrollo.actividades === 'string' && desarrollo.actividades.length > 0) {
+            return `
+                <div class="momento-section">
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase;">
+                            GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
+                        </div>
+                    </div>
+                    <div class="momento-subsection">
+                        <div class="momento-subsection-title">PROCESOS DIDÁCTICOS</div>
+                        <div>${escHtml(desarrollo.actividades)}</div>
+                    </div>
+                </div>`;
+        }
+
+        return `
+            <div class="momento-section">
+                <div class="momento-subsection">
+                    <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase;">
+                        GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
+                    </div>
+                </div>
+                <div class="momento-subsection">
+                    <div class="momento-subsection-title">PROCESOS DIDÁCTICOS</div>
+                    <div>
+                        • Presentación de la situación significativa.<br>
+                        • Familiarización con el problema: lectura y comprensión.<br>
+                        • Búsqueda y ejecución de estrategias.<br>
+                        • Resolución del reto propuesto.<br>
+                        • Socialización de resultados.<br>
+                        • Formalización: el docente sistematiza los aprendizajes.<br>
+                        • Reflexión: ¿qué procesos seguimos? ¿qué dificultades tuvimos?<br>
+                        • Transferencia: aplicación a nuevas situaciones.
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // ── Build CIERRE moment content ──
+    function buildMomentoCierre(cierre, ce) {
+        if (typeof cierre.actividades === 'string' && cierre.actividades.length > 0) {
+            return `<div class="momento-section">${escHtml(cierre.actividades)}</div>`;
+        }
+
+        return `
+            <div class="momento-section">
+                • <strong>Metacognición:</strong> ¿Qué aprendimos hoy? ¿Cómo lo aprendimos? ¿Para qué nos sirve?<br>
+                • <strong>Evaluación formativa:</strong> revisión de los criterios de evaluación.<br>
+                • <strong>Extensión para casa:</strong> actividad de refuerzo.
+            </div>`;
+    }
+
 
     // ═══════════════════════════════════════
     // SESIÓN DE LABORATORIO
@@ -428,12 +693,23 @@ const Templates = (() => {
     // ─── HELPER: Escape HTML + preserve newlines ───
     function esc(str) {
         if (!str) return '';
-        return str
+        return String(str)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/\n/g, '<br>');
+    }
+
+    // ─── HELPER: Allow HTML through (for AI-generated rich content) ───
+    function escHtml(str) {
+        if (!str) return '';
+        // If the string already contains HTML tags, pass through
+        if (/<[a-z][\s\S]*>/i.test(str)) {
+            return str;
+        }
+        // Otherwise treat as plain text with newlines
+        return esc(str);
     }
 
     return { render };

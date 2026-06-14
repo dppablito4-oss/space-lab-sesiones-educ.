@@ -42,8 +42,12 @@
         form: $('#session-form'),
         selectTemplate: $('#select-template'),
         inputInstitucion: $('#input-institucion'),
+        inputDre: $('#input-dre'),
+        inputUgel: $('#input-ugel'),
         inputDocente: $('#input-docente'),
         inputFecha: $('#input-fecha'),
+        inputNivel: $('#input-nivel'),
+        inputNumeroSesion: $('#input-numero-sesion'),
         inputGrado: $('#input-grado'),
         inputSeccion: $('#input-seccion'),
         inputArea: $('#input-area'),
@@ -54,10 +58,12 @@
         inputCapacidad: $('#input-capacidad'),
         inputDesempeno: $('#input-desempeno'),
         inputEnfoque: $('#input-enfoque'),
+        inputEnfoque2: $('#input-enfoque2'),
         // CNEB Dropdowns
         selectCnebCompetencia: $('#select-cneb-competencia'),
         selectCnebCapacidad: $('#select-cneb-capacidad'),
         selectCnebEnfoque: $('#select-cneb-enfoque'),
+        selectCnebEnfoque2: $('#select-cneb-enfoque2'),
         // Import/Export
         btnExportJson: $('#btn-export-json'),
         btnImportJson: $('#btn-import-json'),
@@ -149,6 +155,7 @@
         DOM.selectCnebCompetencia.addEventListener('change', handleCompetenciaChange);
         DOM.selectCnebCapacidad.addEventListener('change', handleCapacidadChange);
         DOM.selectCnebEnfoque.addEventListener('change', handleEnfoqueChange);
+        DOM.selectCnebEnfoque2.addEventListener('change', handleEnfoque2Change);
 
         // Import / Export JSON
         DOM.btnExportJson.addEventListener('click', handleExportJson);
@@ -180,8 +187,12 @@
         return {
             metadata: {
                 institucion: DOM.inputInstitucion.value,
+                dre: DOM.inputDre.value,
+                ugel: DOM.inputUgel.value,
                 docente: DOM.inputDocente.value,
                 fecha: DOM.inputFecha.value,
+                nivel: DOM.inputNivel.value,
+                numero_sesion: DOM.inputNumeroSesion.value,
                 grado: DOM.inputGrado.value,
                 seccion: DOM.inputSeccion.value,
                 area: DOM.inputArea.value,
@@ -193,7 +204,8 @@
                 competencia: DOM.inputCompetencia.value,
                 capacidad: DOM.inputCapacidad.value,
                 desempeno: DOM.inputDesempeno.value,
-                enfoque: DOM.inputEnfoque.value
+                enfoque: DOM.inputEnfoque.value,
+                enfoque2: DOM.inputEnfoque2.value
             },
             momentos: {},
             evaluacion: {}
@@ -206,8 +218,12 @@
         const p = session.proposito || {};
 
         DOM.inputInstitucion.value = m.institucion || '';
+        DOM.inputDre.value = m.dre || '';
+        DOM.inputUgel.value = m.ugel || '';
         DOM.inputDocente.value = m.docente || '';
         DOM.inputFecha.value = m.fecha || '';
+        DOM.inputNivel.value = m.nivel || 'SECUNDARIA';
+        DOM.inputNumeroSesion.value = m.numero_sesion || '';
         DOM.inputGrado.value = m.grado || '';
         DOM.inputSeccion.value = m.seccion || '';
         DOM.inputArea.value = m.area || '';
@@ -218,6 +234,7 @@
         DOM.inputCapacidad.value = p.capacidad || '';
         DOM.inputDesempeno.value = p.desempeno || '';
         DOM.inputEnfoque.value = p.enfoque || '';
+        DOM.inputEnfoque2.value = p.enfoque2 || '';
 
         if (session.template) {
             DOM.selectTemplate.value = session.template;
@@ -799,8 +816,11 @@
     function populateEnfoques() {
         if (!curriculumData || !curriculumData.enfoques_transversales) return;
         
-        DOM.selectCnebEnfoque.innerHTML = '<option value="">-- Seleccionar Enfoque Oficial --</option>' +
+        const optionsHtml = '<option value="">-- Seleccionar Enfoque Oficial --</option>' +
             curriculumData.enfoques_transversales.map(e => `<option value="${escHTML(e)}">${escHTML(e)}</option>`).join('');
+        
+        DOM.selectCnebEnfoque.innerHTML = optionsHtml;
+        DOM.selectCnebEnfoque2.innerHTML = optionsHtml;
     }
 
     function handleAreaChange() {
@@ -860,6 +880,12 @@
         const enfoqueValue = DOM.selectCnebEnfoque.value;
         if (!enfoqueValue) return;
         DOM.inputEnfoque.value = enfoqueValue;
+    }
+
+    function handleEnfoque2Change() {
+        const enfoqueValue = DOM.selectCnebEnfoque2.value;
+        if (!enfoqueValue) return;
+        DOM.inputEnfoque2.value = enfoqueValue;
     }
 
     function handleExportJson() {
