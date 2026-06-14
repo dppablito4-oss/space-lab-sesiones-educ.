@@ -97,32 +97,42 @@ const Templates = (() => {
         const cierreContent = buildMomentoCierre(momentos.cierre || {}, ce);
 
         return `
-            <!-- ════════ HEADER INSTITUCIONAL OFICIAL ════════ -->
-            <table class="official-header-table">
-                <tr>
-                    <td class="official-logo-cell" rowspan="2">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png" alt="Escudo del Perú" class="official-logo-img">
-                    </td>
-                    <td class="official-entity-cell" ${ce}>
-                        <strong>PERÚ</strong>
-                    </td>
-                    <td class="official-entity-cell" ${ce}>
-                        Ministerio<br>de Educación
-                    </td>
-                    <td class="official-entity-cell" ${ce}>
-                        ${esc(m.dre || 'Dirección Regional de Educación de Ucayali')}
-                    </td>
-                    <td class="official-entity-cell" ${ce}>
-                        ${esc(m.ugel || 'Unidad de Gestión Educativa Local de Padre Abad')}
-                    </td>
-                    <td class="official-entity-cell" ${ce}>
-                        Área de Gestión<br>Pedagógica
-                    </td>
-                    <td class="official-logo-cell" rowspan="2">
-                        <img src="https://sesiones.sypablitodp.site/assets/logo.png" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};">
-                    </td>
-                </tr>
-            </table>
+            <table class="print-layout-table">
+                <thead>
+                    <tr>
+                        <td>
+                            <!-- ════════ HEADER INSTITUCIONAL OFICIAL ════════ -->
+                            <table class="official-header-table">
+                                <tr>
+                                    <td class="official-logo-cell" rowspan="2">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png" alt="Escudo del Perú" class="official-logo-img">
+                                    </td>
+                                    <td class="official-entity-cell" ${ce}>
+                                        <strong>PERÚ</strong>
+                                    </td>
+                                    <td class="official-entity-cell" ${ce}>
+                                        Ministerio<br>de Educación
+                                    </td>
+                                    <td class="official-entity-cell" ${ce}>
+                                        ${esc(m.dre || 'Dirección Regional de Educación de Ucayali')}
+                                    </td>
+                                    <td class="official-entity-cell" ${ce}>
+                                        ${esc(m.ugel || 'Unidad de Gestión Educativa Local de Padre Abad')}
+                                    </td>
+                                    <td class="official-entity-cell" ${ce}>
+                                        Área de Gestión<br>Pedagógica
+                                    </td>
+                                    <td class="official-logo-cell" rowspan="2">
+                                        <img id="header-logo-regional" src="${m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png'}" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="cursor: pointer;" title="Haz clic o arrastra un logo aquí para cambiarlo">
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
 
             <!-- ════════ TÍTULO PRINCIPAL ════════ -->
             <div class="session-title-bar-official">
@@ -353,16 +363,22 @@ const Templates = (() => {
             </table>
 
             <!-- ════════ FIRMAS ════════ -->
-            <div style="margin-top: 32px; display: flex; justify-content: space-between; padding: 0 40px;">
+            <div style="margin-top: 40px; display: flex; justify-content: space-between; padding: 0 40px;" class="no-break">
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
-                    <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">Firma del Docente</div>
+                    <div style="border-top: 1px solid #333; width: 200px; margin: 0 auto;"></div>
+                    <div style="font-size: 9.5px; margin-top: 4px; font-weight: 700; color: #000;" ${ce} data-key="firma_docente">${esc(m.docente || '')}</div>
+                    <div style="font-size: 8.5px; color: #555; font-weight: 600;">Docente de la Sesión</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
-                    <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">V°B° Director(a)</div>
+                    <div style="border-top: 1px solid #333; width: 200px; margin: 0 auto;"></div>
+                    <div style="font-size: 9.5px; margin-top: 4px; font-weight: 700; color: #000;" ${ce} data-key="firma_director">${esc(m.director || '')}</div>
+                    <div style="font-size: 8.5px; color: #555; font-weight: 600;">Director(a) / Subdirector(a)</div>
                 </div>
             </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         `;
     }
 
@@ -557,14 +573,16 @@ const Templates = (() => {
                 </tbody>
             </table>
 
-            <div style="margin-top: 24px; display: flex; justify-content: space-between; padding: 0 40px;">
+            <div style="margin-top: 35px; display: flex; justify-content: space-between; padding: 0 40px;" class="no-break">
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 160px; margin: 0 auto;"></div>
-                    <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">Firma del Docente</div>
+                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
+                    <div style="font-size: 9.5px; margin-top: 4px; font-weight: 700; color: #000;" ${ce} data-key="firma_docente">${esc(m.docente || '')}</div>
+                    <div style="font-size: 8.5px; color: #555; font-weight: 600;">Firma del Docente</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 160px; margin: 0 auto;"></div>
-                    <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">V°B° Director(a)</div>
+                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
+                    <div style="font-size: 9.5px; margin-top: 4px; font-weight: 700; color: #000;" ${ce} data-key="firma_director">${esc(m.director || '')}</div>
+                    <div style="font-size: 8.5px; color: #555; font-weight: 600;">V°B° Director(a)</div>
                 </div>
             </div>
         `;
@@ -677,14 +695,16 @@ const Templates = (() => {
                 </tbody>
             </table>
 
-            <div style="margin-top: 24px; display: flex; justify-content: space-between; padding: 0 40px;">
+            <div style="margin-top: 35px; display: flex; justify-content: space-between; padding: 0 40px;" class="no-break">
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 160px; margin: 0 auto;"></div>
-                    <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">Firma del Docente</div>
+                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
+                    <div style="font-size: 9.5px; margin-top: 4px; font-weight: 700; color: #000;" ${ce} data-key="firma_docente">${esc(m.docente || '')}</div>
+                    <div style="font-size: 8.5px; color: #555; font-weight: 600;">Firma del Docente</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="border-top: 1px solid #333; width: 160px; margin: 0 auto;"></div>
-                    <div style="font-size: 9px; margin-top: 4px; font-weight: 600;">V°B° Director(a)</div>
+                    <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
+                    <div style="font-size: 9.5px; margin-top: 4px; font-weight: 700; color: #000;" ${ce} data-key="firma_director">${esc(m.director || '')}</div>
+                    <div style="font-size: 8.5px; color: #555; font-weight: 600;">V°B° Director(a)</div>
                 </div>
             </div>
         `;

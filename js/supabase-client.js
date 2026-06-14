@@ -270,6 +270,105 @@ window.SupabaseClient = (() => {
         }
     }
 
+    /**
+     * Obtiene el perfil completo del usuario actual
+     */
+    async function getUserProfile() {
+        if (!supabase) return null;
+        const user = await getCurrentUser();
+        if (!user) return null;
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.error('[Supabase] Error al obtener el perfil del usuario:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Actualiza el perfil del usuario actual con sus datos predeterminados
+     */
+    async function updateUserProfile(profileData) {
+        if (!supabase) return false;
+        const user = await getCurrentUser();
+        if (!user) return false;
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update(profileData)
+                .eq('id', user.id);
+            if (error) throw error;
+            return true;
+        } catch (e) {
+            console.error('[Supabase] Error al actualizar el perfil del usuario:', e);
+            throw e;
+        }
+    }
+
+    /**
+     * Sube una imagen de logo al bucket 'logos'
+     */
+    async function uploadLogo(file) {
+        if (!supabase) throw new Error('Supabase no inicializado');
+        const user = await getCurrentUser();
+        if (!user) throw new Error('Debes iniciar sesión para subir logos');
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+        
+        const { data, error } = await supabase.storage
+            .from('logos')
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (error) throw error;
+
+        // Obtener la URL pública
+        const { data: { publicUrl } } = supabase.storage
+            .from('logos')
+            .getPublicUrl(fileName);
+
+        return publicUrl;
+    }
+
+    /**
+     * Lista todos los logos subidos en el storage
+     */
+    async function listLogos() {
+        if (!supabase) return [];
+        try {
+            const { data, error } = await supabase.storage
+                .from('logos')
+                .list('', {
+                    limit: 50,
+                    sortBy: { column: 'name', order: 'desc' }
+                });
+
+            if (error) throw error;
+
+            return (data || []).map(file => {
+                const { data: { publicUrl } } = supabase.storage
+                    .from('logos')
+                    .getPublicUrl(file.name);
+                return {
+                    name: file.name,
+                    url: publicUrl
+                };
+            });
+        } catch (e) {
+            console.warn('[Supabase] Error al listar logos del storage:', e);
+            return [];
+        }
+    }
+
     return {
         get client() { return supabase; },
         signUp,
@@ -282,6 +381,10 @@ window.SupabaseClient = (() => {
         getSessionsCloud,
         saveSessionCloud,
         deleteSessionCloud,
-        logAction
+        logAction,
+        getUserProfile,
+        updateUserProfile,
+        uploadLogo,
+        listLogos
     };
 })();

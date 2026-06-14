@@ -38,6 +38,7 @@
         btnMenuMobile: $('#btn-menu-mobile'),
         btnCloseSidebar: $('#btn-close-sidebar'),
         btnCloseLoad: $('#btn-close-load'),
+        btnSaveDefaults: $('#btn-save-defaults'),
         // Form
         form: $('#session-form'),
         selectTemplate: $('#select-template'),
@@ -45,6 +46,7 @@
         inputDre: $('#input-dre'),
         inputUgel: $('#input-ugel'),
         inputDocente: $('#input-docente'),
+        inputDirector: $('#input-director'),
         inputFecha: $('#input-fecha'),
         inputNivel: $('#input-nivel'),
         inputNumeroSesion: $('#input-numero-sesion'),
@@ -68,6 +70,11 @@
         btnExportJson: $('#btn-export-json'),
         btnImportJson: $('#btn-import-json'),
         inputImportFile: $('#input-import-file'),
+        // Logo Upload & Gallery
+        inputUploadLogo: $('#input-upload-logo'),
+        btnTriggerUploadLogo: $('#btn-trigger-upload-logo'),
+        btnRefreshLogos: $('#btn-refresh-logos'),
+        logosContainer: $('#logos-container'),
         // Other
         editModeBadge: $('#edit-mode-badge'),
         savedList: $('#saved-list'),
@@ -110,6 +117,8 @@
         window.appReloadSessions = () => {
             renderSavedList();
             loadLastSession();
+            loadProfileDefaults();
+            loadLogosGallery();
         };
 
         // Load last session if exists
@@ -120,6 +129,15 @@
 
         // Load curriculum database
         loadCurriculum();
+
+        // Load profile defaults if user is logged in
+        loadProfileDefaults();
+
+        // Load logo gallery
+        loadLogosGallery();
+
+        // Setup drag and drop on sheet
+        setupDragAndDrop();
 
         // Sync local and cloud sessions in the background
         if (window.Storage && typeof Storage.syncSessions === 'function') {
@@ -175,6 +193,14 @@
         // Clean paste in contenteditable
         document.addEventListener('paste', handleCleanPaste);
 
+        // Save defaults in profile
+        DOM.btnSaveDefaults.addEventListener('click', handleSaveDefaults);
+
+        // Upload logo trigger and event
+        DOM.btnTriggerUploadLogo.addEventListener('click', () => DOM.inputUploadLogo.click());
+        DOM.inputUploadLogo.addEventListener('change', handleUploadLogo);
+        DOM.btnRefreshLogos.addEventListener('click', loadLogosGallery);
+
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
     }
@@ -184,12 +210,16 @@
     // ═══════════════════════════════════════
 
     function getFormData() {
+        const logoImg = $('#header-logo-regional');
+        const logoUrl = logoImg ? logoImg.getAttribute('src') : '';
+
         return {
             metadata: {
                 institucion: DOM.inputInstitucion.value,
                 dre: DOM.inputDre.value,
                 ugel: DOM.inputUgel.value,
                 docente: DOM.inputDocente.value,
+                director: DOM.inputDirector.value,
                 fecha: DOM.inputFecha.value,
                 nivel: DOM.inputNivel.value,
                 numero_sesion: DOM.inputNumeroSesion.value,
@@ -198,7 +228,8 @@
                 area: DOM.inputArea.value,
                 duracion: DOM.inputDuracion.value,
                 unidad: DOM.inputUnidad.value,
-                titulo: DOM.inputTitulo.value
+                titulo: DOM.inputTitulo.value,
+                logo_regional_url: logoUrl
             },
             proposito: {
                 competencia: DOM.inputCompetencia.value,
@@ -221,6 +252,7 @@
         DOM.inputDre.value = m.dre || '';
         DOM.inputUgel.value = m.ugel || '';
         DOM.inputDocente.value = m.docente || '';
+        DOM.inputDirector.value = m.director || '';
         DOM.inputFecha.value = m.fecha || '';
         DOM.inputNivel.value = m.nivel || 'SECUNDARIA';
         DOM.inputNumeroSesion.value = m.numero_sesion || '';
@@ -595,6 +627,7 @@
         DOM.selectCnebCapacidad.classList.add('hidden');
 
         Storage.clearCurrentSession();
+        await loadProfileDefaults();
         Toast.info('Nueva sesión iniciada');
     }
 
@@ -731,56 +764,123 @@
     // ═══════════════════════════════════════
     // SPACE BACKGROUND (Canvas Animation)
     // ═══════════════════════════════════════
-
+ 
     function initSpaceBackground() {
         const canvas = DOM.spaceBg;
         if (!canvas) return;
-
+ 
         const ctx = canvas.getContext('2d');
         let stars = [];
         let animFrame;
-
+ 
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             createStars();
         }
-
+ 
         function createStars() {
             stars = [];
-            const count = Math.floor((canvas.width * canvas.height) / 8000);
+            const count = Math.floor((canvas.width * canvas.height) / 5000);
             for (let i = 0; i < count; i++) {
+                const layer = Math.random() < 0.6 ? 1 : (Math.random() < 0.85 ? 2 : 3);
+                let size, speed, opacity, twinkleSpeed;
+                
+                if (layer === 1) { // Background stars
+                    size = Math.random() * 0.8 + 0.3;
+                    speed = Math.random() * 0.05 + 0.01;
+                    opacity = Math.random() * 0.5 + 0.2;
+                    twinkleSpeed = Math.random() * 0.02 + 0.005;
+                } else if (layer === 2) { // Midground stars
+                    size = Math.random() * 1.2 + 0.8;
+                    speed = Math.random() * 0.15 + 0.05;
+                    opacity = Math.random() * 0.7 + 0.3;
+                    twinkleSpeed = Math.random() * 0.04 + 0.01;
+                } else { // Foreground / Glowing stars
+                    size = Math.random() * 2.0 + 1.5;
+                    speed = Math.random() * 0.3 + 0.15;
+                    opacity = Math.random() * 0.8 + 0.4;
+                    twinkleSpeed = Math.random() * 0.06 + 0.02;
+                }
+ 
                 stars.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    size: Math.random() * 1.5 + 0.3,
-                    speed: Math.random() * 0.3 + 0.05,
-                    opacity: Math.random() * 0.8 + 0.2,
-                    pulse: Math.random() * Math.PI * 2
+                    size: size,
+                    speed: speed,
+                    opacity: opacity,
+                    pulse: Math.random() * Math.PI * 2,
+                    twinkleSpeed: twinkleSpeed,
+                    layer: layer,
+                    color: Math.random() < 0.7 ? 'rgba(224, 231, 255, ' : (Math.random() < 0.5 ? 'rgba(0, 212, 255, ' : 'rgba(139, 92, 246, ')
                 });
             }
         }
-
+ 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+            // Dark base background
+            ctx.fillStyle = '#06060f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+ 
+            // Draw Nebulas (Cyan + Purple overlay)
+            const grad1 = ctx.createRadialGradient(
+                canvas.width * 0.15, canvas.height * 0.2, 50, 
+                canvas.width * 0.25, canvas.height * 0.2, canvas.width * 0.65
+            );
+            grad1.addColorStop(0, 'rgba(0, 212, 255, 0.04)');
+            grad1.addColorStop(0.5, 'rgba(139, 92, 246, 0.02)');
+            grad1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+ 
+            const grad2 = ctx.createRadialGradient(
+                canvas.width * 0.85, canvas.height * 0.75, 50, 
+                canvas.width * 0.75, canvas.height * 0.8, canvas.width * 0.55
+            );
+            grad2.addColorStop(0, 'rgba(139, 92, 246, 0.05)');
+            grad2.addColorStop(0.5, 'rgba(0, 212, 255, 0.02)');
+            grad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+ 
+            ctx.fillStyle = grad1;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = grad2;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+ 
+            // Draw Stars
             for (const star of stars) {
-                star.pulse += 0.01;
-                const alpha = star.opacity * (0.6 + 0.4 * Math.sin(star.pulse));
-
+                star.pulse += star.twinkleSpeed;
+                const alpha = star.opacity * (0.5 + 0.5 * Math.sin(star.pulse));
+ 
+                // Core star
                 ctx.beginPath();
                 ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(180, 200, 255, ${alpha})`;
+                ctx.fillStyle = `${star.color}${alpha})`;
                 ctx.fill();
-
-                // Subtle drift
+ 
+                // Lens flare / Cross glow for foreground glowing stars (layer 3)
+                if (star.layer === 3 && alpha > 0.7) {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${(alpha - 0.7) * 0.5})`;
+                    ctx.lineWidth = 0.5;
+                    
+                    // Horizontal flare
+                    ctx.beginPath();
+                    ctx.moveTo(star.x - star.size * 4, star.y);
+                    ctx.lineTo(star.x + star.size * 4, star.y);
+                    ctx.stroke();
+ 
+                    // Vertical flare
+                    ctx.beginPath();
+                    ctx.moveTo(star.x, star.y - star.size * 4);
+                    ctx.lineTo(star.x, star.y + star.size * 4);
+                    ctx.stroke();
+                }
+ 
+                // Drift downwards
                 star.y += star.speed;
                 if (star.y > canvas.height) {
                     star.y = 0;
                     star.x = Math.random() * canvas.width;
                 }
             }
-
+ 
             animFrame = requestAnimationFrame(draw);
         }
 
@@ -918,6 +1018,185 @@
         } finally {
             DOM.inputImportFile.value = '';
         }
+    }
+
+    // ═══════════════════════════════════════
+    // PROFILE DEFAULTS & LOGO STORAGE GALLERY
+    // ═══════════════════════════════════════
+
+    async function loadProfileDefaults() {
+        try {
+            const profile = await SupabaseClient.getUserProfile();
+            if (profile) {
+                if (profile.institucion) DOM.inputInstitucion.value = profile.institucion;
+                if (profile.dre) DOM.inputDre.value = profile.dre;
+                if (profile.ugel) DOM.inputUgel.value = profile.ugel;
+                if (profile.docente) DOM.inputDocente.value = profile.docente;
+                if (profile.director) DOM.inputDirector.value = profile.director;
+                if (profile.nivel) DOM.inputNivel.value = profile.nivel;
+                console.log('⚡ Predeterminados de perfil cargados');
+            }
+        } catch (e) {
+            console.warn('[Profile] Error al cargar predeterminados:', e);
+        }
+    }
+
+    async function handleSaveDefaults() {
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes iniciar sesión para guardar tus datos predeterminados en la nube');
+            return;
+        }
+
+        Loader.show('Guardando datos predeterminados...');
+        try {
+            const data = {
+                institucion: DOM.inputInstitucion.value.trim(),
+                dre: DOM.inputDre.value.trim(),
+                ugel: DOM.inputUgel.value.trim(),
+                docente: DOM.inputDocente.value.trim(),
+                director: DOM.inputDirector.value.trim(),
+                nivel: DOM.inputNivel.value
+            };
+
+            await SupabaseClient.updateUserProfile(data);
+            Loader.hide();
+            Toast.success('⚙️ Datos predeterminados guardados en la nube');
+        } catch (e) {
+            Loader.hide();
+            Toast.error('Error al guardar predeterminados: ' + e.message);
+        }
+    }
+
+    async function loadLogosGallery() {
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            DOM.logosContainer.innerHTML = `<span style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia sesión para ver logos</span>`;
+            return;
+        }
+
+        DOM.logosContainer.innerHTML = `<span style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Cargando...</span>`;
+        try {
+            const logos = await SupabaseClient.listLogos();
+            if (logos.length === 0) {
+                DOM.logosContainer.innerHTML = `<span style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">No hay logos subidos</span>`;
+                return;
+            }
+
+            DOM.logosContainer.innerHTML = logos.map(logo => `
+                <div class="logo-gallery-item" draggable="true" data-url="${logo.url}" style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 6px; padding: 4px; cursor: grab; transition: all var(--transition-fast);" title="Haz clic para aplicar o arrastra al documento">
+                    <img src="${logo.url}" alt="${logo.name}" style="max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none;">
+                </div>
+            `).join('');
+
+            // Bind events for gallery items
+            DOM.logosContainer.querySelectorAll('.logo-gallery-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    applyLogoToDocument(item.dataset.url);
+                });
+
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.dataset.url);
+                    item.style.opacity = '0.5';
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.style.opacity = '1';
+                });
+            });
+
+        } catch (e) {
+            console.error('[Gallery] Error loading logos:', e);
+            DOM.logosContainer.innerHTML = `<span style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--danger); padding: 4px;">Error al cargar</span>`;
+        }
+    }
+
+    async function handleUploadLogo(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            Toast.warning('Por favor selecciona una imagen válida (PNG, JPG)');
+            return;
+        }
+
+        Loader.show('Subiendo logo...');
+        try {
+            const publicUrl = await SupabaseClient.uploadLogo(file);
+            Loader.hide();
+            Toast.success('Logo subido correctamente');
+            
+            // Reload the gallery
+            await loadLogosGallery();
+
+            // Ask the user if they want to apply the logo they just uploaded
+            const confirmed = await ConfirmDialog.show({
+                title: '¿Aplicar logo?',
+                message: '¿Quieres aplicar el logo subido al encabezado del documento actual?',
+                confirmText: 'Aplicar'
+            });
+            if (confirmed) {
+                applyLogoToDocument(publicUrl);
+            }
+        } catch (err) {
+            Loader.hide();
+            Toast.error('Error al subir logo: ' + err.message);
+        } finally {
+            DOM.inputUploadLogo.value = ''; // Reset file input
+        }
+    }
+
+    function applyLogoToDocument(url) {
+        const logoImg = document.getElementById('header-logo-regional');
+        if (logoImg) {
+            logoImg.src = url;
+            logoImg.style.display = 'block'; // Ensure it's shown if onerror hid it
+            
+            // Highlight effect
+            logoImg.style.transform = 'scale(1.15)';
+            setTimeout(() => {
+                logoImg.style.transform = '';
+            }, 300);
+
+            // Save state
+            saveCurrentState();
+            Toast.success('Logo regional actualizado');
+        } else {
+            Toast.warning('Genera la sesión primero para poder aplicar el logo');
+        }
+    }
+
+    function setupDragAndDrop() {
+        const sheet = DOM.sessionSheet;
+        if (!sheet) return;
+
+        sheet.addEventListener('dragover', (e) => {
+            const target = e.target;
+            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
+                e.preventDefault();
+                target.style.outline = '2px dashed var(--accent)';
+            }
+        });
+
+        sheet.addEventListener('dragleave', (e) => {
+            const target = e.target;
+            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
+                target.style.outline = '';
+            }
+        });
+
+        sheet.addEventListener('drop', (e) => {
+            const target = e.target;
+            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
+                e.preventDefault();
+                target.style.outline = '';
+                
+                const url = e.dataTransfer.getData('text/plain');
+                if (url) {
+                    applyLogoToDocument(url);
+                }
+            }
+        });
     }
 
     // ═══════════════════════════════════════

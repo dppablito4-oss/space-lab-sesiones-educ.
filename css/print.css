@@ -95,6 +95,25 @@
         display: table-header-group !important;
     }
 
+    /* Repeated layout table container */
+    .session-sheet .print-layout-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: none !important;
+    }
+    .session-sheet .print-layout-table > thead {
+        display: table-header-group !important;
+    }
+    .session-sheet .print-layout-table > tbody {
+        display: table-row-group !important;
+    }
+    .session-sheet .print-layout-table > thead > tr > td,
+    .session-sheet .print-layout-table > tbody > tr > td {
+        border: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
     .session-sheet .session-header-table td,
     .session-sheet .content-table th,
     .session-sheet .content-table td,

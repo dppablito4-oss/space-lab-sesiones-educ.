@@ -12,8 +12,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Asegurar columna username en instalaciones existentes
+-- Asegurar columnas en profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS institucion TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS dre TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ugel TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS docente TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS director TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nivel TEXT;
 
 -- Habilitar RLS en profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -37,6 +43,10 @@ CREATE POLICY "Users can view their own profile" ON public.profiles
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+CREATE POLICY "Users can update their own profile" ON public.profiles
+    FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles
@@ -148,3 +158,22 @@ CREATE POLICY "Admins can view logs" ON public.security_logs
 DROP POLICY IF EXISTS "Anyone can insert security logs" ON public.security_logs;
 CREATE POLICY "Anyone can insert security logs" ON public.security_logs
     FOR INSERT WITH CHECK (true);
+
+-- =======================================================
+-- 5. Configuración de Storage para Logos Públicos
+-- =======================================================
+
+-- Crear bucket de storage 'logos' si no existe
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('logos', 'logos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Crear políticas para permitir a cualquiera ver/listar logos públicos
+DROP POLICY IF EXISTS "Public Access to Logos" ON storage.objects;
+CREATE POLICY "Public Access to Logos" ON storage.objects
+    FOR SELECT USING (bucket_id = 'logos');
+
+-- Permitir a usuarios autenticados subir logos
+DROP POLICY IF EXISTS "Auth Users Upload Logos" ON storage.objects;
+CREATE POLICY "Auth Users Upload Logos" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = 'logos' AND auth.role() = 'authenticated');

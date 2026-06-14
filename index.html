@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Space Lab — Generador automático de sesiones de aprendizaje con formato MINEDU. Edita, guarda e imprime tus sesiones educativas.">
     <title>Space Lab — Sesiones Educativas</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.vsg.svg">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/print.css" media="print">
@@ -133,12 +131,16 @@
                                 <input type="text" id="input-docente" class="form-input" placeholder="Nombre completo">
                             </div>
                             <div class="form-group">
-                                <label for="input-fecha" class="form-label">Fecha</label>
-                                <input type="date" id="input-fecha" class="form-input">
+                                <label for="input-director" class="form-label">Director(a)</label>
+                                <input type="text" id="input-director" class="form-input" placeholder="Nombre del director">
                             </div>
                         </div>
 
                         <div class="form-row">
+                            <div class="form-group">
+                                <label for="input-fecha" class="form-label">Fecha</label>
+                                <input type="date" id="input-fecha" class="form-input">
+                            </div>
                             <div class="form-group">
                                 <label for="input-nivel" class="form-label">Nivel</label>
                                 <select id="input-nivel" class="form-select">
@@ -147,9 +149,16 @@
                                     <option value="INICIAL">Inicial</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="input-numero-sesion" class="form-label">N° de Sesión</label>
                                 <input type="text" id="input-numero-sesion" class="form-input" placeholder="03">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-duracion" class="form-label">Duración</label>
+                                <input type="text" id="input-duracion" class="form-input" placeholder="90 min">
                             </div>
                         </div>
 
@@ -175,25 +184,19 @@
                             </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="input-area" class="form-label">Área Curricular</label>
-                                <select id="input-area" class="form-select">
-                                    <option value="">Seleccionar</option>
-                                    <option value="Comunicación">Comunicación</option>
-                                    <option value="Matemática">Matemática</option>
-                                    <option value="Ciencia y Tecnología">Ciencia y Tecnología</option>
-                                    <option value="Personal Social">Personal Social</option>
-                                    <option value="Arte y Cultura">Arte y Cultura</option>
-                                    <option value="Educación Física">Educación Física</option>
-                                    <option value="Educación Religiosa">Educación Religiosa</option>
-                                    <option value="Inglés">Inglés</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="input-duracion" class="form-label">Duración</label>
-                                <input type="text" id="input-duracion" class="form-input" placeholder="90 min">
-                            </div>
+                        <div class="form-group">
+                            <label for="input-area" class="form-label">Área Curricular</label>
+                            <select id="input-area" class="form-select">
+                                <option value="">Seleccionar</option>
+                                <option value="Comunicación">Comunicación</option>
+                                <option value="Matemática">Matemática</option>
+                                <option value="Ciencia y Tecnología">Ciencia y Tecnología</option>
+                                <option value="Personal Social">Personal Social</option>
+                                <option value="Arte y Cultura">Arte y Cultura</option>
+                                <option value="Educación Física">Educación Física</option>
+                                <option value="Educación Religiosa">Educación Religiosa</option>
+                                <option value="Inglés">Inglés</option>
+                            </select>
                         </div>
 
                         <div class="form-group">
@@ -265,6 +268,9 @@
                         <button type="button" id="btn-new" class="btn btn-ghost btn-full btn-sm">
                             <span class="icon">🗑️</span> Nueva sesión
                         </button>
+                        <button type="button" id="btn-save-defaults" class="btn btn-ghost btn-full btn-sm" title="Guardar docente/institución/DRE/UGEL como predeterminados en la nube">
+                            <span class="icon">⚙️</span> Guardar Predeterminados
+                        </button>
                     </div>
                 </form>
 
@@ -274,6 +280,23 @@
                     <ul id="saved-list" class="saved-list">
                         <li class="saved-empty">No hay sesiones guardadas</li>
                     </ul>
+                </div>
+
+                <!-- Galería de Logos -->
+                <div class="logo-gallery-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <h3 class="saved-title">🖼️ Galería de Logos</h3>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <input type="file" id="input-upload-logo" accept="image/*" class="hidden">
+                        <button type="button" id="btn-trigger-upload-logo" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.72rem; padding: 4px;">
+                            📤 Subir Logo
+                        </button>
+                        <button type="button" id="btn-refresh-logos" class="btn btn-ghost btn-icon" style="min-width: 30px; min-height: 30px; font-size: 0.8rem; padding: 2px;" title="Actualizar lista">
+                            🔄
+                        </button>
+                    </div>
+                    <div id="logos-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 120px; overflow-y: auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid var(--border);">
+                        <span style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia sesión para ver logos</span>
+                    </div>
                 </div>
             </aside>
 
