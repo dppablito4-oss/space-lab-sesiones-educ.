@@ -203,9 +203,13 @@ FORMATO DE RESPUESTA (JSON):
         // 1. Intentar llamar a la Edge Function de Supabase si está disponible
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
-                console.log('[AI] Llamando a Edge Function deepseek-router...');
-                const { data, error } = await SupabaseClient.client.functions.invoke('deepseek-router', {
-                    body: { prompt: userPrompt, systemPrompt: dynamicSystemPrompt }
+                console.log('[AI] Llamando a Edge Function gemini-router...');
+                const { data, error } = await SupabaseClient.client.functions.invoke('gemini-router', {
+                    body: { 
+                        prompt: userPrompt, 
+                        systemPrompt: dynamicSystemPrompt,
+                        sourceFile: metadata.sourceFile || null
+                    }
                 });
 
                 if (error) throw error;
@@ -305,6 +309,14 @@ FORMATO DE RESPUESTA (JSON):
         if (m.desempeno) parts.push(`- Desempeño sugerido: ${m.desempeno}`);
         if (m.enfoque) parts.push(`- Enfoque transversal 1: ${m.enfoque}`);
         if (m.enfoque2) parts.push(`- Enfoque transversal 2: ${m.enfoque2}`);
+
+        if (m.sourceFile) {
+            if (m.sourceFile.textContent) {
+                parts.push(`\n--- CONTENIDO DEL ARCHIVO DE REFERENCIA (${m.sourceFile.name}) ---\n${m.sourceFile.textContent}\n--- FIN DEL ARCHIVO DE REFERENCIA ---`);
+            } else if (m.sourceFile.base64) {
+                parts.push(`\n[Archivo adjunto de referencia: ${m.sourceFile.name} (tipo: ${m.sourceFile.type}). Utiliza esta fuente de referencia para basar las actividades, conceptos y el diseño pedagógico de la sesión de aprendizaje.]`);
+            }
+        }
 
         parts.push(`\nIMPORTANTE: Responde SOLO con el JSON, sin explicaciones.`);
 

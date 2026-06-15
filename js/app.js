@@ -11,7 +11,8 @@
         currentSession: null,
         editMode: true,
         previewMode: false,
-        sidebarOpen: false
+        sidebarOpen: false,
+        sourceFileData: null // Stores { name, type, base64, textContent }
     };
 
     // ─── DOM REFERENCES ───
@@ -76,6 +77,12 @@
         btnTriggerUploadLogo: $('#btn-trigger-upload-logo'),
         btnRefreshLogos: $('#btn-refresh-logos'),
         logosContainer: $('#logos-container'),
+        // Source File Upload
+        inputSourceFile: $('#input-source-file'),
+        sourceFileDropzone: $('#source-file-dropzone'),
+        sourceFileInfo: $('#source-file-info'),
+        sourceFileNameText: $('#source-file-name-text'),
+        btnRemoveSourceFile: $('#btn-remove-source-file'),
         // Other
         editModeBadge: $('#edit-mode-badge'),
         savedList: $('#saved-list'),
@@ -218,6 +225,25 @@
         DOM.inputUploadLogo.addEventListener('change', handleUploadLogo);
         DOM.btnRefreshLogos.addEventListener('click', loadLogosGallery);
 
+        // Source file upload drag & drop events
+        DOM.sourceFileDropzone.addEventListener('click', () => DOM.inputSourceFile.click());
+        DOM.inputSourceFile.addEventListener('change', handleSourceFileSelect);
+        DOM.sourceFileDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            DOM.sourceFileDropzone.classList.add('dragover');
+        });
+        DOM.sourceFileDropzone.addEventListener('dragleave', () => {
+            DOM.sourceFileDropzone.classList.remove('dragover');
+        });
+        DOM.sourceFileDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            DOM.sourceFileDropzone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processSourceFile(e.dataTransfer.files[0]);
+            }
+        });
+        DOM.btnRemoveSourceFile.addEventListener('click', handleRemoveSourceFile);
+
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
     }
@@ -341,7 +367,8 @@
         try {
             const aiData = await AiCopilot.generateSession({
                 ...formData.metadata,
-                ...formData.proposito
+                ...formData.proposito,
+                sourceFile: AppState.sourceFileData
             });
 
             // Merge AI data with form data
@@ -374,6 +401,7 @@
             renderSession(session);
             Loader.hide();
             Toast.success('¡Sesión generada con IA exitosamente!');
+            clearSourceFile();
 
         } catch (error) {
             Loader.hide();
@@ -1258,6 +1286,115 @@
                 }
             }
         });
+    }
+
+    // ═══════════════════════════════════════
+    // SOURCE FILE UPLOAD & PARSING
+    // ═══════════════════════════════════════
+
+    function handleSourceFileSelect(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            processSourceFile(e.target.files[0]);
+        }
+    }
+
+    function processSourceFile(file) {
+        if (!file) return;
+
+        // Check file size (max 10MB)
+        const maxSizeBytes = 10 * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            Toast.error('El archivo excede el tamaño límite de 10 MB.');
+            DOM.inputSourceFile.value = '';
+            return;
+        }
+
+        const fileName = file.name;
+        const fileType = file.type;
+
+        // Determine if it's a text file
+        const textExtensions = ['.txt', '.csv', '.json', '.md', '.xml', '.html', '.css', '.js'];
+        const isTextExtension = textExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
+        const isTextType = fileType.startsWith('text/') || isTextExtension;
+
+        if (isTextType) {
+            Loader.show('Leyendo archivo de texto...');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                Loader.hide();
+                const content = e.target.result;
+                AppState.sourceFileData = {
+                    name: fileName,
+                    type: fileType || 'text/plain',
+                    textContent: content,
+                    base64: null
+                };
+                showSourceFileInfo(fileName);
+            };
+            reader.onerror = function() {
+                Loader.hide();
+                Toast.error('Error al leer el archivo de texto.');
+            };
+            reader.readAsText(file);
+        } else {
+            // It's a binary file (PDF, image, audio)
+            Loader.show('Cargando archivo multimedia...');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                Loader.hide();
+                const dataUrl = e.target.result;
+                // Strip metadata from data URL
+                const base64Data = dataUrl.split(',')[1];
+                AppState.sourceFileData = {
+                    name: fileName,
+                    type: fileType || getBinaryMimeFallback(fileName),
+                    textContent: null,
+                    base64: base64Data
+                };
+                showSourceFileInfo(fileName);
+            };
+            reader.onerror = function() {
+                Loader.hide();
+                Toast.error('Error al procesar el archivo multimedia.');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function getBinaryMimeFallback(fileName) {
+        const lower = fileName.toLowerCase();
+        if (lower.endsWith('.pdf')) return 'application/pdf';
+        if (lower.endsWith('.png')) return 'image/png';
+        if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+        if (lower.endsWith('.webp')) return 'image/webp';
+        if (lower.endsWith('.mp3')) return 'audio/mp3';
+        if (lower.endsWith('.wav')) return 'audio/wav';
+        return 'application/octet-stream';
+    }
+
+    function showSourceFileInfo(name) {
+        DOM.sourceFileNameText.textContent = `📄 ${name}`;
+        DOM.sourceFileInfo.classList.remove('hidden');
+        DOM.sourceFileDropzone.classList.add('hidden');
+        Toast.success('Archivo cargado correctamente');
+    }
+
+    function handleRemoveSourceFile() {
+        AppState.sourceFileData = null;
+        DOM.inputSourceFile.value = '';
+        DOM.sourceFileNameText.textContent = '';
+        DOM.sourceFileInfo.classList.add('hidden');
+        DOM.sourceFileDropzone.classList.remove('hidden');
+        Toast.success('Archivo de referencia removido');
+    }
+
+    // Standard clearing without notifications
+    function clearSourceFile() {
+        AppState.sourceFileData = null;
+        DOM.inputSourceFile.value = '';
+        DOM.sourceFileNameText.textContent = '';
+        DOM.sourceFileInfo.classList.add('hidden');
+        DOM.sourceFileDropzone.classList.remove('hidden');
     }
 
     // ═══════════════════════════════════════

@@ -1723,3 +1723,96 @@ body {
 .session-sheet .print-layout-table > thead {
     display: table-header-group !important;
 }
+
+/* ==========================================================================
+   SOURCE FILE DROPZONE & INFO STYLES
+   ========================================================================== */
+.source-file-dropzone {
+    border: 2px dashed rgba(0, 212, 255, 0.25);
+    border-radius: var(--radius-md, 8px);
+    padding: var(--space-md, 16px) var(--space-sm, 12px);
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.source-file-dropzone:hover, .source-file-dropzone.dragover {
+    border-color: var(--accent, #00d4ff);
+    background: rgba(0, 212, 255, 0.05);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+}
+
+.source-file-dropzone .icon {
+    font-size: 1.6rem;
+    color: var(--accent, #00d4ff);
+    opacity: 0.8;
+}
+
+.source-file-dropzone .text {
+    font-size: 0.76rem;
+    color: var(--text-secondary, #a3a3a3);
+    line-height: 1.4;
+    user-select: none;
+}
+
+.source-file-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: var(--radius-md, 8px);
+    padding: 10px 12px;
+    margin-top: 8px;
+    animation: fileFadeIn 0.35s ease;
+}
+
+.source-file-info .file-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 85%;
+}
+
+.source-file-info .btn-remove-file {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 2px 6px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.source-file-info .btn-remove-file:hover {
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.15);
+}
+
+@keyframes fileFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

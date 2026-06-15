@@ -254,6 +254,22 @@
                         </div>
                     </fieldset>
 
+                    <!-- Archivo Fuente de Referencia (Gemini) -->
+                    <div class="form-group source-file-group">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-top: 10px;">
+                            <span>📄</span> Archivo de Referencia (Opcional)
+                        </label>
+                        <div id="source-file-dropzone" class="source-file-dropzone">
+                            <span class="icon">📤</span>
+                            <span class="text">Haz clic o arrastra un archivo aquí (PDF, imagen, audio o texto)</span>
+                        </div>
+                        <div id="source-file-info" class="source-file-info hidden">
+                            <span class="file-name" id="source-file-name-text"></span>
+                            <button type="button" id="btn-remove-source-file" class="btn-remove-file" title="Eliminar archivo">✕</button>
+                        </div>
+                        <input type="file" id="input-source-file" class="hidden" accept=".pdf,image/*,audio/*,text/plain,.csv,.md,.json">
+                    </div>
+
                     <!-- Acciones -->
                     <div class="form-actions">
                         <button type="button" id="btn-generate-ai" class="btn btn-accent btn-full">
