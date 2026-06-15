@@ -227,16 +227,36 @@ FORMATO DE RESPUESTA (JSON):
                     return resultObj;
                 }
             } catch (err) {
-                console.warn('[AI] Falló Edge Function, intentando fallback local:', err);
+                console.error('[AI] Error en Edge Function:', err);
                 
-                // Si falla la llamada a la nube y no tenemos API key local configurada
-                if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
-                    // Mostrar alerta amigable indicando que no está la Edge Function y abriendo prompt
-                    Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenRouter.');
-                    const configured = showConfigPrompt();
-                    if (!configured) {
-                        throw new Error('Debes configurar una API Key de OpenRouter/OpenAI para poder generar sesiones con IA.');
+                // Differentiate error types
+                // Network errors, Function not found (404), or generic FunctionsFetchError
+                const isNetworkOrNotFound = !err.status || err.status === 404 || err.name === 'FunctionsFetchError';
+                
+                if (isNetworkOrNotFound) {
+                    console.warn('[AI] Edge Function no disponible o fuera de línea, intentando fallback local...');
+                    // Si falla la llamada a la nube por red/404 y no tenemos API key local configurada
+                    if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
+                        Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenRouter.');
+                        const configured = showConfigPrompt();
+                        if (!configured) {
+                            throw new Error('Debes configurar una API Key de OpenRouter/OpenAI para poder generar sesiones con IA.');
+                        }
                     }
+                } else {
+                    // Es un error HTTP real del servidor (401, 403, 500, etc.)
+                    // Tratamos de extraer el mensaje descriptivo si el cuerpo es JSON
+                    let serverMsg = err.message || `Error del servidor de IA (${err.status})`;
+                    try {
+                        // Intentar parsear el mensaje en caso de que contenga el JSON de error
+                        const parsedBody = JSON.parse(err.message);
+                        if (parsedBody && parsedBody.error) {
+                            serverMsg = `${parsedBody.error}${parsedBody.details ? ': ' + parsedBody.details : ''}`;
+                        }
+                    } catch (e) {
+                        // Si no es un JSON, usar el mensaje de error directamente
+                    }
+                    throw new Error(serverMsg);
                 }
             }
         }
