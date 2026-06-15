@@ -756,17 +756,24 @@ body {
     animation: fadeInUp 0.4s ease-out;
 }
 
-/* Word-style Ribbon Toolbar */
+/* Word-style Ribbon Toolbar (Sticky/Fixed at top of viewport) */
 .preview-toolbar {
+    position: sticky;
+    top: calc(-1 * var(--space-xl));
+    z-index: 90;
+    width: 100%;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    background: rgba(20, 20, 35, 0.95);
+    background: rgba(15, 15, 25, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-radius: var(--radius-md);
     padding: 8px 14px;
     gap: 12px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md), 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: all var(--transition-base);
 }
 
 .toolbar-group {
