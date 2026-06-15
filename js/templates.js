@@ -340,7 +340,7 @@ const Templates = (() => {
                             <table class="official-header-table">
                                 <tr>
                                     <td class="official-logo-cell logo-left">
-                                        <img id="header-logo-left" src="${m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png'}" alt="Escudo del Perú" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="cursor: pointer;" title="Haz clic o arrastra un logo aquí para cambiarlo">
+                                        <img id="header-logo-left" src="${m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png'}" alt="Escudo del Perú" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${m.logo_left_style || 'cursor: pointer;'}" title="Haz clic o arrastra un logo aquí para cambiarlo">
                                     </td>
                                     <td class="official-entity-cell cell-peru" ${ce}>
                                         <strong>PERÚ</strong>
@@ -358,7 +358,7 @@ const Templates = (() => {
                                         Área de Gestión<br>Pedagógica
                                     </td>
                                     <td class="official-logo-cell logo-right">
-                                        <img id="header-logo-regional" src="${m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png'}" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="cursor: pointer;" title="Haz clic o arrastra un logo aquí para cambiarlo">
+                                        <img id="header-logo-regional" src="${m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png'}" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${m.logo_regional_style || 'cursor: pointer;'}" title="Haz clic o arrastra un logo aquí para cambiarlo">
                                     </td>
                                 </tr>
                             </table>

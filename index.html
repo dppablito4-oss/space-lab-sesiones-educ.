@@ -942,6 +942,60 @@
             </div>
         </div>
     </div>
+    <!-- ═══════════ LOGO EDITOR POPOVER ═══════════ -->
+    <div id="logo-editor-popover" class="logo-editor-popover hidden no-print" style="position: absolute; display: none;">
+        <div class="popover-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
+            <h4 style="margin: 0; font-size: 0.9rem; color: #fff; font-weight: 600;">🖼️ Ajustes de Logo</h4>
+            <button type="button" id="logo-editor-close" class="popover-close-btn" style="background: none; border: none; color: #a1a1aa; font-size: 1.1rem; cursor: pointer; padding: 0; line-height: 1;">✕</button>
+        </div>
+        <div class="popover-body" style="padding: 12px 0 0 0; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Actions -->
+            <div class="popover-action-row" style="display: flex; gap: 6px;">
+                <button type="button" id="logo-editor-upload" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;">📤 Subir</button>
+                <button type="button" id="logo-editor-url" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;">🔗 URL</button>
+                <button type="button" id="logo-editor-delete" class="btn btn-danger-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">🗑️ Quitar</button>
+            </div>
+            
+            <!-- Width Slider -->
+            <div class="popover-control-group" style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #a1a1aa;">
+                    <span>Ancho:</span>
+                    <span id="logo-editor-width-val" style="font-weight: 600; color: #00d2ff;">65px</span>
+                </div>
+                <input type="range" id="logo-editor-width-slider" min="30" max="200" value="65" style="width: 100%; height: 4px; border-radius: 2px; accent-color: #00d2ff; cursor: pointer;">
+            </div>
+
+            <!-- Proportions checkbox -->
+            <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="logo-editor-aspect-ratio" checked style="width: 14px; height: 14px; cursor: pointer; accent-color: #00d2ff;">
+                <label for="logo-editor-aspect-ratio" style="font-size: 0.75rem; color: #a1a1aa; cursor: pointer; user-select: none;">Mantener proporción (alto auto)</label>
+            </div>
+
+            <!-- Height Slider -->
+            <div id="logo-editor-height-container" class="popover-control-group hidden" style="display: none; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #a1a1aa;">
+                    <span>Alto:</span>
+                    <span id="logo-editor-height-val" style="font-weight: 600; color: #00d2ff;">65px</span>
+                </div>
+                <input type="range" id="logo-editor-height-slider" min="30" max="200" value="65" style="width: 100%; height: 4px; border-radius: 2px; accent-color: #00d2ff; cursor: pointer;">
+            </div>
+
+            <!-- Object-fit Mode -->
+            <div id="logo-editor-fit-container" class="popover-control-group hidden" style="display: none; flex-direction: column; gap: 4px;">
+                <span style="font-size: 0.75rem; color: #a1a1aa;">Ajuste de imagen:</span>
+                <div class="fit-btn-group" style="display: flex; gap: 4px;">
+                    <button type="button" class="btn btn-ghost btn-xs btn-fit active" data-fit="contain" style="flex: 1; font-size: 0.65rem; padding: 2px 4px !important;">Ajustar</button>
+                    <button type="button" class="btn btn-ghost btn-xs btn-fit" data-fit="cover" style="flex: 1; font-size: 0.65rem; padding: 2px 4px !important;">Recortar</button>
+                    <button type="button" class="btn btn-ghost btn-xs btn-fit" data-fit="fill" style="flex: 1; font-size: 0.65rem; padding: 2px 4px !important;">Estirar</button>
+                </div>
+            </div>
+
+            <!-- Reset -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 2px;">
+                <button type="button" id="logo-editor-reset" class="btn btn-accent btn-full" style="font-size: 0.75rem; padding: 6px 12px; height: auto;">Restablecer valores</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

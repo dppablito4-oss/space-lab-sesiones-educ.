@@ -499,51 +499,43 @@
             });
         }
 
-        // Ribbon Logo triggers
+        // Ribbon Logo triggers (opens interactive editor)
         if (DOM.btnRibbonLogoLeft) {
             DOM.btnRibbonLogoLeft.addEventListener('click', (e) => {
                 e.preventDefault();
                 const logoImg = document.getElementById('header-logo-left');
-                if (logoImg) logoImg.click();
+                if (logoImg) {
+                    logoImg.style.display = 'block';
+                    openLogoEditor(logoImg);
+                } else {
+                    Toast.warning('Genera la sesión primero para poder editar el logo');
+                }
             });
         }
         if (DOM.btnRibbonLogoRight) {
             DOM.btnRibbonLogoRight.addEventListener('click', (e) => {
                 e.preventDefault();
                 const logoImg = document.getElementById('header-logo-regional');
-                if (logoImg) logoImg.click();
+                if (logoImg) {
+                    logoImg.style.display = 'block';
+                    openLogoEditor(logoImg);
+                } else {
+                    Toast.warning('Genera la sesión primero para poder editar el logo');
+                }
             });
         }
 
-        // Click on logo images inside document to change them
-        DOM.sessionSheet.addEventListener('click', async (e) => {
+        // Click on logo images inside document to open floating editor popover
+        DOM.sessionSheet.addEventListener('click', (e) => {
             const target = e.target;
             if (target && target.classList.contains('official-logo-img')) {
-                AppState.activeLogoTarget = target.id;
-                
-                const confirmed = await ConfirmDialog.show({
-                    title: 'Cambiar Logo',
-                    message: '¿Deseas subir una imagen desde tu computadora para este logo?',
-                    confirmText: 'Sí, subir',
-                    cancelText: 'No, usar URL'
-                });
-                
-                if (confirmed) {
-                    DOM.inputUploadLogo.click();
-                } else {
-                    const enterUrl = confirm('¿Deseas ingresar una URL de imagen de internet para este logo?');
-                    if (enterUrl) {
-                        const newUrl = prompt('Introduce la URL de la imagen:', target.src);
-                        if (newUrl && newUrl.trim() !== '') {
-                            target.src = newUrl.trim();
-                            target.style.display = 'block';
-                            saveCurrentState();
-                            Toast.success('Logo actualizado');
-                        }
-                    }
-                }
+                e.stopPropagation();
+                openLogoEditor(target);
             }
         });
+
+        // Initialize Floating Logo Editor global listeners once
+        initLogoEditorListeners();
 
         // Source file upload drag & drop events
         DOM.sourceFileDropzone.addEventListener('click', () => DOM.inputSourceFile.click());
@@ -589,11 +581,16 @@
     // FORM DATA COLLECTION
     // ═══════════════════════════════════════
 
+
     function getFormData() {
         const logoImg = $('#header-logo-regional');
         const logoUrl = logoImg ? logoImg.getAttribute('src') : '';
         const logoLeftImg = $('#header-logo-left');
         const logoLeftUrl = logoLeftImg ? logoLeftImg.getAttribute('src') : '';
+
+        // Capture style attributes to save customizations (width, height, display, objectFit)
+        const logoLeftStyle = logoLeftImg ? logoLeftImg.getAttribute('style') : '';
+        const logoRegionalStyle = logoImg ? logoImg.getAttribute('style') : '';
 
         return {
             metadata: {
@@ -614,7 +611,9 @@
                 methodology: DOM.selectMethodology.value,
                 ai_provider: DOM.selectAiProvider.value,
                 logo_regional_url: logoUrl,
-                logo_left_url: logoLeftUrl
+                logo_left_url: logoLeftUrl,
+                logo_left_style: logoLeftStyle,
+                logo_regional_style: logoRegionalStyle
             },
             proposito: {
                 competencia: DOM.inputCompetencia.value,
@@ -2070,12 +2069,246 @@
                 logoImg.style.transform = '';
             }, 300);
 
+            // Close popover if open
+            const popover = document.getElementById('logo-editor-popover');
+            if (popover) {
+                popover.classList.add('hidden');
+            }
+
             // Save state
             saveCurrentState();
             Toast.success('Logo actualizado');
         } else {
             Toast.warning('Genera la sesión primero para poder aplicar el logo');
         }
+    }
+
+    function openLogoEditor(target) {
+        if (!target) return;
+        AppState.activeLogoTarget = target.id;
+        
+        const popover = document.getElementById('logo-editor-popover');
+        const widthSlider = document.getElementById('logo-editor-width-slider');
+        const widthVal = document.getElementById('logo-editor-width-val');
+        const heightSlider = document.getElementById('logo-editor-height-slider');
+        const heightVal = document.getElementById('logo-editor-height-val');
+        const heightContainer = document.getElementById('logo-editor-height-container');
+        const fitContainer = document.getElementById('logo-editor-fit-container');
+        const aspectRatioCheckbox = document.getElementById('logo-editor-aspect-ratio');
+        const fitBtns = popover.querySelectorAll('.btn-fit');
+
+        if (!popover) return;
+
+        // 1. Position the popover relative to the image
+        popover.style.display = 'block';
+        popover.classList.remove('hidden');
+
+        const rect = target.getBoundingClientRect();
+        let top = window.scrollY + rect.bottom + 10;
+        let left = window.scrollX + rect.left + (rect.width / 2) - (popover.offsetWidth / 2);
+
+        if (left < 10) left = 10;
+        if (left + popover.offsetWidth > window.innerWidth - 10) {
+            left = window.innerWidth - popover.offsetWidth - 10;
+        }
+
+        popover.style.top = `${top}px`;
+        popover.style.left = `${left}px`;
+
+        // 2. Load current values
+        let currentWidth = parseInt(target.style.width, 10);
+        if (isNaN(currentWidth)) {
+            currentWidth = target.offsetWidth || 65;
+        }
+        widthSlider.value = currentWidth;
+        widthVal.textContent = `${currentWidth}px`;
+
+        let currentHeight = target.style.height;
+        let isAutoHeight = !currentHeight || currentHeight === 'auto';
+        
+        aspectRatioCheckbox.checked = isAutoHeight;
+        
+        if (isAutoHeight) {
+            heightContainer.classList.add('hidden');
+            fitContainer.classList.add('hidden');
+        } else {
+            heightContainer.classList.remove('hidden');
+            fitContainer.classList.remove('hidden');
+            let numericHeight = parseInt(currentHeight, 10);
+            if (isNaN(numericHeight)) {
+                numericHeight = target.offsetHeight || 65;
+            }
+            heightSlider.value = numericHeight;
+            heightVal.textContent = `${numericHeight}px`;
+        }
+
+        const currentFit = target.style.objectFit || 'contain';
+        fitBtns.forEach(btn => {
+            if (btn.dataset.fit === currentFit) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function initLogoEditorListeners() {
+        const popover = document.getElementById('logo-editor-popover');
+        if (!popover) return;
+
+        const closeBtn = document.getElementById('logo-editor-close');
+        const uploadBtn = document.getElementById('logo-editor-upload');
+        const urlBtn = document.getElementById('logo-editor-url');
+        const deleteBtn = document.getElementById('logo-editor-delete');
+        const widthSlider = document.getElementById('logo-editor-width-slider');
+        const widthVal = document.getElementById('logo-editor-width-val');
+        const heightSlider = document.getElementById('logo-editor-height-slider');
+        const heightVal = document.getElementById('logo-editor-height-val');
+        const heightContainer = document.getElementById('logo-editor-height-container');
+        const fitContainer = document.getElementById('logo-editor-fit-container');
+        const aspectRatioCheckbox = document.getElementById('logo-editor-aspect-ratio');
+        const fitBtns = popover.querySelectorAll('.btn-fit');
+        const resetBtn = document.getElementById('logo-editor-reset');
+
+        closeBtn.addEventListener('click', () => {
+            popover.style.display = 'none';
+            popover.classList.add('hidden');
+        });
+
+        widthSlider.addEventListener('input', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            const w = widthSlider.value;
+            widthVal.textContent = `${w}px`;
+            target.style.width = `${w}px`;
+            target.style.maxWidth = 'none';
+            target.style.maxHeight = 'none';
+
+            if (aspectRatioCheckbox.checked) {
+                target.style.height = 'auto';
+            } else {
+                target.style.height = `${heightSlider.value}px`;
+            }
+            saveCurrentState();
+        });
+
+        heightSlider.addEventListener('input', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            const h = heightSlider.value;
+            heightVal.textContent = `${h}px`;
+            target.style.height = `${h}px`;
+            target.style.maxWidth = 'none';
+            target.style.maxHeight = 'none';
+            saveCurrentState();
+        });
+
+        aspectRatioCheckbox.addEventListener('change', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            if (aspectRatioCheckbox.checked) {
+                heightContainer.classList.add('hidden');
+                fitContainer.classList.add('hidden');
+                target.style.height = 'auto';
+                target.style.objectFit = 'contain';
+            } else {
+                heightContainer.classList.remove('hidden');
+                fitContainer.classList.remove('hidden');
+                const h = heightSlider.value;
+                heightVal.textContent = `${h}px`;
+                target.style.height = `${h}px`;
+                
+                const activeBtn = popover.querySelector('.btn-fit.active');
+                target.style.objectFit = activeBtn ? activeBtn.dataset.fit : 'contain';
+            }
+            saveCurrentState();
+        });
+
+        fitBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!AppState.activeLogoTarget) return;
+                const target = document.getElementById(AppState.activeLogoTarget);
+                if (!target) return;
+
+                fitBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                target.style.objectFit = btn.dataset.fit;
+                saveCurrentState();
+            });
+        });
+
+        uploadBtn.addEventListener('click', () => {
+            DOM.inputUploadLogo.click();
+        });
+
+        urlBtn.addEventListener('click', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            const newUrl = prompt('Introduce la URL de la imagen para el logo:', target.src);
+            if (newUrl && newUrl.trim() !== '') {
+                target.src = newUrl.trim();
+                target.style.display = 'block';
+                saveCurrentState();
+                Toast.success('Logo actualizado');
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            target.style.display = 'none';
+            popover.style.display = 'none';
+            popover.classList.add('hidden');
+            saveCurrentState();
+            Toast.success('Logo removido');
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            if (AppState.activeLogoTarget === 'header-logo-left') {
+                target.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png';
+            } else {
+                target.src = 'https://sesiones.sypablitodp.site/assets/logo.png';
+            }
+
+            target.style.width = '65px';
+            target.style.height = 'auto';
+            target.style.objectFit = 'contain';
+            target.style.display = 'block';
+            target.removeAttribute('style');
+            target.style.cursor = 'pointer';
+
+            popover.style.display = 'none';
+            popover.classList.add('hidden');
+            saveCurrentState();
+            Toast.success('Valores restablecidos');
+        });
+
+        window.addEventListener('click', (e) => {
+            if (!popover.classList.contains('hidden') && !popover.contains(e.target)) {
+                const clickedLogo = e.target.classList.contains('official-logo-img');
+                const clickedRibbonLeft = e.target.id === 'btn-ribbon-logo-left';
+                const clickedRibbonRight = e.target.id === 'btn-ribbon-logo-right';
+                if (!clickedLogo && !clickedRibbonLeft && !clickedRibbonRight) {
+                    popover.style.display = 'none';
+                    popover.classList.add('hidden');
+                }
+            }
+        });
     }
 
     function setupDragAndDrop() {

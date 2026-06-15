@@ -2141,3 +2141,88 @@ body {
     transform: none !important;
 }
 
+
+/* ════════════ LOGO EDITOR FLOATING CARD ════════════ */
+.logo-editor-popover {
+    background: rgba(15, 16, 21, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px;
+    width: 250px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    z-index: 1100;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.logo-editor-popover.hidden {
+    display: none !important;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.logo-editor-popover input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #27272a;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+}
+
+.logo-editor-popover input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #00d2ff;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+    transition: transform 0.1s ease;
+}
+
+.logo-editor-popover input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+}
+
+.logo-editor-popover input[type="checkbox"] {
+    accent-color: #00d2ff;
+}
+
+.logo-editor-popover .btn-fit {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #a1a1aa;
+    transition: all 0.2s;
+}
+
+.logo-editor-popover .btn-fit:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.logo-editor-popover .btn-fit.active {
+    background: rgba(0, 210, 255, 0.1) !important;
+    border-color: #00d2ff !important;
+    color: #00d2ff !important;
+}
+
+.logo-editor-popover .btn-fit:active {
+    transform: none !important;
+}
+
+.logo-editor-popover .btn-danger-ghost {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    transition: all 0.2s;
+}
+
+.logo-editor-popover .btn-danger-ghost:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+
