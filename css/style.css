@@ -867,18 +867,31 @@ body {
     color: var(--warning);
 }
 
-/* ─── A4 SESSION SHEET ─── */
 .session-sheet {
     background: #ffffff;
     color: #1a1a2e;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     padding: 24px 28px;
-    font-family: 'Inter', Arial, sans-serif;
+    font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
     font-size: var(--session-font-size, 10px) !important;
     line-height: var(--session-line-height, 1.4) !important;
     min-height: 600px;
     overflow: hidden;
+}
+
+/* Ensure font family is inherited by all children elements */
+.session-sheet,
+.session-sheet table,
+.session-sheet td,
+.session-sheet th,
+.session-sheet p,
+.session-sheet span,
+.session-sheet li,
+.session-sheet div,
+.session-sheet textarea,
+.session-sheet input {
+    font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
 }
 
 /* Session Sheet Table Styles */

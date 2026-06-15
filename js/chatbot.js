@@ -71,8 +71,32 @@ window.Chatbot = (() => {
         try {
             let responseText = '';
 
-            // Formatear prompt con historial
-            let promptText = `Actúa como un asistente educativo experto para docentes de colegio en Perú de acuerdo a los lineamientos del Currículo Nacional (MINEDU). Sé conciso, amable y pedagógico. Si el usuario te pide que generes, crees o diseñes una sesión de aprendizaje completa, indícale amablemente que debe Iniciar Sesión o Registrarse en la esquina superior derecha de la pantalla para poder acceder al generador oficial, editar directamente sobre la hoja A4 y guardar su trabajo en la nube.`;
+            // Formatear prompt con historial y estado de diseño actual
+            let designContext = '';
+            if (window.AppDesign && typeof window.AppDesign.getCurrent === 'function') {
+                const curDesign = window.AppDesign.getCurrent();
+                if (curDesign) {
+                    designContext = `\n\n[El documento actual tiene la siguiente configuración visual: Color de bordes=${curDesign.themeColor}, Tamaño de letra=${curDesign.fontSize}, Espaciado celda=${curDesign.padding}, Interlineado=${curDesign.lineHeight}, Fondo de cabeceras de momentos=${curDesign.headerBg}]`;
+                }
+            }
+
+            let promptText = `Actúa como un asistente educativo experto para docentes de colegio en Perú de acuerdo a los lineamientos del Currículo Nacional (MINEDU). Sé conciso, amable y pedagógico. Si el usuario te pide que generes, crees o diseñes una sesión de aprendizaje completa, indícale amablemente que debe Iniciar Sesión o Registrarse en la esquina superior derecha de la pantalla para poder acceder al generador oficial, editar directamente sobre la hoja A4 y guardar su trabajo en la nube.${designContext}
+
+SI EL DOCENTE TE PIDE CAMBIOS DE DISEÑO, COLORES, TAMAÑO DE LETRA O ESPACIADOS:
+1. Recomienda una combinación de diseño armoniosa, profesional y de alta estética.
+2. Devuelve un bloque de código JSON con "action": "apply_design" e introduce los nuevos valores. El JSON debe ir en un bloque de código markdown de tipo json (ej. \`\`\`json { ... } \`\`\`).
+3. El formato JSON exacto debe ser:
+{
+  "action": "apply_design",
+  "design": {
+    "themeColor": "#HexColor",
+    "fontSize": "9pt/10pt/11pt/12pt",
+    "padding": "2px 4px / 4px 6px / 6px 8px / 8px 12px",
+    "lineHeight": "1.2 / 1.4 / 1.6 / 1.8",
+    "headerBg": "#HexColor"
+  }
+}
+4. Escribe también una breve explicación amigable de por qué elegiste esos colores y qué cambios realizaste.`;
             
             // Adjuntar historial
             promptText += `\n\nHistorial de la conversación:`;
@@ -153,6 +177,9 @@ window.Chatbot = (() => {
                 }
             }
 
+            // Procesar y aplicar diseño agéntico si la respuesta contiene el JSON
+            responseText = processAgenticDesign(responseText);
+
             // Quitar indicador de carga y mostrar respuesta
             removeTypingIndicator(typingId);
             appendMessage('bot', responseText);
@@ -165,6 +192,58 @@ window.Chatbot = (() => {
             appendMessage('bot', '⚠️ Lo siento, ocurrió un error al procesar tu consulta con DeepSeek: ' + e.message);
             scrollBottom();
         }
+    }
+
+    function processAgenticDesign(text) {
+        if (!window.AppDesign) return text;
+        
+        // Regex para buscar bloque de código JSON
+        const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/i;
+        const match = text.match(jsonBlockRegex);
+        
+        if (match) {
+            try {
+                const jsonStr = match[1].trim();
+                const parsed = JSON.parse(jsonStr);
+                
+                if (parsed && parsed.action === 'apply_design' && parsed.design) {
+                    console.log('[Chatbot] Aplicando diseño agéntico recibido:', parsed.design);
+                    window.AppDesign.apply(parsed.design);
+                    window.AppDesign.save();
+                    
+                    if (window.Toast) {
+                        Toast.success('🎨 Diseño actualizado por el Asistente Copiloto');
+                    }
+                    
+                    // Quitar el bloque JSON de la respuesta final
+                    text = text.replace(jsonBlockRegex, '').trim();
+                }
+            } catch (err) {
+                console.warn('[Chatbot] Error al parsear JSON de diseño agéntico:', err);
+            }
+        } else {
+            // Fallback: buscar llaves directamente si no tiene ```json ... ```
+            const curlyMatch = text.match(/\{\s*"action"\s*:\s*"apply_design"[\s\S]*?\}/i);
+            if (curlyMatch) {
+                try {
+                    const parsed = JSON.parse(curlyMatch[0]);
+                    if (parsed && parsed.action === 'apply_design' && parsed.design) {
+                        console.log('[Chatbot] Aplicando diseño agéntico (fallback):', parsed.design);
+                        window.AppDesign.apply(parsed.design);
+                        window.AppDesign.save();
+                        
+                        if (window.Toast) {
+                            Toast.success('🎨 Diseño actualizado por el Asistente Copiloto');
+                        }
+                        
+                        text = text.replace(curlyMatch[0], '').trim();
+                    }
+                } catch (err) {
+                    console.warn('[Chatbot] Fallback parsing falló:', err);
+                }
+            }
+        }
+        return text;
     }
 
     function appendMessage(sender, text) {

@@ -83,18 +83,27 @@
         // Design customization controls
         designColor: $('#input-design-theme-color'),
         designColorHex: $('#input-design-theme-color-hex'),
+        designFontFamily: $('#select-design-font-family'),
         designFontSize: $('#select-design-font-size'),
         designPadding: $('#select-design-padding'),
         designLineHeight: $('#select-design-line-height'),
         designHeaderBg: $('#select-design-header-bg'),
         // Ribbon customizer controls
         ribbonColor: $('#ribbon-theme-color'),
+        ribbonFontFamily: $('#ribbon-font-family'),
         ribbonFontSize: $('#ribbon-font-size'),
         ribbonPadding: $('#ribbon-padding'),
         ribbonLineHeight: $('#ribbon-line-height'),
         ribbonHeaderBg: $('#ribbon-header-bg'),
         btnRibbonLogoLeft: $('#btn-ribbon-logo-left'),
         btnRibbonLogoRight: $('#btn-ribbon-logo-right'),
+        // Ribbon Text formatting manual controls
+        btnFormatForeColor: $('#btn-format-forecolor'),
+        btnFormatBackColor: $('#btn-format-backcolor'),
+        btnFormatAlignLeft: $('#btn-format-align-left'),
+        btnFormatAlignCenter: $('#btn-format-align-center'),
+        btnFormatAlignRight: $('#btn-format-align-right'),
+        btnFormatAlignJustify: $('#btn-format-align-justify'),
         // Source File Upload
         inputSourceFile: $('#input-source-file'),
         sourceFileDropzone: $('#source-file-dropzone'),
@@ -262,140 +271,77 @@
         DOM.inputUploadLogo.addEventListener('change', handleUploadLogo);
         DOM.btnRefreshLogos.addEventListener('click', loadLogosGallery);
 
-        // Design customizer controls events (Sidebar)
-        DOM.designColor.addEventListener('input', (e) => {
+        // Selection range holder for manual formatting (letter colors & highlight)
+        let lastSelectionRange = null;
+
+        function saveSelection() {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                if (DOM.sessionSheet.contains(range.commonAncestorContainer)) {
+                    lastSelectionRange = range;
+                }
+            }
+        }
+
+        function restoreSelection() {
+            if (lastSelectionRange) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(lastSelectionRange);
+            }
+        }
+
+        DOM.sessionSheet.addEventListener('mouseup', saveSelection);
+        DOM.sessionSheet.addEventListener('keyup', saveSelection);
+        DOM.sessionSheet.addEventListener('focusout', saveSelection);
+
+        // Helper to update session design styles from DOM inputs
+        function updateStylesFromSidebar() {
             applyDesignStyles({
-                themeColor: e.target.value,
+                themeColor: DOM.designColor.value,
+                fontFamily: DOM.designFontFamily.value,
                 fontSize: DOM.designFontSize.value,
                 padding: DOM.designPadding.value,
                 lineHeight: DOM.designLineHeight.value,
                 headerBg: DOM.designHeaderBg.value
             });
             saveCurrentState();
-        });
+        }
 
+        function updateStylesFromRibbon() {
+            applyDesignStyles({
+                themeColor: DOM.ribbonColor.value,
+                fontFamily: DOM.ribbonFontFamily.value,
+                fontSize: DOM.ribbonFontSize.value,
+                padding: DOM.ribbonPadding.value,
+                lineHeight: DOM.ribbonLineHeight.value,
+                headerBg: DOM.ribbonHeaderBg.value
+            });
+            saveCurrentState();
+        }
+
+        // Design customizer controls events (Sidebar)
+        DOM.designColor.addEventListener('input', updateStylesFromSidebar);
         DOM.designColorHex.addEventListener('input', (e) => {
             if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
-                applyDesignStyles({
-                    themeColor: e.target.value,
-                    fontSize: DOM.designFontSize.value,
-                    padding: DOM.designPadding.value,
-                    lineHeight: DOM.designLineHeight.value,
-                    headerBg: DOM.designHeaderBg.value
-                });
-                saveCurrentState();
+                DOM.designColor.value = e.target.value;
+                updateStylesFromSidebar();
             }
         });
-
-        DOM.designFontSize.addEventListener('change', (e) => {
-            applyDesignStyles({
-                themeColor: DOM.designColor.value,
-                fontSize: e.target.value,
-                padding: DOM.designPadding.value,
-                lineHeight: DOM.designLineHeight.value,
-                headerBg: DOM.designHeaderBg.value
-            });
-            saveCurrentState();
-        });
-
-        DOM.designPadding.addEventListener('change', (e) => {
-            applyDesignStyles({
-                themeColor: DOM.designColor.value,
-                fontSize: DOM.designFontSize.value,
-                padding: e.target.value,
-                lineHeight: DOM.designLineHeight.value,
-                headerBg: DOM.designHeaderBg.value
-            });
-            saveCurrentState();
-        });
-
-        DOM.designLineHeight.addEventListener('change', (e) => {
-            applyDesignStyles({
-                themeColor: DOM.designColor.value,
-                fontSize: DOM.designFontSize.value,
-                padding: DOM.designPadding.value,
-                lineHeight: e.target.value,
-                headerBg: DOM.designHeaderBg.value
-            });
-            saveCurrentState();
-        });
-
-        DOM.designHeaderBg.addEventListener('change', (e) => {
-            applyDesignStyles({
-                themeColor: DOM.designColor.value,
-                fontSize: DOM.designFontSize.value,
-                padding: DOM.designPadding.value,
-                lineHeight: DOM.designLineHeight.value,
-                headerBg: e.target.value
-            });
-            saveCurrentState();
-        });
+        if (DOM.designFontFamily) DOM.designFontFamily.addEventListener('change', updateStylesFromSidebar);
+        DOM.designFontSize.addEventListener('change', updateStylesFromSidebar);
+        DOM.designPadding.addEventListener('change', updateStylesFromSidebar);
+        DOM.designLineHeight.addEventListener('change', updateStylesFromSidebar);
+        DOM.designHeaderBg.addEventListener('change', updateStylesFromSidebar);
 
         // Design customizer controls events (Ribbon)
-        if (DOM.ribbonColor) {
-            DOM.ribbonColor.addEventListener('input', (e) => {
-                applyDesignStyles({
-                    themeColor: e.target.value,
-                    fontSize: DOM.designFontSize.value,
-                    padding: DOM.designPadding.value,
-                    lineHeight: DOM.designLineHeight.value,
-                    headerBg: DOM.designHeaderBg.value
-                });
-                saveCurrentState();
-            });
-        }
-
-        if (DOM.ribbonFontSize) {
-            DOM.ribbonFontSize.addEventListener('change', (e) => {
-                applyDesignStyles({
-                    themeColor: DOM.designColor.value,
-                    fontSize: e.target.value,
-                    padding: DOM.designPadding.value,
-                    lineHeight: DOM.designLineHeight.value,
-                    headerBg: DOM.designHeaderBg.value
-                });
-                saveCurrentState();
-            });
-        }
-
-        if (DOM.ribbonPadding) {
-            DOM.ribbonPadding.addEventListener('change', (e) => {
-                applyDesignStyles({
-                    themeColor: DOM.designColor.value,
-                    fontSize: DOM.designFontSize.value,
-                    padding: e.target.value,
-                    lineHeight: DOM.designLineHeight.value,
-                    headerBg: DOM.designHeaderBg.value
-                });
-                saveCurrentState();
-            });
-        }
-
-        if (DOM.ribbonLineHeight) {
-            DOM.ribbonLineHeight.addEventListener('change', (e) => {
-                applyDesignStyles({
-                    themeColor: DOM.designColor.value,
-                    fontSize: DOM.designFontSize.value,
-                    padding: DOM.designPadding.value,
-                    lineHeight: e.target.value,
-                    headerBg: DOM.designHeaderBg.value
-                });
-                saveCurrentState();
-            });
-        }
-
-        if (DOM.ribbonHeaderBg) {
-            DOM.ribbonHeaderBg.addEventListener('change', (e) => {
-                applyDesignStyles({
-                    themeColor: DOM.designColor.value,
-                    fontSize: DOM.designFontSize.value,
-                    padding: DOM.designPadding.value,
-                    lineHeight: DOM.designLineHeight.value,
-                    headerBg: e.target.value
-                });
-                saveCurrentState();
-            });
-        }
+        if (DOM.ribbonColor) DOM.ribbonColor.addEventListener('input', updateStylesFromRibbon);
+        if (DOM.ribbonFontFamily) DOM.ribbonFontFamily.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonFontSize) DOM.ribbonFontSize.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonPadding) DOM.ribbonPadding.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonLineHeight) DOM.ribbonLineHeight.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonHeaderBg) DOM.ribbonHeaderBg.addEventListener('change', updateStylesFromRibbon);
 
         // Text formatting command triggers (Word Style)
         const formatBtnBold = document.getElementById('btn-format-bold');
@@ -431,6 +377,52 @@
             formatBtnListNumber.addEventListener('click', (e) => {
                 e.preventDefault();
                 document.execCommand('insertOrderedList', false, null);
+            });
+        }
+
+        // Alignments manual editing
+        const formatBtnAlignLeft = document.getElementById('btn-format-align-left');
+        if (formatBtnAlignLeft) {
+            formatBtnAlignLeft.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyLeft', false, null);
+            });
+        }
+        const formatBtnAlignCenter = document.getElementById('btn-format-align-center');
+        if (formatBtnAlignCenter) {
+            formatBtnAlignCenter.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyCenter', false, null);
+            });
+        }
+        const formatBtnAlignRight = document.getElementById('btn-format-align-right');
+        if (formatBtnAlignRight) {
+            formatBtnAlignRight.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyRight', false, null);
+            });
+        }
+        const formatBtnAlignJustify = document.getElementById('btn-format-align-justify');
+        if (formatBtnAlignJustify) {
+            formatBtnAlignJustify.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyFull', false, null);
+            });
+        }
+
+        // Color formatting using last saved selection
+        if (DOM.btnFormatForeColor) {
+            DOM.btnFormatForeColor.addEventListener('change', (e) => {
+                restoreSelection();
+                document.execCommand('foreColor', false, e.target.value);
+                saveCurrentState();
+            });
+        }
+        if (DOM.btnFormatBackColor) {
+            DOM.btnFormatBackColor.addEventListener('change', (e) => {
+                restoreSelection();
+                document.execCommand('hiliteColor', false, e.target.value);
+                saveCurrentState();
             });
         }
 
@@ -543,6 +535,7 @@
             },
             design: {
                 themeColor: DOM.designColor.value,
+                fontFamily: DOM.designFontFamily.value,
                 fontSize: DOM.designFontSize.value,
                 padding: DOM.designPadding.value,
                 lineHeight: DOM.designLineHeight.value,
@@ -559,6 +552,7 @@
         const p = session.proposito || {};
         const d = session.design || {
             themeColor: '#000000',
+            fontFamily: 'Arial, sans-serif',
             fontSize: '10pt',
             padding: '4px 6px',
             lineHeight: '1.4',
@@ -595,6 +589,7 @@
         // Design config inputs
         DOM.designColor.value = d.themeColor || '#000000';
         DOM.designColorHex.value = d.themeColor || '#000000';
+        if (DOM.designFontFamily) DOM.designFontFamily.value = d.fontFamily || 'Arial, sans-serif';
         DOM.designFontSize.value = d.fontSize || '10pt';
         DOM.designPadding.value = d.padding || '4px 6px';
         DOM.designLineHeight.value = d.lineHeight || '1.4';
@@ -1576,6 +1571,7 @@
         // If no design object is provided, read current values from inputs
         const d = design || {
             themeColor: DOM.designColor.value,
+            fontFamily: DOM.designFontFamily.value,
             fontSize: DOM.designFontSize.value,
             padding: DOM.designPadding.value,
             lineHeight: DOM.designLineHeight.value,
@@ -1585,6 +1581,7 @@
         // Sync Sidebar inputs
         DOM.designColor.value = d.themeColor || '#000000';
         DOM.designColorHex.value = d.themeColor || '#000000';
+        if (DOM.designFontFamily) DOM.designFontFamily.value = d.fontFamily || 'Arial, sans-serif';
         DOM.designFontSize.value = d.fontSize || '10pt';
         DOM.designPadding.value = d.padding || '4px 6px';
         DOM.designLineHeight.value = d.lineHeight || '1.4';
@@ -1592,12 +1589,14 @@
 
         // Sync Ribbon inputs
         if (DOM.ribbonColor) DOM.ribbonColor.value = d.themeColor || '#000000';
+        if (DOM.ribbonFontFamily) DOM.ribbonFontFamily.value = d.fontFamily || 'Arial, sans-serif';
         if (DOM.ribbonFontSize) DOM.ribbonFontSize.value = d.fontSize || '10pt';
         if (DOM.ribbonPadding) DOM.ribbonPadding.value = d.padding || '4px 6px';
         if (DOM.ribbonLineHeight) DOM.ribbonLineHeight.value = d.lineHeight || '1.4';
         if (DOM.ribbonHeaderBg) DOM.ribbonHeaderBg.value = d.headerBg || '#f1f5f9';
 
         sheet.style.setProperty('--theme-border-color', d.themeColor || '#000000');
+        sheet.style.setProperty('--session-font-family', d.fontFamily || 'Arial, sans-serif');
         sheet.style.setProperty('--session-font-size', d.fontSize || '10pt');
         sheet.style.setProperty('--session-cell-padding', d.padding || '4px 6px');
         sheet.style.setProperty('--session-line-height', d.lineHeight || '1.4');
@@ -1826,6 +1825,30 @@
             return isoString;
         }
     }
+
+    // Expose styling API globally for agentic chatbot features
+    window.AppDesign = {
+        apply: (design) => {
+            if (typeof applyDesignStyles === 'function') {
+                applyDesignStyles(design);
+            }
+        },
+        save: () => {
+            if (typeof saveCurrentState === 'function') {
+                saveCurrentState();
+            }
+        },
+        getCurrent: () => {
+            if (!DOM.designColor) return null;
+            return {
+                themeColor: DOM.designColor.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
+            };
+        }
+    };
 
     // ═══════════════════════════════════════
     // BOOT

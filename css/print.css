@@ -75,8 +75,21 @@
         box-shadow: none !important;
         border-radius: 0 !important;
         min-height: auto !important;
+        font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
         font-size: 10pt;
         line-height: 1.4;
+    }
+
+    /* Ensure font family is inherited by all children elements during print */
+    .session-sheet,
+    .session-sheet table,
+    .session-sheet td,
+    .session-sheet th,
+    .session-sheet p,
+    .session-sheet span,
+    .session-sheet li,
+    .session-sheet div {
+        font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
     }
 
     /* ─── Tables ─── */

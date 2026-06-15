@@ -360,6 +360,18 @@
                             </div>
                         </div>
 
+                        <!-- Familia de Fuente -->
+                        <div class="form-group">
+                            <label class="form-label" for="select-design-font-family">Tipo de Letra (Fuente)</label>
+                            <select id="select-design-font-family" class="form-select">
+                                <option value="Arial, sans-serif" selected>Arial (Sans-serif estándar)</option>
+                                <option value="'Times New Roman', serif">Times New Roman (Serif clásica)</option>
+                                <option value="Georgia, serif">Georgia (Serif de pantalla)</option>
+                                <option value="'Courier New', monospace">Courier New (Monospaced)</option>
+                                <option value="'Space Grotesk', sans-serif">Space Grotesk (Moderna)</option>
+                            </select>
+                        </div>
+
                         <!-- Tamaño de Letra -->
                         <div class="form-group">
                             <label class="form-label" for="select-design-font-size">Tamaño de Letra</label>
@@ -509,6 +521,23 @@
                             <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
                             <button type="button" id="btn-format-list-bullet" class="btn btn-ghost btn-xs toolbar-btn" title="Lista de viñetas">• ☰</button>
                             <button type="button" id="btn-format-list-number" class="btn btn-ghost btn-xs toolbar-btn" title="Lista numerada">1. ☰</button>
+                            <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
+                            <!-- Alineación -->
+                            <button type="button" id="btn-format-align-left" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Alinear a la izquierda">Izq</button>
+                            <button type="button" id="btn-format-align-center" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Centrar">Cen</button>
+                            <button type="button" id="btn-format-align-right" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Alinear a la derecha">Der</button>
+                            <button type="button" id="btn-format-align-justify" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Justificar">Just</button>
+                            <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
+                            <!-- Color de Letra -->
+                            <div style="display: flex; align-items: center; gap: 3px;" title="Color de letra">
+                                <span style="font-size: 0.85rem; font-weight: bold; border-bottom: 2.5px solid #ff4444; line-height: 1; padding: 0 2px; color: var(--text);">A</span>
+                                <input type="color" id="btn-format-forecolor" class="toolbar-color" value="#000000" style="width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; padding: 0; background: transparent; cursor: pointer;">
+                            </div>
+                            <!-- Resaltador -->
+                            <div style="display: flex; align-items: center; gap: 3px;" title="Color de resaltado">
+                                <span style="font-size: 0.72rem; font-weight: bold; background: #ffff00; color: #000000; padding: 0 3px; border-radius: 3px; line-height: 1.2;">ab</span>
+                                <input type="color" id="btn-format-backcolor" class="toolbar-color" value="#ffff00" style="width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; padding: 0; background: transparent; cursor: pointer;">
+                            </div>
                         </div>
 
                         <!-- Divider -->
@@ -517,8 +546,18 @@
                         <!-- Group 2: Document Customization -->
                         <div class="toolbar-group">
                             <div class="toolbar-item">
-                                <label for="ribbon-font-size" class="toolbar-sublabel">Letra</label>
-                                <select id="ribbon-font-size" class="form-select select-sm toolbar-select" style="width: 80px;">
+                                <label for="ribbon-font-family" class="toolbar-sublabel">Fuente</label>
+                                <select id="ribbon-font-family" class="form-select select-sm toolbar-select" style="width: 105px;">
+                                    <option value="Arial, sans-serif">Arial</option>
+                                    <option value="'Times New Roman', serif">Times New Roman</option>
+                                    <option value="Georgia, serif">Georgia</option>
+                                    <option value="'Courier New', monospace">Courier New</option>
+                                    <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+                                </select>
+                            </div>
+                            <div class="toolbar-item">
+                                <label for="ribbon-font-size" class="toolbar-sublabel">Tamaño</label>
+                                <select id="ribbon-font-size" class="form-select select-sm toolbar-select" style="width: 65px;">
                                     <option value="8pt">8pt</option>
                                     <option value="9pt">9pt</option>
                                     <option value="10pt">10pt</option>
@@ -528,7 +567,7 @@
                             </div>
                             <div class="toolbar-item">
                                 <label for="ribbon-padding" class="toolbar-sublabel">Padding</label>
-                                <select id="ribbon-padding" class="form-select select-sm toolbar-select" style="width: 95px;">
+                                <select id="ribbon-padding" class="form-select select-sm toolbar-select" style="width: 85px;">
                                     <option value="2px 4px">Compacto</option>
                                     <option value="4px 6px">Estándar</option>
                                     <option value="6px 8px">Amplio</option>
@@ -536,8 +575,8 @@
                                 </select>
                             </div>
                             <div class="toolbar-item">
-                                <label for="ribbon-line-height" class="toolbar-sublabel">Interlineado</label>
-                                <select id="ribbon-line-height" class="form-select select-sm toolbar-select" style="width: 70px;">
+                                <label for="ribbon-line-height" class="toolbar-sublabel">Interl.</label>
+                                <select id="ribbon-line-height" class="form-select select-sm toolbar-select" style="width: 55px;">
                                     <option value="1.2">1.2</option>
                                     <option value="1.3">1.3</option>
                                     <option value="1.4">1.4</option>
