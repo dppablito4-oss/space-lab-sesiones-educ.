@@ -44,6 +44,7 @@
         form: $('#session-form'),
         selectTemplate: $('#select-template'),
         selectMethodology: $('#select-methodology'),
+        selectAiProvider: $('#select-ai-provider'),
         inputInstitucion: $('#input-institucion'),
         inputDre: $('#input-dre'),
         inputUgel: $('#input-ugel'),
@@ -194,6 +195,7 @@
 
         // CNEB Curriculum dropdowns
         DOM.inputArea.addEventListener('change', handleAreaChange);
+        DOM.selectAiProvider.addEventListener('change', handleAiProviderChange);
         DOM.selectCnebCompetencia.addEventListener('change', handleCompetenciaChange);
         DOM.selectCnebCapacidad.addEventListener('change', handleCapacidadChange);
         DOM.selectCnebEnfoque.addEventListener('change', handleEnfoqueChange);
@@ -273,6 +275,7 @@
                 unidad: DOM.inputUnidad.value,
                 titulo: DOM.inputTitulo.value,
                 methodology: DOM.selectMethodology.value,
+                ai_provider: DOM.selectAiProvider.value,
                 logo_regional_url: logoUrl
             },
             proposito: {
@@ -316,6 +319,8 @@
             DOM.selectTemplate.value = session.template;
         }
         DOM.selectMethodology.value = m.methodology || '';
+        DOM.selectAiProvider.value = m.ai_provider || 'gemini';
+        handleAiProviderChange();
 
         // Sync curriculum selectors with loaded area
         handleAreaChange();
@@ -1291,6 +1296,18 @@
     // ═══════════════════════════════════════
     // SOURCE FILE UPLOAD & PARSING
     // ═══════════════════════════════════════
+
+    function handleAiProviderChange() {
+        const provider = DOM.selectAiProvider.value;
+        const fileGroup = $('.source-file-group');
+        
+        if (provider === 'deepseek') {
+            if (fileGroup) fileGroup.classList.add('hidden');
+            clearSourceFile();
+        } else {
+            if (fileGroup) fileGroup.classList.remove('hidden');
+        }
+    }
 
     function handleSourceFileSelect(e) {
         if (e.target.files && e.target.files.length > 0) {

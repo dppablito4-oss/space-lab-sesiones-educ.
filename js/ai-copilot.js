@@ -203,12 +203,15 @@ FORMATO DE RESPUESTA (JSON):
         // 1. Intentar llamar a la Edge Function de Supabase si está disponible
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
-                console.log('[AI] Llamando a Edge Function gemini-router...');
-                const { data, error } = await SupabaseClient.client.functions.invoke('gemini-router', {
+                const useGemini = metadata.ai_provider === 'gemini' || !metadata.ai_provider;
+                const functionName = useGemini ? 'gemini-router' : 'deepseek-router';
+                
+                console.log(`[AI] Llamando a Edge Function ${functionName}...`);
+                const { data, error } = await SupabaseClient.client.functions.invoke(functionName, {
                     body: { 
                         prompt: userPrompt, 
                         systemPrompt: dynamicSystemPrompt,
-                        sourceFile: metadata.sourceFile || null
+                        sourceFile: useGemini ? (metadata.sourceFile || null) : null
                     }
                 });
 
