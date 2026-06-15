@@ -511,6 +511,9 @@
                     <div class="preview-toolbar no-print">
                         <!-- Group 1: Text Editor (Word Style) -->
                         <div class="toolbar-group">
+                            <button type="button" id="btn-format-undo" class="btn btn-ghost btn-xs toolbar-btn" title="Deshacer (Ctrl+Z)">↩️</button>
+                            <button type="button" id="btn-format-redo" class="btn btn-ghost btn-xs toolbar-btn" title="Rehacer (Ctrl+Y)">↪️</button>
+                            <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
                             <button type="button" id="btn-format-bold" class="btn btn-ghost btn-xs toolbar-btn" style="font-weight: 800;" title="Negrita (Ctrl+B)">B</button>
                             <button type="button" id="btn-format-italic" class="btn btn-ghost btn-xs toolbar-btn" style="font-style: italic;" title="Cursiva (Ctrl+I)">I</button>
                             <button type="button" id="btn-format-underline" class="btn btn-ghost btn-xs toolbar-btn" style="text-decoration: underline;" title="Subrayado (Ctrl+U)">U</button>
@@ -612,6 +615,20 @@
                                 <div class="btn-group" style="display: flex; gap: 4px;">
                                     <button type="button" id="btn-ribbon-logo-left" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Cambiar Logo Izquierdo (Escudo)">👈 Izq</button>
                                     <button type="button" id="btn-ribbon-logo-right" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Cambiar Logo Derecho (Regional)">Der 👉</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="toolbar-divider"></div>
+
+                        <!-- Group: Table Rows -->
+                        <div class="toolbar-group">
+                            <div class="toolbar-item">
+                                <label class="toolbar-sublabel">Filas de Tabla</label>
+                                <div class="btn-group" style="display: flex; gap: 4px;">
+                                    <button type="button" id="btn-table-row-insert" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Insertar Fila Abajo">➕ Fila</button>
+                                    <button type="button" id="btn-table-row-delete" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Eliminar Fila">➖ Fila</button>
                                 </div>
                             </div>
                         </div>

@@ -13,7 +13,8 @@
         previewMode: false,
         sidebarOpen: false,
         sourceFileData: null, // Stores { name, type, base64, textContent }
-        activeLogoTarget: null // Stores target logo id: 'header-logo-left' or 'header-logo-regional'
+        activeLogoTarget: null, // Stores target logo id: 'header-logo-left' or 'header-logo-regional'
+        activeTableCell: null // Stores currently active/focused table cell
     };
 
     // ─── DOM REFERENCES ───
@@ -98,12 +99,16 @@
         btnRibbonLogoLeft: $('#btn-ribbon-logo-left'),
         btnRibbonLogoRight: $('#btn-ribbon-logo-right'),
         // Ribbon Text formatting manual controls
+        btnFormatUndo: $('#btn-format-undo'),
+        btnFormatRedo: $('#btn-format-redo'),
         btnFormatForeColor: $('#btn-format-forecolor'),
         btnFormatBackColor: $('#btn-format-backcolor'),
         btnFormatAlignLeft: $('#btn-format-align-left'),
         btnFormatAlignCenter: $('#btn-format-align-center'),
         btnFormatAlignRight: $('#btn-format-align-right'),
         btnFormatAlignJustify: $('#btn-format-align-justify'),
+        btnTableRowInsert: $('#btn-table-row-insert'),
+        btnTableRowDelete: $('#btn-table-row-delete'),
         // Source File Upload
         inputSourceFile: $('#input-source-file'),
         sourceFileDropzone: $('#source-file-dropzone'),
@@ -296,6 +301,20 @@
         DOM.sessionSheet.addEventListener('keyup', saveSelection);
         DOM.sessionSheet.addEventListener('focusout', saveSelection);
 
+        // Keep track of active table cell for row insertions/deletions
+        DOM.sessionSheet.addEventListener('focusin', (e) => {
+            const cell = e.target.closest('td, th');
+            if (cell) {
+                AppState.activeTableCell = cell;
+            }
+        });
+        DOM.sessionSheet.addEventListener('click', (e) => {
+            const cell = e.target.closest('td, th');
+            if (cell) {
+                AppState.activeTableCell = cell;
+            }
+        });
+
         // Helper to update session design styles from DOM inputs
         function updateStylesFromSidebar() {
             applyDesignStyles({
@@ -407,6 +426,36 @@
             formatBtnAlignJustify.addEventListener('click', (e) => {
                 e.preventDefault();
                 document.execCommand('justifyFull', false, null);
+            });
+        }
+
+        // Undo and Redo triggers
+        if (DOM.btnFormatUndo) {
+            DOM.btnFormatUndo.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('undo', false, null);
+                saveCurrentState();
+            });
+        }
+        if (DOM.btnFormatRedo) {
+            DOM.btnFormatRedo.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('redo', false, null);
+                saveCurrentState();
+            });
+        }
+
+        // Table row management triggers
+        if (DOM.btnTableRowInsert) {
+            DOM.btnTableRowInsert.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleInsertRow();
+            });
+        }
+        if (DOM.btnTableRowDelete) {
+            DOM.btnTableRowDelete.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleDeleteRow();
             });
         }
 
@@ -1824,6 +1873,149 @@
         } catch {
             return isoString;
         }
+    }
+
+    function handleInsertRow() {
+        let cell = AppState.activeTableCell;
+        if (!cell) {
+            const activeEl = document.activeElement;
+            if (activeEl && DOM.sessionSheet.contains(activeEl)) {
+                cell = activeEl.closest('td, th');
+            }
+        }
+
+        if (!cell) {
+            Toast.warning("Por favor, selecciona una celda en una tabla editable.");
+            return;
+        }
+
+        const table = cell.closest('table');
+        if (!table) {
+            Toast.warning("Esta celda no pertenece a ninguna tabla.");
+            return;
+        }
+
+        // Only allow dynamic rows in .content-table, .eval-table, and .momentos-table
+        const allowedClasses = ['content-table', 'eval-table', 'momentos-table'];
+        const isAllowed = allowedClasses.some(cls => table.classList.contains(cls));
+        if (!isAllowed) {
+            Toast.warning("Esta acción está deshabilitada en tablas de encabezados.");
+            return;
+        }
+
+        const activeRow = cell.closest('tr');
+        if (!activeRow) {
+            Toast.warning("No se pudo identificar la fila.");
+            return;
+        }
+
+        // Avoid modifying headers
+        if (activeRow.closest('thead') || (activeRow.querySelectorAll('th').length > 0 && !activeRow.querySelectorAll('td').length)) {
+            Toast.warning("No se pueden modificar las filas de cabecera.");
+            return;
+        }
+
+        // Clone active row
+        const clone = activeRow.cloneNode(true);
+
+        // Reset text content of cells & ensure they are contenteditable
+        clone.querySelectorAll('td, th').forEach(el => {
+            el.innerHTML = '';
+            el.setAttribute('contenteditable', 'true');
+        });
+
+        // Insert clone after active row
+        activeRow.after(clone);
+
+        // Ensure newly created cells are active and editable
+        enforceEditMode();
+
+        // Focus the first cell of the inserted row
+        const nextCell = clone.querySelector('[contenteditable="true"]') || clone.querySelector('td');
+        if (nextCell) {
+            nextCell.focus();
+            AppState.activeTableCell = nextCell;
+        }
+
+        saveCurrentState();
+        Toast.success("Fila insertada correctamente");
+    }
+
+    function handleDeleteRow() {
+        let cell = AppState.activeTableCell;
+        if (!cell) {
+            const activeEl = document.activeElement;
+            if (activeEl && DOM.sessionSheet.contains(activeEl)) {
+                cell = activeEl.closest('td, th');
+            }
+        }
+
+        if (!cell) {
+            Toast.warning("Por favor, selecciona una celda en la fila que deseas eliminar.");
+            return;
+        }
+
+        const table = cell.closest('table');
+        if (!table) {
+            Toast.warning("Esta celda no pertenece a ninguna tabla.");
+            return;
+        }
+
+        const allowedClasses = ['content-table', 'eval-table', 'momentos-table'];
+        const isAllowed = allowedClasses.some(cls => table.classList.contains(cls));
+        if (!isAllowed) {
+            Toast.warning("Esta acción está deshabilitada en tablas de encabezados.");
+            return;
+        }
+
+        const activeRow = cell.closest('tr');
+        if (!activeRow) {
+            Toast.warning("No se pudo identificar la fila.");
+            return;
+        }
+
+        // Avoid modifying headers
+        if (activeRow.closest('thead') || (activeRow.querySelectorAll('th').length > 0 && !activeRow.querySelectorAll('td').length)) {
+            Toast.warning("No se pueden eliminar las filas de cabecera.");
+            return;
+        }
+
+        const tbody = activeRow.parentNode;
+        if (!tbody) return;
+
+        // Find all non-header rows in the same tbody
+        const allBodyRows = Array.from(tbody.querySelectorAll('tr')).filter(r => {
+            return !r.closest('thead') && !(r.querySelectorAll('th').length > 0 && !r.querySelectorAll('td').length);
+        });
+
+        if (allBodyRows.length <= 1) {
+            Toast.warning("No se puede eliminar la única fila restante de la tabla.");
+            return;
+        }
+
+        // Determine next cell focus
+        const activeIdx = allBodyRows.indexOf(activeRow);
+        let siblingToFocus = null;
+        if (activeIdx > 0) {
+            siblingToFocus = allBodyRows[activeIdx - 1];
+        } else if (activeIdx < allBodyRows.length - 1) {
+            siblingToFocus = allBodyRows[activeIdx + 1];
+        }
+
+        activeRow.remove();
+
+        if (siblingToFocus) {
+            const nextCell = siblingToFocus.querySelector('[contenteditable="true"]') || siblingToFocus.querySelector('td');
+            if (nextCell) {
+                nextCell.focus();
+                AppState.activeTableCell = nextCell;
+            }
+        } else {
+            AppState.activeTableCell = null;
+        }
+
+        saveCurrentState();
+        Toast.success("Fila eliminada correctamente");
     }
 
     // Expose styling API globally for agentic chatbot features
