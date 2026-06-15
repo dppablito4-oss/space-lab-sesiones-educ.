@@ -44,7 +44,7 @@ const AiCopilot = (() => {
                 CONFIG.apiKey = c.apiKey || CONFIG.apiKey;
                 CONFIG.model = c.model || CONFIG.model;
             }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
     }
 
     /**
@@ -256,7 +256,7 @@ FORMATO DE RESPUESTA (JSON):
                         if (parsedBody && parsedBody.error) {
                             serverMsg = `${parsedBody.error}${parsedBody.details ? ': ' + parsedBody.details : ''}`;
                         }
-                    } catch (e) {
+                    } catch {
                         // Si no es un JSON, usar el mensaje de error directamente
                     }
                     throw new Error(serverMsg);
@@ -375,7 +375,7 @@ FORMATO DE RESPUESTA (JSON):
             
             // Clean excessive newlines from all string values
             return normalizeSessionData(deepCleanStrings(parsed));
-        } catch (e) {
+        } catch {
             console.error('[AI] Failed to parse JSON:', cleaned);
             throw new Error('La IA devolvió una respuesta con formato incorrecto. Intenta de nuevo.');
         }

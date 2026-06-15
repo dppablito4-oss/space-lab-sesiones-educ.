@@ -789,8 +789,8 @@ body {
     box-shadow: var(--shadow-lg);
     padding: 24px 28px;
     font-family: 'Inter', Arial, sans-serif;
-    font-size: 11px;
-    line-height: 1.5;
+    font-size: var(--session-font-size, 10px) !important;
+    line-height: var(--session-line-height, 1.4) !important;
     min-height: 600px;
     overflow: hidden;
 }
@@ -803,14 +803,14 @@ body {
 }
 
 .session-sheet .session-header-table td {
-    padding: 4px 8px;
-    border: 1px solid #d1d5db;
+    padding: var(--session-cell-padding, 4px 8px) !important;
+    border: 1px solid var(--theme-border-color, #d1d5db) !important;
     vertical-align: middle;
 }
 
 .session-sheet .session-header-table .label-cell {
     font-weight: 700;
-    background: #f0f4ff;
+    background: var(--theme-label-bg, #f0f4ff) !important;
     color: #1e3a5f;
     white-space: nowrap;
     width: 130px;
@@ -868,23 +868,23 @@ body {
 }
 
 .session-sheet .content-table th {
-    background: #f0f4ff;
+    background: var(--theme-label-bg, #f0f4ff) !important;
     color: #1e3a5f;
     font-weight: 700;
-    padding: 6px 8px;
-    border: 1px solid #d1d5db;
-    font-size: 10px;
+    padding: var(--session-cell-padding, 6px 8px) !important;
+    border: 1px solid var(--theme-border-color, #d1d5db) !important;
+    font-size: var(--session-font-size, 10px) !important;
     text-transform: uppercase;
     letter-spacing: 0.03em;
     text-align: center;
 }
 
 .session-sheet .content-table td {
-    padding: 6px 8px;
-    border: 1px solid #d1d5db;
+    padding: var(--session-cell-padding, 6px 8px) !important;
+    border: 1px solid var(--theme-border-color, #d1d5db) !important;
     vertical-align: top;
-    font-size: 11px;
-    line-height: 1.5;
+    font-size: var(--session-font-size, 11px) !important;
+    line-height: var(--session-line-height, 1.5) !important;
 }
 
 .session-sheet .content-table tr {
@@ -1560,7 +1560,6 @@ body {
 }
 
 .session-sheet .official-header-table td {
-    border: 1px solid #333;
     padding: 6px 10px;
     vertical-align: middle;
     text-align: center;
@@ -1570,26 +1569,51 @@ body {
 }
 
 .session-sheet .official-header-table .official-logo-cell {
-    width: 60px;
-    padding: 4px;
+    width: 65px;
+    padding: 2px !important;
+    border: none !important;
+    background-color: #ffffff !important;
 }
 
 .session-sheet .official-header-table .official-logo-img {
-    max-height: 45px;
-    max-width: 55px;
+    max-height: 48px;
+    max-width: 58px;
     object-fit: contain;
     display: block;
     margin: 0 auto;
+    transition: transform 0.2s ease;
+}
+
+.session-sheet .official-header-table .official-logo-img:hover {
+    transform: scale(1.05);
 }
 
 .session-sheet .official-header-table .official-entity-cell {
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
+    border: 1px solid #ffffff !important;
 }
 
-.session-sheet .official-header-table .official-entity-cell strong {
+.session-sheet .official-header-table .cell-peru {
+    background-color: #c0392b !important;
+    color: #ffffff !important;
+}
+
+.session-sheet .official-header-table .cell-peru strong {
     font-size: 10px;
-    color: #000;
+    color: #ffffff !important;
+}
+
+.session-sheet .official-header-table .cell-minedu {
+    background-color: #2c3e50 !important;
+    color: #ffffff !important;
+}
+
+.session-sheet .official-header-table .cell-dre,
+.session-sheet .official-header-table .cell-ugel,
+.session-sheet .official-header-table .cell-agp {
+    background-color: #7f8c8d !important;
+    color: #ffffff !important;
 }
 
 /* Session Title Bar Official */
@@ -1648,20 +1672,21 @@ body {
 }
 
 .session-sheet .momentos-table th {
-    border: 1px solid #333;
-    padding: 6px 8px;
-    font-size: 9px;
+    border: 1px solid var(--theme-border-color, #333) !important;
+    padding: var(--session-cell-padding, 6px 8px) !important;
+    font-size: var(--session-font-size, 9px) !important;
     font-weight: 700;
-    background: #f1f5f9;
+    background: var(--theme-label-bg, #f1f5f9) !important;
     color: #000;
     text-transform: uppercase;
 }
 
 .session-sheet .momentos-table td {
-    border: 1px solid #333;
+    border: 1px solid var(--theme-border-color, #333) !important;
     vertical-align: top;
-    font-size: 10px;
-    padding: 8px;
+    font-size: var(--session-font-size, 10px) !important;
+    padding: var(--session-cell-padding, 8px) !important;
+    line-height: var(--session-line-height, 1.4) !important;
 }
 
 .session-sheet .momentos-header-left {
@@ -1679,7 +1704,7 @@ body {
 
 /* Momento Label Cell */
 .session-sheet .momento-label-cell {
-    background: #f8fafc;
+    background: var(--theme-label-bg, #f8fafc) !important;
     width: 140px;
 }
 

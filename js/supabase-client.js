@@ -322,7 +322,7 @@ window.SupabaseClient = (() => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
         
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from('logos')
             .upload(fileName, file, {
                 cacheControl: '3600',

@@ -12,7 +12,8 @@
         editMode: true,
         previewMode: false,
         sidebarOpen: false,
-        sourceFileData: null // Stores { name, type, base64, textContent }
+        sourceFileData: null, // Stores { name, type, base64, textContent }
+        activeLogoTarget: null // Stores target logo id: 'header-logo-left' or 'header-logo-regional'
     };
 
     // ─── DOM REFERENCES ───
@@ -79,6 +80,13 @@
         btnTriggerUploadLogo: $('#btn-trigger-upload-logo'),
         btnRefreshLogos: $('#btn-refresh-logos'),
         logosContainer: $('#logos-container'),
+        // Design customization controls
+        designColor: $('#input-design-theme-color'),
+        designColorHex: $('#input-design-theme-color-hex'),
+        designFontSize: $('#select-design-font-size'),
+        designPadding: $('#select-design-padding'),
+        designLineHeight: $('#select-design-line-height'),
+        designHeaderBg: $('#select-design-header-bg'),
         // Source File Upload
         inputSourceFile: $('#input-source-file'),
         sourceFileDropzone: $('#source-file-dropzone'),
@@ -131,7 +139,7 @@
 
         // Initialize Auth UI if available
         if (window.AuthUi) {
-            AuthUi.init();
+            window.AuthUi.init();
         }
 
         // Initialize Chatbot if available
@@ -239,9 +247,77 @@
         DOM.btnSaveDefaults.addEventListener('click', handleSaveDefaults);
 
         // Upload logo trigger and event
-        DOM.btnTriggerUploadLogo.addEventListener('click', () => DOM.inputUploadLogo.click());
+        DOM.btnTriggerUploadLogo.addEventListener('click', () => {
+            AppState.activeLogoTarget = null; // Reset target so it asks
+            DOM.inputUploadLogo.click();
+        });
         DOM.inputUploadLogo.addEventListener('change', handleUploadLogo);
         DOM.btnRefreshLogos.addEventListener('click', loadLogosGallery);
+
+        // Design customizer controls events
+        DOM.designColor.addEventListener('input', (e) => {
+            DOM.designColorHex.value = e.target.value;
+            applyDesignStyles();
+            saveCurrentState();
+        });
+
+        DOM.designColorHex.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                DOM.designColor.value = e.target.value;
+                applyDesignStyles();
+                saveCurrentState();
+            }
+        });
+
+        DOM.designFontSize.addEventListener('change', () => {
+            applyDesignStyles();
+            saveCurrentState();
+        });
+
+        DOM.designPadding.addEventListener('change', () => {
+            applyDesignStyles();
+            saveCurrentState();
+        });
+
+        DOM.designLineHeight.addEventListener('change', () => {
+            applyDesignStyles();
+            saveCurrentState();
+        });
+
+        DOM.designHeaderBg.addEventListener('change', () => {
+            applyDesignStyles();
+            saveCurrentState();
+        });
+
+        // Click on logo images inside document to change them
+        DOM.sessionSheet.addEventListener('click', async (e) => {
+            const target = e.target;
+            if (target && target.classList.contains('official-logo-img')) {
+                AppState.activeLogoTarget = target.id;
+                
+                const confirmed = await ConfirmDialog.show({
+                    title: 'Cambiar Logo',
+                    message: '¿Deseas subir una imagen desde tu computadora para este logo?',
+                    confirmText: 'Sí, subir',
+                    cancelText: 'No, usar URL'
+                });
+                
+                if (confirmed) {
+                    DOM.inputUploadLogo.click();
+                } else {
+                    const enterUrl = confirm('¿Deseas ingresar una URL de imagen de internet para este logo?');
+                    if (enterUrl) {
+                        const newUrl = prompt('Introduce la URL de la imagen:', target.src);
+                        if (newUrl && newUrl.trim() !== '') {
+                            target.src = newUrl.trim();
+                            target.style.display = 'block';
+                            saveCurrentState();
+                            Toast.success('Logo actualizado');
+                        }
+                    }
+                }
+            }
+        });
 
         // Source file upload drag & drop events
         DOM.sourceFileDropzone.addEventListener('click', () => DOM.inputSourceFile.click());
@@ -273,6 +349,8 @@
     function getFormData() {
         const logoImg = $('#header-logo-regional');
         const logoUrl = logoImg ? logoImg.getAttribute('src') : '';
+        const logoLeftImg = $('#header-logo-left');
+        const logoLeftUrl = logoLeftImg ? logoLeftImg.getAttribute('src') : '';
 
         return {
             metadata: {
@@ -292,7 +370,8 @@
                 titulo: DOM.inputTitulo.value,
                 methodology: DOM.selectMethodology.value,
                 ai_provider: DOM.selectAiProvider.value,
-                logo_regional_url: logoUrl
+                logo_regional_url: logoUrl,
+                logo_left_url: logoLeftUrl
             },
             proposito: {
                 competencia: DOM.inputCompetencia.value,
@@ -300,6 +379,13 @@
                 desempeno: DOM.inputDesempeno.value,
                 enfoque: DOM.inputEnfoque.value,
                 enfoque2: DOM.inputEnfoque2.value
+            },
+            design: {
+                themeColor: DOM.designColor.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
             },
             momentos: {},
             evaluacion: {}
@@ -310,6 +396,13 @@
         if (!session) return;
         const m = session.metadata || {};
         const p = session.proposito || {};
+        const d = session.design || {
+            themeColor: '#000000',
+            fontSize: '10pt',
+            padding: '4px 6px',
+            lineHeight: '1.4',
+            headerBg: '#f1f5f9'
+        };
 
         DOM.inputInstitucion.value = m.institucion || '';
         DOM.inputDre.value = m.dre || '';
@@ -337,6 +430,14 @@
         DOM.selectMethodology.value = m.methodology || '';
         DOM.selectAiProvider.value = m.ai_provider || 'gemini';
         handleAiProviderChange();
+
+        // Design config inputs
+        DOM.designColor.value = d.themeColor || '#000000';
+        DOM.designColorHex.value = d.themeColor || '#000000';
+        DOM.designFontSize.value = d.fontSize || '10pt';
+        DOM.designPadding.value = d.padding || '4px 6px';
+        DOM.designLineHeight.value = d.lineHeight || '1.4';
+        DOM.designHeaderBg.value = d.headerBg || '#f1f5f9';
 
         // Sync curriculum selectors with loaded area
         handleAreaChange();
@@ -446,6 +547,9 @@
         DOM.sessionSheet.innerHTML = html;
         DOM.emptyState.classList.add('hidden');
         DOM.printPreview.classList.remove('hidden');
+
+        // Apply design customizer variables
+        applyDesignStyles(session.design);
 
         // Close sidebar on mobile
         closeSidebar();
@@ -623,6 +727,7 @@
             populateForm(current);
 
             DOM.sessionSheet.innerHTML = current.htmlContent;
+            applyDesignStyles(current.design);
             enforceEditMode();
             DOM.emptyState.classList.add('hidden');
             DOM.printPreview.classList.remove('hidden');
@@ -704,6 +809,7 @@
 
         if (session.htmlContent) {
             DOM.sessionSheet.innerHTML = session.htmlContent;
+            applyDesignStyles(session.design);
             enforceEditMode();
         } else {
             renderSession(session);
@@ -928,7 +1034,6 @@
  
         const ctx = canvas.getContext('2d');
         let stars = [];
-        let animFrame;
  
         function resize() {
             canvas.width = window.innerWidth;
@@ -1038,7 +1143,7 @@
                 }
             }
  
-            animFrame = requestAnimationFrame(draw);
+            requestAnimationFrame(draw);
         }
 
         window.addEventListener('resize', resize);
@@ -1303,11 +1408,47 @@
         }
     }
 
-    function applyLogoToDocument(url) {
-        const logoImg = document.getElementById('header-logo-regional');
+    function applyDesignStyles(design) {
+        const sheet = DOM.sessionSheet;
+        if (!sheet) return;
+
+        // If no design object is provided, read current values from inputs
+        const d = design || {
+            themeColor: DOM.designColor.value,
+            fontSize: DOM.designFontSize.value,
+            padding: DOM.designPadding.value,
+            lineHeight: DOM.designLineHeight.value,
+            headerBg: DOM.designHeaderBg.value
+        };
+
+        sheet.style.setProperty('--theme-border-color', d.themeColor || '#000000');
+        sheet.style.setProperty('--session-font-size', d.fontSize || '10pt');
+        sheet.style.setProperty('--session-cell-padding', d.padding || '4px 6px');
+        sheet.style.setProperty('--session-line-height', d.lineHeight || '1.4');
+        sheet.style.setProperty('--theme-label-bg', d.headerBg || '#f1f5f9');
+
+        if (AppState.currentSession) {
+            AppState.currentSession.design = d;
+        }
+    }
+
+    async function applyLogoToDocument(url, targetId) {
+        let id = targetId || AppState.activeLogoTarget;
+        
+        if (!id) {
+            const confirmed = await ConfirmDialog.show({
+                title: 'Seleccionar Posición',
+                message: '¿En qué posición deseas colocar este logo?',
+                confirmText: 'Derecha (Regional/I.E.)',
+                cancelText: 'Izquierda (Escudo/Nacional)'
+            });
+            id = confirmed ? 'header-logo-regional' : 'header-logo-left';
+        }
+
+        const logoImg = document.getElementById(id);
         if (logoImg) {
             logoImg.src = url;
-            logoImg.style.display = 'block'; // Ensure it's shown if onerror hid it
+            logoImg.style.display = 'block';
             
             // Highlight effect
             logoImg.style.transform = 'scale(1.15)';
@@ -1317,7 +1458,7 @@
 
             // Save state
             saveCurrentState();
-            Toast.success('Logo regional actualizado');
+            Toast.success('Logo actualizado');
         } else {
             Toast.warning('Genera la sesión primero para poder aplicar el logo');
         }
@@ -1329,28 +1470,34 @@
 
         sheet.addEventListener('dragover', (e) => {
             const target = e.target;
-            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
+            const logoCell = target.closest('.official-logo-cell');
+            if (logoCell) {
                 e.preventDefault();
-                target.style.outline = '2px dashed var(--accent)';
+                logoCell.style.outline = '2px dashed var(--accent)';
             }
         });
 
         sheet.addEventListener('dragleave', (e) => {
             const target = e.target;
-            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
-                target.style.outline = '';
+            const logoCell = target.closest('.official-logo-cell');
+            if (logoCell) {
+                logoCell.style.outline = '';
             }
         });
 
         sheet.addEventListener('drop', (e) => {
             const target = e.target;
-            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
+            const logoCell = target.closest('.official-logo-cell');
+            if (logoCell) {
                 e.preventDefault();
-                target.style.outline = '';
+                logoCell.style.outline = '';
                 
                 const url = e.dataTransfer.getData('text/plain');
                 if (url) {
-                    applyLogoToDocument(url);
+                    const img = logoCell.querySelector('img');
+                    if (img) {
+                        applyLogoToDocument(url, img.id);
+                    }
                 }
             }
         });
@@ -1381,10 +1528,10 @@
     function processSourceFile(file) {
         if (!file) return;
 
-        // Check file size (max 10MB)
-        const maxSizeBytes = 10 * 1024 * 1024;
+        // Check file size (max 8MB)
+        const maxSizeBytes = 8 * 1024 * 1024;
         if (file.size > maxSizeBytes) {
-            Toast.error('El archivo excede el tamaño límite de 10 MB.');
+            Toast.warning('El archivo excede el tamaño límite de 8 MB.');
             DOM.inputSourceFile.value = '';
             return;
         }
@@ -1499,7 +1646,7 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        } catch (e) {
+        } catch {
             return isoString;
         }
     }

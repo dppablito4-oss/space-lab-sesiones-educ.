@@ -119,12 +119,11 @@
     .session-sheet .content-table td,
     .session-sheet .eval-table th,
     .session-sheet .eval-table td,
-    .session-sheet .official-header-table td,
     .session-sheet .momentos-table th,
     .session-sheet .momentos-table td {
-        border: 1px solid #000 !important;
-        padding: 4px 6px;
-        font-size: 8.5pt;
+        border: 1px solid var(--theme-border-color, #000) !important;
+        padding: var(--session-cell-padding, 4px 6px) !important;
+        font-size: var(--session-font-size, 8.5pt) !important;
         color: #000 !important;
         background: transparent !important;
     }
@@ -136,10 +135,57 @@
         page-break-inside: avoid;
     }
 
-    /* Allow momentos table rows to split across pages */
+    /* Official Header Table Print Overrides */
+    .session-sheet .official-header-table td {
+        padding: 4px 6px;
+        font-size: 7.5pt;
+        line-height: 1.2;
+        text-align: center;
+        vertical-align: middle;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .session-sheet .official-header-table .official-logo-cell {
+        border: none !important;
+        background-color: #ffffff !important;
+        padding: 2px !important;
+    }
+    .session-sheet .official-header-table .cell-peru {
+        background-color: #c0392b !important;
+        color: #ffffff !important;
+        border: 1px solid #ffffff !important;
+    }
+    .session-sheet .official-header-table .cell-peru strong {
+        color: #ffffff !important;
+    }
+    .session-sheet .official-header-table .cell-minedu {
+        background-color: #2c3e50 !important;
+        color: #ffffff !important;
+        border: 1px solid #ffffff !important;
+    }
+    .session-sheet .official-header-table .cell-dre,
+    .session-sheet .official-header-table .cell-ugel,
+    .session-sheet .official-header-table .cell-agp {
+        background-color: #7f8c8d !important;
+        color: #ffffff !important;
+        border: 1px solid #ffffff !important;
+    }
+
+    /* Avoid splitting a single moment row across pages */
     .session-sheet .momentos-table tr {
-        break-inside: auto !important;
-        page-break-inside: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Prevent text splitting inside paragraph/list elements of moments */
+    .session-sheet .momento-subsection p,
+    .session-sheet .momento-subsection li,
+    .session-sheet .momento-subsection div,
+    .session-sheet .momento-section p,
+    .session-sheet .momento-section li,
+    .session-sheet .momento-section div {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
     }
 
     /* ─── Header cells ─── */

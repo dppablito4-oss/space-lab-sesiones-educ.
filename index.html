@@ -116,6 +116,10 @@
                         <span class="tab-icon">🗺️</span>
                         <span class="tab-text">Propósitos</span>
                     </button>
+                    <button type="button" class="sidebar-tab" data-tab="tab-design">
+                        <span class="tab-icon">🎨</span>
+                        <span class="tab-text">Diseño</span>
+                    </button>
                 </div>
 
                 <form id="session-form" class="session-form" autocomplete="off">
@@ -338,9 +342,73 @@
                             <input type="text" id="input-enfoque2" class="form-input"
                                 placeholder="Ej: Enfoque ambiental">
                         </div>
+                    </div> <!-- End tab-propositos -->
 
-                        <!-- Separación -->
-                        <div style="border-top: 1px solid var(--border); margin: 1.5rem 0;"></div>
+                    <!-- PANE 4: DISEÑO Y ESTILOS -->
+                    <div id="tab-design" class="tab-pane">
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 class="saved-title" style="margin-bottom: 8px;">🎨 Configuración de Diseño</h3>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Ajusta el estilo visual de tu sesión para impresión y PDF.</p>
+                        </div>
+
+                        <!-- Color de Bordes/Tema -->
+                        <div class="form-group">
+                            <label class="form-label" for="input-design-theme-color">Color de Bordes y Recuadros</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="color" id="input-design-theme-color" class="form-input" style="padding: 2px; width: 45px; height: 35px; border-radius: 6px; cursor: pointer; background: transparent; border: 1px solid var(--border);" value="#000000">
+                                <input type="text" id="input-design-theme-color-hex" class="form-input" placeholder="#000000" style="flex: 1; font-family: monospace;" value="#000000">
+                            </div>
+                        </div>
+
+                        <!-- Tamaño de Letra -->
+                        <div class="form-group">
+                            <label class="form-label" for="select-design-font-size">Tamaño de Letra</label>
+                            <select id="select-design-font-size" class="form-select">
+                                <option value="8pt">Pequeño (8pt)</option>
+                                <option value="9pt">Estándar MINEDU (9pt)</option>
+                                <option value="10pt" selected>Normal (10pt)</option>
+                                <option value="11pt">Grande (11pt)</option>
+                                <option value="12pt">Muy Grande (12pt)</option>
+                            </select>
+                        </div>
+
+                        <!-- Espaciado / Padding de Celdas -->
+                        <div class="form-group">
+                            <label class="form-label" for="select-design-padding">Espaciado de Celdas (Padding)</label>
+                            <select id="select-design-padding" class="form-select">
+                                <option value="2px 4px">Compacto (2px)</option>
+                                <option value="4px 6px" selected>Estándar (4px)</option>
+                                <option value="6px 8px">Amplio (6px)</option>
+                                <option value="8px 10px">Espacioso (8px)</option>
+                            </select>
+                        </div>
+
+                        <!-- Espaciado entre Líneas -->
+                        <div class="form-group">
+                            <label class="form-label" for="select-design-line-height">Interlineado (Line Height)</label>
+                            <select id="select-design-line-height" class="form-select">
+                                <option value="1.2">Compacto (1.2)</option>
+                                <option value="1.3">Sutil (1.3)</option>
+                                <option value="1.4" selected>Estándar (1.4)</option>
+                                <option value="1.5">Amplio (1.5)</option>
+                            </select>
+                        </div>
+
+                        <!-- Color de Fondo de Cabeceras -->
+                        <div class="form-group">
+                            <label class="form-label" for="select-design-header-bg">Estilo de Cabeceras de Momentos</label>
+                            <select id="select-design-header-bg" class="form-select">
+                                <option value="#f1f5f9" selected>Gris Claro Estándar</option>
+                                <option value="#e0f2fe">Azul Suave</option>
+                                <option value="#dcfce7">Verde Suave</option>
+                                <option value="#fee2e2">Rojo Suave</option>
+                                <option value="#fef3c7">Amarillo Suave</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Separación -->
+                    <div style="border-top: 1px solid var(--border); margin: 1.5rem 0;"></div>
 
                         <!-- Acciones locales y guardado -->
                         <div class="form-actions">
@@ -397,9 +465,7 @@
                                 <span
                                     style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia
                                     sesión para ver logos</span>
-                            </div>
                         </div>
-                    </div>
                 </form>
             </aside>
 
