@@ -705,6 +705,41 @@
         </div>
     </div>
 
+    <!-- ═══════════ TERMS AND CONDITIONS MODAL ═══════════ -->
+    <div id="terms-modal" class="load-modal hidden" style="z-index: 10000;">
+        <div class="load-modal-content glass-card" style="max-width: 600px; padding: 2rem; text-align: left; max-height: 80vh; overflow-y: auto;">
+            <div class="load-modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+                    Términos y Condiciones de Uso y Políticas de Privacidad
+                </h3>
+                <button id="btn-close-terms" class="btn btn-ghost btn-sm" style="font-size: 1.1rem; padding: 4px 8px;">✕</button>
+            </div>
+            <div style="font-size: 0.82rem; line-height: 1.5; color: var(--text-primary); display: flex; flex-direction: column; gap: 1rem;">
+                <p><strong>Última actualización: Junio de 2026</strong></p>
+                
+                <p>Bienvenido a <strong>Space Lab</strong>. Al registrarte y utilizar nuestra plataforma de generación de sesiones de aprendizaje con inteligencia artificial, aceptas regirte por los siguientes Términos y Condiciones y la Política de Privacidad de acuerdo con la legislación vigente en la República del Perú.</p>
+                
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">1. PROTECCIÓN DE DATOS PERSONALES (Ley N° 29733)</h4>
+                <p>En cumplimiento de la <strong>Ley N° 29733 (Ley de Protección de Datos Personales de Perú)</strong> y su Reglamento, te informamos que los datos proporcionados al crear tu cuenta (nombre de usuario, correo electrónico) serán incorporados en nuestro banco de datos de usuarios. Nos comprometemos a no vender, compartir ni divulgar tus datos personales a terceros sin tu consentimiento expreso, salvo mandato legal. Puedes ejercer tus derechos ARCO (Acceso, Rectificación, Cancelación y Oposición) enviando una solicitud formal al administrador del sistema.</p>
+                
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">2. SERVICIO DE PAGO Y USO DEL COPILOTO IA</h4>
+                <p>Space Lab ofrece un modelo híbrido. El acceso general y la visualización de plantillas base son gratuitos, sin embargo, el procesamiento de generación de contenido interactivo mediante el <strong>Copiloto IA (Gemini / DeepSeek)</strong> es un servicio de pago o sujeto a límites de cuota y créditos de suscripción. El usuario se compromete a realizar un uso responsable del sistema, absteniéndose de realizar ataques cibernéticos, scraping, o cualquier acción que sature el servicio.</p>
+                
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">3. PROPIEDAD INTELECTUAL Y USO DEL CONTENIDO</h4>
+                <p>Los textos, estructuras pedagógicas y código generados por la IA en Space Lab están destinados al uso profesional del docente en su labor pedagógica diaria. El usuario retiene los derechos de autoría de las sesiones de aprendizaje que diseñe, pero autoriza a la plataforma el almacenamiento en caché y sincronización en la nube necesarios para la operatividad del servicio. Está prohibido revender el acceso a la plataforma o empaquetar comercialmente sus tecnologías.</p>
+                
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">4. EXCLUSIÓN DE RESPONSABILIDAD</h4>
+                <p>Space Lab provee sugerencias de redacción pedagógica basadas en modelos de inteligencia artificial. No nos responsabilizamos por la precisión exacta del contenido generado, las evaluaciones curriculares ni por la aplicación final de las sesiones en las aulas. Es deber del docente revisar, adecuar y validar pedagógicamente la sesión antes de su impresión y presentación formal ante el Ministerio de Educación (MINEDU).</p>
+                
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">5. MODIFICACIONES DE LOS TÉRMINOS</h4>
+                <p>Nos reservamos el derecho de modificar estos términos en cualquier momento para adecuarnos a nuevas normativas o mejoras en la plataforma. El uso continuado del sistema tras la publicación de cambios constituye la aceptación de los mismos.</p>
+            </div>
+            <div style="margin-top: 1.5rem; text-align: right;">
+                <button id="btn-accept-terms-modal" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-weight: 600;">Entendido y Aceptar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══════════ AUTH MODAL ═══════════ -->
     <div id="auth-modal" class="load-modal hidden">
         <div class="load-modal-content glass-card"
