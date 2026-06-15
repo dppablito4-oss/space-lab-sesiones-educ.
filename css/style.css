@@ -749,9 +749,10 @@ body {
 /* ─── PRINT PREVIEW ─── */
 .print-preview {
     width: 100%;
-    max-width: 820px;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: var(--space-md);
     animation: fadeInUp 0.4s ease-out;
 }
@@ -883,6 +884,8 @@ body {
     font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
     font-size: var(--session-font-size, 10px) !important;
     line-height: var(--session-line-height, 1.4) !important;
+    width: 100%;
+    max-width: 820px;
     min-height: 600px;
     overflow: hidden;
 }

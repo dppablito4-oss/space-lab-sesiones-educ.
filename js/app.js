@@ -14,7 +14,8 @@
         sidebarOpen: false,
         sourceFileData: null, // Stores { name, type, base64, textContent }
         activeLogoTarget: null, // Stores target logo id: 'header-logo-left' or 'header-logo-regional'
-        activeTableCell: null // Stores currently active/focused table cell
+        activeTableCell: null, // Stores currently active/focused table cell
+        zoomScale: 1.0 // Custom zoom level for the sheet (1.0 = 100%)
     };
 
     // ─── DOM REFERENCES ───
@@ -540,6 +541,23 @@
         });
         DOM.btnRemoveSourceFile.addEventListener('click', handleRemoveSourceFile);
 
+        // Ctrl + Scroll Zoom on sheet
+        DOM.previewArea.addEventListener('wheel', (e) => {
+            if (e.ctrlKey) {
+                e.preventDefault(); // Prevent standard browser zoom
+                
+                const delta = e.deltaY;
+                const scaleChange = 0.05;
+                if (delta < 0) {
+                    AppState.zoomScale = Math.min(AppState.zoomScale + scaleChange, 2.0); // max 200%
+                } else {
+                    AppState.zoomScale = Math.max(AppState.zoomScale - scaleChange, 0.5); // min 50%
+                }
+                
+                applyZoom();
+            }
+        }, { passive: false });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
     }
@@ -756,6 +774,9 @@
         // Apply design customizer variables
         applyDesignStyles(session.design);
 
+        // Apply zoom scale
+        applyZoom();
+
         // Close sidebar on mobile
         closeSidebar();
 
@@ -857,6 +878,10 @@
                 enforceEditMode();
             }
 
+            // Temporarily reset zoom to 1.0 to ensure correct PDF page rendering layout
+            const currentZoom = DOM.sessionSheet.style.zoom;
+            DOM.sessionSheet.style.zoom = '1';
+
             const opt = {
                 margin:       [12, 10, 12, 10], // top, left, bottom, right in mm
                 filename:     `Sesion_${AppState.currentSession.metadata?.titulo || 'aprendizaje'}.pdf`.replace(/[\s/]+/g, '_'),
@@ -868,6 +893,9 @@
             // Run html2pdf
             await html2pdf().set(opt).from(element).save();
             
+            // Restore zoom
+            DOM.sessionSheet.style.zoom = currentZoom;
+
             // Restore edit mode if it was active
             if (wasEditMode) {
                 AppState.editMode = true;
@@ -933,6 +961,7 @@
 
             DOM.sessionSheet.innerHTML = current.htmlContent;
             applyDesignStyles(current.design);
+            applyZoom();
             enforceEditMode();
             DOM.emptyState.classList.add('hidden');
             DOM.printPreview.classList.remove('hidden');
@@ -1015,6 +1044,7 @@
         if (session.htmlContent) {
             DOM.sessionSheet.innerHTML = session.htmlContent;
             applyDesignStyles(session.design);
+            applyZoom();
             enforceEditMode();
         } else {
             renderSession(session);
@@ -1049,6 +1079,10 @@
                 el.value = '';
             }
         });
+
+        // Reset zoom scale to 100%
+        AppState.zoomScale = 1.0;
+        applyZoom();
 
         DOM.sessionSheet.innerHTML = '';
         DOM.printPreview.classList.add('hidden');
@@ -2016,6 +2050,51 @@
 
         saveCurrentState();
         Toast.success("Fila eliminada correctamente");
+    }
+
+    function applyZoom() {
+        const sheet = DOM.sessionSheet;
+        if (!sheet) return;
+        
+        // Apply scale using CSS zoom
+        sheet.style.zoom = AppState.zoomScale;
+        
+        // Show temporary zoom floating percentage indicator
+        showZoomIndicator();
+    }
+
+    let zoomIndicatorTimeout = null;
+    function showZoomIndicator() {
+        let indicator = document.getElementById('zoom-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'zoom-indicator';
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '20px';
+            indicator.style.right = '20px';
+            indicator.style.background = 'rgba(12, 12, 29, 0.85)';
+            indicator.style.backdropFilter = 'blur(8px)';
+            indicator.style.border = '1px solid var(--border-accent)';
+            indicator.style.borderRadius = 'var(--radius-sm)';
+            indicator.style.padding = '8px 12px';
+            indicator.style.color = 'var(--text-accent)';
+            indicator.style.fontFamily = 'var(--font-mono)';
+            indicator.style.fontSize = '0.8rem';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.zIndex = '9999';
+            indicator.style.pointerEvents = 'none';
+            indicator.style.boxShadow = 'var(--shadow-md)';
+            indicator.style.transition = 'opacity 0.2s ease';
+            document.body.appendChild(indicator);
+        }
+        
+        indicator.textContent = `🔍 Zoom: ${Math.round(AppState.zoomScale * 100)}%`;
+        indicator.style.opacity = '1';
+        
+        clearTimeout(zoomIndicatorTimeout);
+        zoomIndicatorTimeout = setTimeout(() => {
+            indicator.style.opacity = '0';
+        }, 1200);
     }
 
     // Expose styling API globally for agentic chatbot features

@@ -78,6 +78,8 @@
         font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
         font-size: 10pt;
         line-height: 1.4;
+        zoom: 1 !important;
+        transform: none !important;
     }
 
     /* Ensure font family is inherited by all children elements during print */
