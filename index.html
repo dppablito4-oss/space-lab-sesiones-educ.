@@ -79,6 +79,10 @@
                     <span class="icon">📄</span>
                     <span class="btn-label">Exportar PDF</span>
                 </button>
+                <button id="btn-export-word" class="btn btn-word" title="Exportar sesión a Word">
+                    <span class="icon">📝</span>
+                    <span class="btn-label">Exportar Word</span>
+                </button>
                 <button id="btn-print" class="btn btn-primary" title="Imprimir sesión">
                     <span class="icon">🖨️</span>
                     <span class="btn-label">Imprimir</span>
@@ -344,15 +348,19 @@
                     <div id="tab-design" class="tab-pane">
                         <div style="margin-bottom: 1.5rem;">
                             <h3 class="saved-title" style="margin-bottom: 8px;">🎨 Configuración de Diseño</h3>
-                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Ajusta el estilo visual de tu sesión para impresión y PDF.</p>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Ajusta el
+                                estilo visual de tu sesión para impresión y PDF.</p>
                         </div>
 
                         <!-- Color de Bordes/Tema -->
                         <div class="form-group">
                             <label class="form-label" for="input-design-theme-color">Color de Bordes y Recuadros</label>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="color" id="input-design-theme-color" class="form-input" style="padding: 2px; width: 45px; height: 35px; border-radius: 6px; cursor: pointer; background: transparent; border: 1px solid var(--border);" value="#000000">
-                                <input type="text" id="input-design-theme-color-hex" class="form-input" placeholder="#000000" style="flex: 1; font-family: monospace;" value="#000000">
+                                <input type="color" id="input-design-theme-color" class="form-input"
+                                    style="padding: 2px; width: 45px; height: 35px; border-radius: 6px; cursor: pointer; background: transparent; border: 1px solid var(--border);"
+                                    value="#000000">
+                                <input type="text" id="input-design-theme-color-hex" class="form-input"
+                                    placeholder="#000000" style="flex: 1; font-family: monospace;" value="#000000">
                             </div>
                         </div>
 
@@ -404,7 +412,8 @@
 
                         <!-- Color de Fondo de Cabeceras -->
                         <div class="form-group">
-                            <label class="form-label" for="select-design-header-bg">Estilo de Cabeceras de Momentos</label>
+                            <label class="form-label" for="select-design-header-bg">Estilo de Cabeceras de
+                                Momentos</label>
                             <select id="select-design-header-bg" class="form-select">
                                 <option value="#f1f5f9" selected>Gris Claro Estándar</option>
                                 <option value="#e0f2fe">Azul Suave</option>
@@ -418,61 +427,61 @@
                     <!-- Separación -->
                     <div style="border-top: 1px solid var(--border); margin: 1.5rem 0;"></div>
 
-                        <!-- Acciones locales y guardado -->
-                        <div class="form-actions">
-                            <button type="button" id="btn-generate" class="btn btn-primary btn-full">
-                                <span class="icon">📄</span> Generar Sesión
+                    <!-- Acciones locales y guardado -->
+                    <div class="form-actions">
+                        <button type="button" id="btn-generate" class="btn btn-primary btn-full">
+                            <span class="icon">📄</span> Generar Sesión
+                        </button>
+                        <div class="form-actions-row">
+                            <button type="button" id="btn-save" class="btn btn-ghost btn-full">
+                                <span class="icon">💾</span> Guardar
                             </button>
-                            <div class="form-actions-row">
-                                <button type="button" id="btn-save" class="btn btn-ghost btn-full">
-                                    <span class="icon">💾</span> Guardar
-                                </button>
-                                <button type="button" id="btn-load" class="btn btn-ghost btn-full">
-                                    <span class="icon">📂</span> Cargar
-                                </button>
-                            </div>
-                            <div class="form-actions-row">
-                                <button type="button" id="btn-export-json" class="btn btn-ghost btn-full btn-sm"
-                                    title="Exportar sesión a archivo JSON">
-                                    <span class="icon">📥</span> Exportar JSON
-                                </button>
-                                <button type="button" id="btn-import-json" class="btn btn-ghost btn-full btn-sm"
-                                    title="Importar sesión desde archivo JSON">
-                                    <span class="icon">📤</span> Importar JSON
-                                </button>
-                            </div>
-                            <input type="file" id="input-import-file" class="hidden" accept=".json">
+                            <button type="button" id="btn-load" class="btn btn-ghost btn-full">
+                                <span class="icon">📂</span> Cargar
+                            </button>
                         </div>
-
-                        <!-- Sesiones Guardadas -->
-                        <div class="saved-sessions" style="margin-top: 1.5rem;">
-                            <h3 class="saved-title">📁 Sesiones Guardadas</h3>
-                            <ul id="saved-list" class="saved-list">
-                                <li class="saved-empty">No hay sesiones guardadas</li>
-                            </ul>
+                        <div class="form-actions-row">
+                            <button type="button" id="btn-export-json" class="btn btn-ghost btn-full btn-sm"
+                                title="Exportar sesión a archivo JSON">
+                                <span class="icon">📥</span> Exportar JSON
+                            </button>
+                            <button type="button" id="btn-import-json" class="btn btn-ghost btn-full btn-sm"
+                                title="Importar sesión desde archivo JSON">
+                                <span class="icon">📤</span> Importar JSON
+                            </button>
                         </div>
+                        <input type="file" id="input-import-file" class="hidden" accept=".json">
+                    </div>
 
-                        <!-- Galería de Logos -->
-                        <div class="logo-gallery-section"
-                            style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
-                            <h3 class="saved-title">🖼️ Galería de Logos</h3>
-                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                <input type="file" id="input-upload-logo" accept="image/*" class="hidden">
-                                <button type="button" id="btn-trigger-upload-logo" class="btn btn-ghost btn-sm"
-                                    style="flex: 1; font-size: 0.72rem; padding: 4px;">
-                                    📤 Subir Logo
-                                </button>
-                                <button type="button" id="btn-refresh-logos" class="btn btn-ghost btn-icon"
-                                    style="min-width: 30px; min-height: 30px; font-size: 0.8rem; padding: 2px;"
-                                    title="Actualizar lista">
-                                    🔄
-                                </button>
-                            </div>
-                            <div id="logos-container"
-                                style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 120px; overflow-y: auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid var(--border);">
-                                <span
-                                    style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia
-                                    sesión para ver logos</span>
+                    <!-- Sesiones Guardadas -->
+                    <div class="saved-sessions" style="margin-top: 1.5rem;">
+                        <h3 class="saved-title">📁 Sesiones Guardadas</h3>
+                        <ul id="saved-list" class="saved-list">
+                            <li class="saved-empty">No hay sesiones guardadas</li>
+                        </ul>
+                    </div>
+
+                    <!-- Galería de Logos -->
+                    <div class="logo-gallery-section"
+                        style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                        <h3 class="saved-title">🖼️ Galería de Logos</h3>
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <input type="file" id="input-upload-logo" accept="image/*" class="hidden">
+                            <button type="button" id="btn-trigger-upload-logo" class="btn btn-ghost btn-sm"
+                                style="flex: 1; font-size: 0.72rem; padding: 4px;">
+                                📤 Subir Logo
+                            </button>
+                            <button type="button" id="btn-refresh-logos" class="btn btn-ghost btn-icon"
+                                style="min-width: 30px; min-height: 30px; font-size: 0.8rem; padding: 2px;"
+                                title="Actualizar lista">
+                                🔄
+                            </button>
+                        </div>
+                        <div id="logos-container"
+                            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 120px; overflow-y: auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid var(--border);">
+                            <span
+                                style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia
+                                sesión para ver logos</span>
                         </div>
                 </form>
             </aside>
@@ -511,31 +520,49 @@
                     <div class="preview-toolbar no-print">
                         <!-- Group 1: Text Editor (Word Style) -->
                         <div class="toolbar-group">
-                            <button type="button" id="btn-format-undo" class="btn btn-ghost btn-xs toolbar-btn" title="Deshacer (Ctrl+Z)">↩️</button>
-                            <button type="button" id="btn-format-redo" class="btn btn-ghost btn-xs toolbar-btn" title="Rehacer (Ctrl+Y)">↪️</button>
+                            <button type="button" id="btn-format-undo" class="btn btn-ghost btn-xs toolbar-btn"
+                                title="Deshacer (Ctrl+Z)">↩️</button>
+                            <button type="button" id="btn-format-redo" class="btn btn-ghost btn-xs toolbar-btn"
+                                title="Rehacer (Ctrl+Y)">↪️</button>
                             <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
-                            <button type="button" id="btn-format-bold" class="btn btn-ghost btn-xs toolbar-btn" style="font-weight: 800;" title="Negrita (Ctrl+B)">B</button>
-                            <button type="button" id="btn-format-italic" class="btn btn-ghost btn-xs toolbar-btn" style="font-style: italic;" title="Cursiva (Ctrl+I)">I</button>
-                            <button type="button" id="btn-format-underline" class="btn btn-ghost btn-xs toolbar-btn" style="text-decoration: underline;" title="Subrayado (Ctrl+U)">U</button>
+                            <button type="button" id="btn-format-bold" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="font-weight: 800;" title="Negrita (Ctrl+B)">B</button>
+                            <button type="button" id="btn-format-italic" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="font-style: italic;" title="Cursiva (Ctrl+I)">I</button>
+                            <button type="button" id="btn-format-underline" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="text-decoration: underline;" title="Subrayado (Ctrl+U)">U</button>
                             <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
-                            <button type="button" id="btn-format-list-bullet" class="btn btn-ghost btn-xs toolbar-btn" title="Lista de viñetas">• ☰</button>
-                            <button type="button" id="btn-format-list-number" class="btn btn-ghost btn-xs toolbar-btn" title="Lista numerada">1. ☰</button>
+                            <button type="button" id="btn-format-list-bullet" class="btn btn-ghost btn-xs toolbar-btn"
+                                title="Lista de viñetas">• ☰</button>
+                            <button type="button" id="btn-format-list-number" class="btn btn-ghost btn-xs toolbar-btn"
+                                title="Lista numerada">1. ☰</button>
                             <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
                             <!-- Alineación -->
-                            <button type="button" id="btn-format-align-left" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Alinear a la izquierda">Izq</button>
-                            <button type="button" id="btn-format-align-center" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Centrar">Cen</button>
-                            <button type="button" id="btn-format-align-right" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Alinear a la derecha">Der</button>
-                            <button type="button" id="btn-format-align-justify" class="btn btn-ghost btn-xs toolbar-btn" style="font-size: 0.72rem; padding: 2px 4px !important;" title="Justificar">Just</button>
+                            <button type="button" id="btn-format-align-left" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="font-size: 0.72rem; padding: 2px 4px !important;"
+                                title="Alinear a la izquierda">Izq</button>
+                            <button type="button" id="btn-format-align-center" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="font-size: 0.72rem; padding: 2px 4px !important;" title="Centrar">Cen</button>
+                            <button type="button" id="btn-format-align-right" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="font-size: 0.72rem; padding: 2px 4px !important;"
+                                title="Alinear a la derecha">Der</button>
+                            <button type="button" id="btn-format-align-justify" class="btn btn-ghost btn-xs toolbar-btn"
+                                style="font-size: 0.72rem; padding: 2px 4px !important;"
+                                title="Justificar">Just</button>
                             <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
                             <!-- Color de Letra -->
                             <div style="display: flex; align-items: center; gap: 3px;" title="Color de letra">
-                                <span style="font-size: 0.85rem; font-weight: bold; border-bottom: 2.5px solid #ff4444; line-height: 1; padding: 0 2px; color: var(--text);">A</span>
-                                <input type="color" id="btn-format-forecolor" class="toolbar-color" value="#000000" style="width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; padding: 0; background: transparent; cursor: pointer;">
+                                <span
+                                    style="font-size: 0.85rem; font-weight: bold; border-bottom: 2.5px solid #ff4444; line-height: 1; padding: 0 2px; color: var(--text);">A</span>
+                                <input type="color" id="btn-format-forecolor" class="toolbar-color" value="#000000"
+                                    style="width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; padding: 0; background: transparent; cursor: pointer;">
                             </div>
                             <!-- Resaltador -->
                             <div style="display: flex; align-items: center; gap: 3px;" title="Color de resaltado">
-                                <span style="font-size: 0.72rem; font-weight: bold; background: #ffff00; color: #000000; padding: 0 3px; border-radius: 3px; line-height: 1.2;">ab</span>
-                                <input type="color" id="btn-format-backcolor" class="toolbar-color" value="#ffff00" style="width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; padding: 0; background: transparent; cursor: pointer;">
+                                <span
+                                    style="font-size: 0.72rem; font-weight: bold; background: #ffff00; color: #000000; padding: 0 3px; border-radius: 3px; line-height: 1.2;">ab</span>
+                                <input type="color" id="btn-format-backcolor" class="toolbar-color" value="#ffff00"
+                                    style="width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 4px; padding: 0; background: transparent; cursor: pointer;">
                             </div>
                         </div>
 
@@ -546,7 +573,8 @@
                         <div class="toolbar-group">
                             <div class="toolbar-item">
                                 <label for="ribbon-font-family" class="toolbar-sublabel">Fuente</label>
-                                <select id="ribbon-font-family" class="form-select select-sm toolbar-select" style="width: 105px;">
+                                <select id="ribbon-font-family" class="form-select select-sm toolbar-select"
+                                    style="width: 105px;">
                                     <option value="Arial, sans-serif">Arial</option>
                                     <option value="'Times New Roman', serif">Times New Roman</option>
                                     <option value="Georgia, serif">Georgia</option>
@@ -556,7 +584,8 @@
                             </div>
                             <div class="toolbar-item">
                                 <label for="ribbon-font-size" class="toolbar-sublabel">Tamaño</label>
-                                <select id="ribbon-font-size" class="form-select select-sm toolbar-select" style="width: 65px;">
+                                <select id="ribbon-font-size" class="form-select select-sm toolbar-select"
+                                    style="width: 65px;">
                                     <option value="8pt">8pt</option>
                                     <option value="9pt">9pt</option>
                                     <option value="10pt">10pt</option>
@@ -566,7 +595,8 @@
                             </div>
                             <div class="toolbar-item">
                                 <label for="ribbon-padding" class="toolbar-sublabel">Padding</label>
-                                <select id="ribbon-padding" class="form-select select-sm toolbar-select" style="width: 85px;">
+                                <select id="ribbon-padding" class="form-select select-sm toolbar-select"
+                                    style="width: 85px;">
                                     <option value="2px 4px">Compacto</option>
                                     <option value="4px 6px">Estándar</option>
                                     <option value="6px 8px">Amplio</option>
@@ -575,7 +605,8 @@
                             </div>
                             <div class="toolbar-item">
                                 <label for="ribbon-line-height" class="toolbar-sublabel">Interl.</label>
-                                <select id="ribbon-line-height" class="form-select select-sm toolbar-select" style="width: 55px;">
+                                <select id="ribbon-line-height" class="form-select select-sm toolbar-select"
+                                    style="width: 55px;">
                                     <option value="1.2">1.2</option>
                                     <option value="1.3">1.3</option>
                                     <option value="1.4">1.4</option>
@@ -589,13 +620,16 @@
 
                         <!-- Group 3: Table Borders -->
                         <div class="toolbar-group">
-                            <div class="toolbar-item" style="flex-direction: row; gap: 4px; align-items: center; height: 100%;">
+                            <div class="toolbar-item"
+                                style="flex-direction: row; gap: 4px; align-items: center; height: 100%;">
                                 <label for="ribbon-theme-color" class="toolbar-sublabel">Borde</label>
-                                <input type="color" id="ribbon-theme-color" class="toolbar-color" value="#000000" title="Color de borde">
+                                <input type="color" id="ribbon-theme-color" class="toolbar-color" value="#000000"
+                                    title="Color de borde">
                             </div>
                             <div class="toolbar-item" style="margin-left: 6px;">
                                 <label for="ribbon-header-bg" class="toolbar-sublabel">Fondo Momentos</label>
-                                <select id="ribbon-header-bg" class="form-select select-sm toolbar-select" style="width: 105px;">
+                                <select id="ribbon-header-bg" class="form-select select-sm toolbar-select"
+                                    style="width: 105px;">
                                     <option value="#f1f5f9">Gris</option>
                                     <option value="#e0f2fe">Azul</option>
                                     <option value="#dcfce7">Verde</option>
@@ -613,8 +647,14 @@
                             <div class="toolbar-item">
                                 <label class="toolbar-sublabel">Insertar Logo</label>
                                 <div class="btn-group" style="display: flex; gap: 4px;">
-                                    <button type="button" id="btn-ribbon-logo-left" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Cambiar Logo Izquierdo (Escudo)">👈 Izq</button>
-                                    <button type="button" id="btn-ribbon-logo-right" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Cambiar Logo Derecho (Regional)">Der 👉</button>
+                                    <button type="button" id="btn-ribbon-logo-left"
+                                        class="btn btn-ghost btn-sm toolbar-btn"
+                                        style="height: 28px; min-height: 28px; padding: 2px 8px !important;"
+                                        title="Cambiar Logo Izquierdo (Escudo)">👈 Izq</button>
+                                    <button type="button" id="btn-ribbon-logo-right"
+                                        class="btn btn-ghost btn-sm toolbar-btn"
+                                        style="height: 28px; min-height: 28px; padding: 2px 8px !important;"
+                                        title="Cambiar Logo Derecho (Regional)">Der 👉</button>
                                 </div>
                             </div>
                         </div>
@@ -627,8 +667,28 @@
                             <div class="toolbar-item">
                                 <label class="toolbar-sublabel">Filas de Tabla</label>
                                 <div class="btn-group" style="display: flex; gap: 4px;">
-                                    <button type="button" id="btn-table-row-insert" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Insertar Fila Abajo">➕ Fila</button>
-                                    <button type="button" id="btn-table-row-delete" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Eliminar Fila">➖ Fila</button>
+                                    <button type="button" id="btn-table-row-insert"
+                                        class="btn btn-ghost btn-sm toolbar-btn"
+                                        style="height: 28px; min-height: 28px; padding: 2px 8px !important;"
+                                        title="Insertar Fila Abajo">➕ Fila</button>
+                                    <button type="button" id="btn-table-row-delete"
+                                        class="btn btn-ghost btn-sm toolbar-btn"
+                                        style="height: 28px; min-height: 28px; padding: 2px 8px !important;"
+                                        title="Eliminar Fila">➖ Fila</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="toolbar-divider"></div>
+
+                        <!-- Group: Copiloto IA -->
+                        <div class="toolbar-group">
+                            <div class="toolbar-item">
+                                <label class="toolbar-sublabel">Copiloto IA</label>
+                                <div class="btn-group" style="display: flex; gap: 4px;">
+                                    <button type="button" id="btn-ai-rubrica" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important; font-weight: 600; color: var(--accent-2);" title="Autogenerar criterios/rúbrica de evaluación">🎯 Rúbrica</button>
+                                    <button type="button" id="btn-ai-improve-text" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important; font-weight: 600; color: var(--accent);" title="Mejorar redacción técnica del texto seleccionado">✨ Redactar</button>
                                 </div>
                             </div>
                         </div>
@@ -637,10 +697,19 @@
                         <div class="toolbar-divider"></div>
 
                         <!-- Group 5: Actions -->
-                        <div class="toolbar-group toolbar-group-actions" style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+                        <div class="toolbar-group toolbar-group-actions"
+                            style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
                             <span class="preview-badge" id="edit-mode-badge">✏️ Modo Edición</span>
-                            <button id="btn-clean-format" class="btn btn-ghost btn-sm toolbar-btn" style="width: 32px; height: 32px; padding: 0 !important;" title="Limpiar formato pegado">🧹</button>
+                            <button id="btn-clean-format" class="btn btn-ghost btn-sm toolbar-btn"
+                                style="width: 32px; height: 32px; padding: 0 !important;"
+                                title="Limpiar formato pegado">🧹</button>
                         </div>
+                    </div>
+
+                    <!-- Time Balance Warning Banner -->
+                    <div id="time-balance-warning" class="time-balance-banner no-print" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: #eab308; padding: 10px 16px; border-radius: 8px; margin: 10px auto; max-width: 820px; font-size: 0.85rem; font-weight: 600; display: none; align-items: center; gap: 8px;">
+                        <span>⚠️</span>
+                        <span id="time-balance-warning-text"></span>
                     </div>
 
                     <!-- The actual A4 sheet -->
@@ -691,7 +760,7 @@
                 <div class="chat-message bot">
                     <div class="message-bubble">
                         ¡Hola! Soy tu asistente pedagógico de Space Lab. ¿En qué puedo ayudarte hoy con tus sesiones o
-                        el Currículo Nacional? 🇵🇪🚀
+                        el Currículo Nacional? 🇵🇪
                     </div>
                 </div>
             </div>
@@ -707,114 +776,170 @@
 
     <!-- ═══════════ TERMS AND CONDITIONS MODAL ═══════════ -->
     <div id="terms-modal" class="load-modal hidden" style="z-index: 10000;">
-        <div class="load-modal-content glass-card" style="max-width: 600px; padding: 2rem; text-align: left; max-height: 80vh; overflow-y: auto;">
-            <div class="load-modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
-                    Términos y Condiciones de Uso y Políticas de Privacidad
+        <div class="load-modal-content glass-card"
+            style="max-width: 600px; padding: 2rem; text-align: left; max-height: 80vh; overflow-y: auto;">
+            <div class="load-modal-header"
+                style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3
+                    style="font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+                    Términos, Condiciones de Uso y Políticas de Privacidad — Space Lab
                 </h3>
-                <button id="btn-close-terms" class="btn btn-ghost btn-sm" style="font-size: 1.1rem; padding: 4px 8px;">✕</button>
+                <button id="btn-close-terms" class="btn btn-ghost btn-sm"
+                    style="font-size: 1.1rem; padding: 4px 8px;">✕</button>
             </div>
-            <div style="font-size: 0.82rem; line-height: 1.5; color: var(--text-primary); display: flex; flex-direction: column; gap: 1rem;">
+            <div
+                style="font-size: 0.82rem; line-height: 1.5; color: var(--text-primary); display: flex; flex-direction: column; gap: 1rem;">
                 <p><strong>Última actualización: Junio de 2026</strong></p>
-                
-                <p>Bienvenido a <strong>Space Lab</strong>. Al registrarte y utilizar nuestra plataforma de generación de sesiones de aprendizaje con inteligencia artificial, aceptas regirte por los siguientes Términos y Condiciones y la Política de Privacidad de acuerdo con la legislación vigente en la República del Perú.</p>
-                
-                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">1. PROTECCIÓN DE DATOS PERSONALES (Ley N° 29733)</h4>
-                <p>En cumplimiento de la <strong>Ley N° 29733 (Ley de Protección de Datos Personales de Perú)</strong> y su Reglamento, te informamos que los datos proporcionados al crear tu cuenta (nombre de usuario, correo electrónico) serán incorporados en nuestro banco de datos de usuarios. Nos comprometemos a no vender, compartir ni divulgar tus datos personales a terceros sin tu consentimiento expreso, salvo mandato legal. Puedes ejercer tus derechos ARCO (Acceso, Rectificación, Cancelación y Oposición) enviando una solicitud formal al administrador del sistema.</p>
-                
-                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">2. SERVICIO DE PAGO Y USO DEL COPILOTO IA</h4>
-                <p>Space Lab ofrece un modelo híbrido. El acceso general y la visualización de plantillas base son gratuitos, sin embargo, el procesamiento de generación de contenido interactivo mediante el <strong>Copiloto IA (Gemini / DeepSeek)</strong> es un servicio de pago o sujeto a límites de cuota y créditos de suscripción. El usuario se compromete a realizar un uso responsable del sistema, absteniéndose de realizar ataques cibernéticos, scraping, o cualquier acción que sature el servicio.</p>
-                
-                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">3. PROPIEDAD INTELECTUAL Y USO DEL CONTENIDO</h4>
-                <p>Los textos, estructuras pedagógicas y código generados por la IA en Space Lab están destinados al uso profesional del docente en su labor pedagógica diaria. El usuario retiene los derechos de autoría de las sesiones de aprendizaje que diseñe, pero autoriza a la plataforma el almacenamiento en caché y sincronización en la nube necesarios para la operatividad del servicio. Está prohibido revender el acceso a la plataforma o empaquetar comercialmente sus tecnologías.</p>
-                
-                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">4. EXCLUSIÓN DE RESPONSABILIDAD</h4>
-                <p>Space Lab provee sugerencias de redacción pedagógica basadas en modelos de inteligencia artificial. No nos responsabilizamos por la precisión exacta del contenido generado, las evaluaciones curriculares ni por la aplicación final de las sesiones en las aulas. Es deber del docente revisar, adecuar y validar pedagógicamente la sesión antes de su impresión y presentación formal ante el Ministerio de Educación (MINEDU).</p>
-                
-                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">5. MODIFICACIONES DE LOS TÉRMINOS</h4>
-                <p>Nos reservamos el derecho de modificar estos términos en cualquier momento para adecuarnos a nuevas normativas o mejoras en la plataforma. El uso continuado del sistema tras la publicación de cambios constituye la aceptación de los mismos.</p>
+
+                <p>Bienvenido a <strong>Space Lab</strong>. Esta plataforma de asistencia pedagógica y generación de
+                    sesiones de aprendizaje es un desarrollo independiente de <strong>Samuel Y. Pablo Claudio
+                        (pablitodp)</strong>. Al registrarte y utilizar nuestros servicios, aceptas plenamente los
+                    siguientes Términos y Condiciones y la Política de Privacidad de acuerdo con las leyes vigentes de
+                    la República del Perú.</p>
+
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">1. REGISTRO, SEGURIDAD Y CUENTAS
+                </h4>
+                <p>El registro en Space Lab es de carácter personal. El usuario es responsable de mantener la seguridad
+                    y confidencialidad de su cuenta y contraseña. Para garantizar la seguridad del servicio y mitigar
+                    abusos, nos reservamos el derecho de limitar el acceso a través de controles técnicos adicionales.
+                </p>
+
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">2. SERVICIO DE COPILOTO IA Y
+                    CRÉDITOS</h4>
+                <p>La generación de sesiones mediante inteligencia artificial (integrando modelos avanzados como Gemini
+                    y DeepSeek) consume recursos de cómputo y APIs externas con costos reales. Por lo tanto, <strong>los
+                        créditos de generación no son ilimitados</strong>. Space Lab otorga una cuota inicial gratuita
+                    para pruebas, pero el uso continuo requiere de recargas de créditos. <strong>Las recargas se
+                        realizan de forma manual mediante Yape o Plin</strong> (según se indique en el sistema) y no
+                    están sujetas a reembolsos ni devoluciones debido a que los costes de procesamiento de la IA se
+                    facturan de manera inmediata al ejecutarse la consulta.</p>
+
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">3. PROPIEDAD INTELECTUAL Y USO
+                    DE CONTENIDOS</h4>
+                <p>Los textos, secuencias didácticas y materiales generados pertenecen al usuario que los diseñó y
+                    editó. No obstante, al utilizar la plataforma, el usuario nos otorga la autorización técnica mínima
+                    para almacenar en caché, sincronizar en la nube y procesar sus datos con el único fin de proveer la
+                    operatividad del servicio.</p>
+
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">4. EXCLUSIÓN DE RESPONSABILIDAD
+                </h4>
+                <p>Las sugerencias, indicadores y materiales didácticos generados por la IA son herramientas de apoyo
+                    pedagógico. Es responsabilidad exclusiva del docente revisar, adecuar y validar pedagógicamente cada
+                    sesión de aprendizaje antes de su aplicación en las aulas o de su presentación formal ante cualquier
+                    entidad educativa (UGEL, DRE, MINEDU).</p>
+
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">5. PROTECCIÓN DE DATOS
+                    PERSONALES (Ley N° 29733) Y DERECHOS ARCO</h4>
+                <p>En cumplimiento de la <strong>Ley N° 29733 (Ley de Protección de Datos Personales de Perú)</strong>,
+                    los datos que registras (correo electrónico, apodo y transacciones de créditos) serán resguardados
+                    con total confidencialidad en nuestro banco de datos de usuarios. Nos comprometemos a no
+                    comercializar ni transferir tu información a terceros. Puedes ejercer tus derechos ARCO (Acceso,
+                    Rectificación, Cancelación y Oposición) en cualquier momento escribiendo al correo de soporte
+                    oficial: <strong>pabloclsa87@gmail.com</strong>.</p>
+
+                <h4 style="color: var(--accent); font-weight: 700; margin-top: 0.5rem;">6. JURISDICCIÓN Y SOLUCIÓN DE
+                    CONTROVERSIAS</h4>
+                <p>Cualquier disputa o controversia derivada del uso de esta plataforma se resolverá bajo las leyes de
+                    la República del Perú, sometiéndose las partes a la competencia exclusiva de los jueces y tribunales
+                    de la ciudad de <strong>Huánuco, Perú</strong>.</p>
             </div>
             <div style="margin-top: 1.5rem; text-align: right;">
-                <button id="btn-accept-terms-modal" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-weight: 600;">Entendido y Aceptar</button>
+                <button id="btn-accept-terms-modal" class="btn btn-primary"
+                    style="padding: 0.6rem 1.2rem; font-weight: 600;">Entendido y Aceptar</button>
             </div>
         </div>
     </div>
 
     <!-- ═══════════ AUTH MODAL ═══════════ -->
-    <div id="auth-modal" class="load-modal hidden">
-        <div class="load-modal-content glass-card"
-            style="max-width: 400px; padding: 2.5rem; text-align: center; position: relative;">
+    <div id="auth-modal" class="load-modal hidden" style="z-index: 9999;">
+        <div class="load-modal-content glass-card auth-premium-card"
+            style="max-width: 420px; padding: 2.5rem; text-align: center; position: relative;">
+
+            <!-- Close Button -->
             <button id="btn-close-auth" class="btn btn-ghost btn-sm"
-                style="position: absolute; top: 1rem; right: 1rem;">✕</button>
-            <div class="load-modal-header"
-                style="justify-content: center; margin-bottom: 0.5rem; border-bottom: none; padding-bottom: 0;">
-                <h3 id="auth-title"
-                    style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
-                    Iniciar Sesión 🌌
-                </h3>
+                style="position: absolute; top: 1rem; right: 1rem; color: #71717a;">✕</button>
+
+            <!-- Premium SVG Logo at top -->
+            <div style="margin-bottom: 1.5rem; display: flex; justify-content: center;">
+                <div
+                    style="background: #090a0f; border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(0, 210, 255, 0.15);">
+                    <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        style="filter: drop-shadow(0px 0px 8px rgba(0, 210, 255, 0.5));">
+                        <rect x="2" y="2" width="96" height="96" rx="28" fill="#0d0e12" stroke="#1f2937"
+                            stroke-width="2" />
+                        <path
+                            d="M55 22C42.5 22 36.5 30 36.5 35C36.5 37.5 38.5 39.5 41 39.5C43.5 39.5 45 37.5 45.5 35.5C46.2 33 49 28.5 54.5 28.5C60.5 28.5 63 32.5 63 36.5C63 42.5 56.5 44.5 51 46.5L42.5 49.5C36.5 51.5 34.5 57.5 34.5 63.5C34.5 72.5 43.5 78 54 78C66.5 78 72 70 72 65C72 62.5 70 60.5 67.5 60.5C65 60.5 63.5 62.5 63 64.5C62.3 67 59.5 71.5 54 71.5C47.5 71.5 45 67.5 45 63.5C45 57.5 51.5 55.5 57 53.5L65.5 50.5C71.5 48.5 73.5 42.5 73.5 36.5C73.5 27.5 65.5 22 55 22Z"
+                            fill="#ffffff" />
+                        <path d="M56 25L38 52H48L44 75L62 48H52L56 25Z" fill="#ffffff" />
+                    </svg>
+                </div>
             </div>
-            <p id="auth-subtitle"
-                style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.4;">
-                Ingresa con tu correo y contraseña para sincronizar tus sesiones en la nube.
-            </p>
+
+            <!-- Tab Selectors -->
+            <div class="auth-tabs">
+                <button type="button" id="auth-tab-login" class="auth-tab active">Ingresar</button>
+                <button type="button" id="auth-tab-register" class="auth-tab">Crear cuenta</button>
+            </div>
+
+            <!-- Title & Subtitle (Now dynamically updated, keep structure but visually hidden if wanted, or kept brief) -->
+            <div class="load-modal-header" style="display: none;">
+                <h3 id="auth-title">Iniciar Sesión 🌌</h3>
+            </div>
+            <p id="auth-subtitle" style="display: none;"></p>
 
             <form id="auth-form" autocomplete="off">
                 <!-- Apodo / Username (Solo Registro) -->
                 <div id="auth-group-username" class="form-group hidden" style="text-align: left; margin-bottom: 1rem;">
-                    <label for="auth-username" class="form-label">Apodo / Nombre de Usuario</label>
-                    <input type="text" id="auth-username" class="form-select" placeholder="mi-apodo"
-                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="text" id="auth-username" class="auth-field" placeholder="Apodo único (sin espacios)">
                 </div>
 
                 <!-- Correo Electrónico -->
                 <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
-                    <label for="auth-email" class="form-label">Correo Electrónico</label>
-                    <input type="email" id="auth-email" class="form-select" placeholder="tu-correo@ejemplo.com" required
-                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="email" id="auth-email" class="auth-field" placeholder="Correo electrónico" required>
                 </div>
 
                 <!-- Contraseña -->
                 <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
-                    <label for="auth-password" class="form-label">Contraseña</label>
-                    <input type="password" id="auth-password" class="form-select" placeholder="Mínimo 6 caracteres"
-                        required
-                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="password" id="auth-password" class="auth-field" placeholder="Contraseña" required>
                 </div>
 
                 <!-- Confirmar Contraseña (Solo Registro) -->
                 <div id="auth-group-confirm-password" class="form-group hidden"
                     style="text-align: left; margin-bottom: 1rem;">
-                    <label for="auth-confirm-password" class="form-label">Confirmar Contraseña</label>
-                    <input type="password" id="auth-confirm-password" class="form-select"
-                        placeholder="Repite tu contraseña"
-                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="password" id="auth-confirm-password" class="auth-field"
+                        placeholder="Confirmar contraseña">
                 </div>
 
                 <!-- Aceptación de Términos (Solo Registro) -->
                 <div id="auth-group-terms" class="form-group hidden"
-                    style="text-align: left; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 8px;">
-                    <input type="checkbox" id="auth-terms" style="margin-top: 3px; cursor: pointer;">
+                    style="text-align: left; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="auth-terms"
+                        style="width: 16px; height: 16px; cursor: pointer; accent-color: #00d2ff; margin: 0;">
                     <label for="auth-terms"
-                        style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; cursor: pointer; user-select: none;">
-                        Acepto los <a href="#" style="color: var(--accent); text-decoration: underline;">Términos y
-                            Condiciones</a> y la Política de Privacidad de Space Lab.
+                        style="font-size: 0.8rem; color: #71717a; line-height: 1.3; cursor: pointer; user-select: none;">
+                        Acepto los <a href="#"
+                            style="color: #00d2ff; text-decoration: none; font-weight: 600; border-bottom: 1px dotted #00d2ff;">Términos
+                            y Privacidad</a>
                     </label>
                 </div>
 
                 <!-- Botón de Envío -->
-                <button type="submit" id="btn-submit-auth" class="btn btn-primary btn-full"
-                    style="padding: 0.8rem; margin-bottom: 1.25rem; width: 100%; font-weight: 600;">
-                    Iniciar Sesión 🚪
+                <button type="submit" id="btn-submit-auth" class="auth-submit-btn">
+                    Iniciar Sesión
                 </button>
             </form>
 
-            <!-- Toggle de Modo -->
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
+            <!-- Hidden Toggle elements to prevent script crashes -->
+            <div style="display: none;">
                 <span id="auth-toggle-text">¿No tienes una cuenta?</span>
-                <a href="#" id="auth-toggle-mode"
-                    style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 4px;">Créala
-                    aquí</a>
-            </p>
+                <a href="#" id="auth-toggle-mode">Créala aquí</a>
+            </div>
+
+            <!-- Cancel Button -->
+            <div style="margin-top: 0.5rem;">
+                <button type="button" id="btn-cancel-auth" class="auth-cancel-btn"
+                    style="background: none; border: none; color: #71717a; font-size: 0.9rem; cursor: pointer; transition: color 0.2s;">Cancelar</button>
+            </div>
         </div>
     </div>
 

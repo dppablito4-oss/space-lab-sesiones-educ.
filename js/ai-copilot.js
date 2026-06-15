@@ -478,6 +478,102 @@ FORMATO DE RESPUESTA (JSON):
         return false;
     }
 
+    /**
+     * Run a generic prompt leveraging Supabase edge functions or local OpenRouter fallback.
+     */
+    async function runPrompt(systemPrompt, userPrompt) {
+        // 1. Try to invoke Supabase Edge Function if available
+        if (window.SupabaseClient && SupabaseClient.client) {
+            try {
+                const useGemini = CONFIG.model.includes('gemini') || !CONFIG.model.includes('deepseek');
+                const functionName = useGemini ? 'gemini-router' : 'deepseek-router';
+                
+                console.log(`[AI Helper] Invoking edge function ${functionName} for generic prompt...`);
+                const { data, error } = await SupabaseClient.client.functions.invoke(functionName, {
+                    body: { 
+                        prompt: userPrompt, 
+                        systemPrompt: systemPrompt
+                    }
+                });
+
+                if (!error) {
+                    let text = data;
+                    if (data && typeof data === 'object') {
+                        text = data.choices?.[0]?.message?.content || data.content || JSON.stringify(data);
+                    }
+                    if (text) return text;
+                }
+            } catch (err) {
+                console.warn('[AI Helper] Edge function failed or returned error, using local OpenRouter fallback...', err);
+            }
+        }
+
+        // 2. OpenRouter local fallback (using user's API key)
+        if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
+            throw new Error('API_NOT_CONFIGURED');
+        }
+
+        const response = await fetch(CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CONFIG.apiKey}`,
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Space Lab - Sesiones Educativas'
+            },
+            body: JSON.stringify({
+                model: CONFIG.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: 1500,
+                temperature: 0.5
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Error del servidor de IA: ${response.status}`);
+        }
+
+        const resData = await response.json();
+        return resData.choices?.[0]?.message?.content || '';
+    }
+
+    /**
+     * Generate evaluation criteria / rubric indicators based on session content.
+     */
+    async function generateCriterios(competencia, tema, grado, area) {
+        const systemPrompt = `Eres un asesor pedagógico experto en el Currículo Nacional de Educación Básica (CNEB) del Perú. 
+Tu tarea es generar exactamente entre 3 y 5 criterios de evaluación en formato de elementos de lista HTML básico (usando viñetas <li>...</li>).
+Cada criterio debe ser claro, preciso, medible y redactado en tercera persona (por ejemplo: "Identifica información explícita...", "Explica el propósito...", etc.), vinculando el área curricular, competencia y grado provistos.
+Devuelve ÚNICAMENTE los elementos <li> sin etiquetas de lista <ul> ni explicaciones adicionales, ni introducciones, ni marcas de código markdown de bloque como \`\`\`html. Devuelve código HTML plano listo para insertar en una lista.`;
+
+        const userPrompt = `Área Curricular: ${area || 'General'}
+Competencia: ${competencia || 'Competencia general'}
+Tema/Propósito: ${tema || 'Actividad de aprendizaje'}
+Grado: ${grado || 'General'}`;
+
+        const result = await runPrompt(systemPrompt, userPrompt);
+        return result.trim().replace(/^```html|```$/g, '');
+    }
+
+    /**
+     * Improve/Correct text selection.
+     */
+    async function improveText(text, mode) {
+        const isCorrectMode = mode === 'correct';
+        const systemPrompt = isCorrectMode 
+            ? `Corrige los errores ortográficos, gramaticales y de puntuación del texto de manera exacta, sin cambiar la estructura o el significado original. Devuelve únicamente el texto corregido sin explicaciones ni comentarios adicionales.`
+            : `Eres un redactor experto y asesor pedagógico del Currículo Nacional. Mejora la redacción técnica, ortografía y estilo del texto pedagógico proporcionado, haciéndolo más formal, claro y profesional. Devuelve únicamente el texto mejorado final sin introducciones, comentarios ni explicaciones adicionales.`;
+
+        const userPrompt = `Texto a procesar: "${text}"`;
+
+        const result = await runPrompt(systemPrompt, userPrompt);
+        return result.trim();
+    }
+
     // Initialize
     loadConfig();
 
@@ -486,7 +582,9 @@ FORMATO DE RESPUESTA (JSON):
         isConfigured,
         configure,
         showConfigPrompt,
-        loadConfig
+        loadConfig,
+        generateCriterios,
+        improveText
     };
 })();
 

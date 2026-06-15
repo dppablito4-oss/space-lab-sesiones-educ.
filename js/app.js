@@ -234,6 +234,29 @@
         DOM.btnToggleEdit.addEventListener('click', toggleEditMode);
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
         DOM.btnExportPdf.addEventListener('click', handleExportPDF);
+        
+        const btnExportWord = document.getElementById('btn-export-word');
+        if (btnExportWord) {
+            btnExportWord.addEventListener('click', handleExportWord);
+        }
+        
+        const btnAiRubrica = document.getElementById('btn-ai-rubrica');
+        if (btnAiRubrica) {
+            btnAiRubrica.addEventListener('click', handleAiRubrica);
+        }
+        
+        const btnAiImproveText = document.getElementById('btn-ai-improve-text');
+        if (btnAiImproveText) {
+            btnAiImproveText.addEventListener('click', () => handleAiImproveText('improve'));
+        }
+
+        // Live Time Balance updates
+        DOM.sessionSheet.addEventListener('input', checkTimeBalance);
+        if (DOM.inputDuracion) {
+            DOM.inputDuracion.addEventListener('input', checkTimeBalance);
+            DOM.inputDuracion.addEventListener('change', checkTimeBalance);
+        }
+
         DOM.btnPrint.addEventListener('click', handlePrint);
         DOM.btnSave.addEventListener('click', handleSave);
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
@@ -690,6 +713,16 @@
     }
 
     async function handleGenerateAI() {
+        // Intercept: Check user authentication
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes crear una cuenta para generar sesiones con IA');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
         // Check if AI is configured
         if (!AiCopilot.isConfigured()) {
             const configured = AiCopilot.showConfigPrompt();
@@ -782,6 +815,9 @@
 
         // Save current state
         Storage.setCurrentSession(session);
+
+        // Check time balance
+        checkTimeBalance();
     }
 
     // ═══════════════════════════════════════
@@ -911,6 +947,323 @@
         }
     }
 
+    async function handleExportWord() {
+        if (!AppState.currentSession) {
+            Toast.warning('No hay ninguna sesión activa para exportar.');
+            return;
+        }
+
+        const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
+        const filename = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.doc`;
+
+        Loader.show('📝 Generando archivo de Word...');
+
+        try {
+            // Save before exporting
+            saveCurrentState();
+
+            // Get sheet content
+            const content = DOM.sessionSheet.innerHTML;
+            
+            // Get styles
+            let styles = '';
+            const styleSheets = document.styleSheets;
+            for (let i = 0; i < styleSheets.length; i++) {
+                try {
+                    const rules = styleSheets[i].cssRules || styleSheets[i].rules;
+                    if (rules) {
+                        for (let j = 0; j < rules.length; j++) {
+                            styles += rules[j].cssText;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore cross-origin stylesheet errors
+                }
+            }
+
+            // Fallback default custom styles to ensure design properties are embedded
+            const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
+            const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
+            const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
+            
+            const htmlContent = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>${titulo}</title>
+                    <style>
+                        @page Section1 {
+                            size: 595.3pt 841.9pt; /* A4 size */
+                            margin: 1.0in 1.0in 1.0in 1.0in;
+                            mso-header-margin: .5in;
+                            mso-footer-margin: .5in;
+                            mso-paper-source: 0;
+                        }
+                        div.Section1 {
+                            page: Section1;
+                        }
+                        body {
+                            font-family: ${activeFont};
+                            font-size: ${activeSize};
+                            color: #000000;
+                            background-color: #ffffff;
+                        }
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            margin-bottom: 15px;
+                        }
+                        th, td {
+                            border: 1px solid ${activeColor};
+                            padding: 6px;
+                            font-size: 9.5pt;
+                            vertical-align: top;
+                        }
+                        /* Embed general app styles */
+                        ${styles}
+                    </style>
+                </head>
+                <body>
+                    <div class="Section1">
+                        ${content}
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff' + htmlContent], {
+                type: 'application/msword;charset=utf-8'
+            });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Loader.hide();
+            Toast.success('¡Archivo de Word (.doc) descargado con éxito!');
+        } catch (error) {
+            Loader.hide();
+            Toast.error('Error al exportar a Word: ' + error.message);
+        }
+    }
+
+    function parseMinutes(text) {
+        if (!text) return 0;
+        const clean = text.toLowerCase().trim();
+        
+        // Check for ranges or sum of numbers, e.g. "15 + 5" or "15-20"
+        // Let's first search for hours and multiply by 45 (or 60)
+        const hoursMatch = clean.match(/(\d+(?:\.\d+)?)\s*(?:hora|h)/);
+        if (hoursMatch) {
+            const hours = parseFloat(hoursMatch[1]);
+            const multiplier = clean.includes('pedag') ? 45 : 45;
+            return Math.round(hours * multiplier);
+        }
+        
+        const numbers = clean.match(/\d+/g);
+        if (numbers) {
+            let sum = 0;
+            numbers.forEach(n => {
+                sum += parseInt(n, 10);
+            });
+            return sum;
+        }
+        return 0;
+    }
+
+    function checkTimeBalance() {
+        if (!AppState.currentSession) return;
+        
+        // 1. Get planned duration
+        const totalDurationText = DOM.inputDuracion ? DOM.inputDuracion.value : '';
+        const plannedMinutes = parseMinutes(totalDurationText || AppState.currentSession.metadata?.duracion);
+        
+        if (plannedMinutes <= 0) {
+            hideTimeBalanceWarning();
+            return;
+        }
+        
+        // 2. Sum minutes of the moments in the sheet
+        let parsedSum = 0;
+        
+        // For Estandar template (.momento-time)
+        const timeElements = DOM.sessionSheet.querySelectorAll('.momento-time');
+        timeElements.forEach(el => {
+            const txt = el.textContent || '';
+            const cleaned = txt.replace(/TIEMPO\s*:\s*/i, '');
+            parsedSum += parseMinutes(cleaned);
+        });
+        
+        // For Laboratorio/Refuerzo templates (.time-cell)
+        const cellElements = DOM.sessionSheet.querySelectorAll('.time-cell');
+        cellElements.forEach(el => {
+            const txt = el.textContent || '';
+            parsedSum += parseMinutes(txt);
+        });
+        
+        if (parsedSum === 0) {
+            hideTimeBalanceWarning();
+            return;
+        }
+        
+        // 3. Compare
+        if (parsedSum !== plannedMinutes) {
+            showTimeBalanceWarning(`La suma de los momentos da ${parsedSum} min, pero tu sesión está planificada para ${plannedMinutes} min.`);
+        } else {
+            hideTimeBalanceWarning();
+        }
+    }
+
+    function showTimeBalanceWarning(message) {
+        const banner = document.getElementById('time-balance-warning');
+        const bannerText = document.getElementById('time-balance-warning-text');
+        if (banner && bannerText) {
+            bannerText.textContent = message;
+            banner.style.display = 'flex';
+            banner.classList.remove('hidden');
+        }
+    }
+
+    function hideTimeBalanceWarning() {
+        const banner = document.getElementById('time-balance-warning');
+        if (banner) {
+            banner.style.display = 'none';
+            banner.classList.add('hidden');
+        }
+    }
+
+    async function handleAiRubrica() {
+        // Intercept: Check user authentication
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes crear una cuenta para usar el asistente de evaluación con IA');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
+        if (!AiCopilot.isConfigured()) {
+            const configured = AiCopilot.showConfigPrompt();
+            if (!configured) {
+                Toast.warning('Necesitas configurar una API Key para usar el Asistente IA');
+                return;
+            }
+        }
+
+        // Search for target cell inside sheet
+        let criteriaTarget = DOM.sessionSheet.querySelector('.propositos-table td:nth-child(3)');
+        if (!criteriaTarget) {
+            const tables = DOM.sessionSheet.querySelectorAll('table');
+            for (const table of tables) {
+                const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.toLowerCase());
+                const criteriaColIndex = headers.findIndex(h => h.includes('criterios'));
+                if (criteriaColIndex !== -1) {
+                    criteriaTarget = table.querySelector(`tbody tr td:nth-child(${criteriaColIndex + 1})`);
+                    if (criteriaTarget) break;
+                }
+            }
+        }
+
+        if (!criteriaTarget) {
+            Toast.warning('No se pudo encontrar la columna "Criterios de Evaluación" en la hoja actual.');
+            return;
+        }
+
+        Loader.show('🤖 Generando criterios de evaluación con IA...');
+
+        try {
+            const formData = getFormData();
+            const competencia = formData.proposito?.competencia || DOM.inputCompetencia.value || '';
+            const tema = formData.metadata?.titulo || DOM.inputTitulo.value || '';
+            const grado = formData.metadata?.grado || DOM.inputGrado.value || '';
+            const area = formData.metadata?.area || DOM.inputArea.value || '';
+
+            const listItemsHtml = await AiCopilot.generateCriterios(competencia, tema, grado, area);
+            
+            // Wrap in ul.session-list
+            criteriaTarget.innerHTML = `<ul class="session-list">${listItemsHtml}</ul>`;
+
+            saveCurrentState();
+            checkTimeBalance();
+            Loader.hide();
+            Toast.success('🎯 Criterios de evaluación generados con éxito');
+        } catch (error) {
+            Loader.hide();
+            Toast.error('Error al generar criterios: ' + error.message);
+        }
+    }
+
+    async function handleAiImproveText(mode = 'improve') {
+        // Intercept: Check user authentication
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes crear una cuenta para mejorar redacción con IA');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
+        if (!AiCopilot.isConfigured()) {
+            const configured = AiCopilot.showConfigPrompt();
+            if (!configured) {
+                Toast.warning('Necesitas configurar una API Key para usar el Asistente IA');
+                return;
+            }
+        }
+
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+
+        if (!selectedText) {
+            Toast.warning('Selecciona primero un fragmento de texto en la hoja para mejorar su redacción.');
+            return;
+        }
+
+        Loader.show('🤖 Refinando redacción con IA...');
+
+        try {
+            const resultText = await AiCopilot.improveText(selectedText, mode);
+            
+            // Replace text inside current selection range
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                
+                // If the text has basic formatting, we insert it
+                const container = document.createElement('span');
+                container.innerHTML = resultText;
+                
+                // Insert node and select it
+                range.insertNode(container);
+                
+                // Unify range selection
+                sel.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNode(container);
+                sel.addRange(newRange);
+
+                saveCurrentState();
+                checkTimeBalance();
+                Loader.hide();
+                Toast.success('✨ Redacción técnica mejorada con éxito');
+            } else {
+                Loader.hide();
+                Toast.warning('Se perdió la selección de texto. Inténtalo de nuevo.');
+            }
+        } catch (error) {
+            Loader.hide();
+            Toast.error('Error al mejorar redacción: ' + error.message);
+        }
+    }
+
     // ═══════════════════════════════════════
     // SAVE / LOAD
     // ═══════════════════════════════════════
@@ -971,6 +1324,9 @@
             }
 
             Toast.info('Última sesión restaurada');
+            
+            // Check time balance
+            checkTimeBalance();
         }
     }
 
