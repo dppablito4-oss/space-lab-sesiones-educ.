@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Space Lab — Generador automático de sesiones de aprendizaje con formato MINEDU. Edita, guarda e imprime tus sesiones educativas.">
+    <meta name="description"
+        content="Space Lab — Generador automático de sesiones de aprendizaje con formato MINEDU. Edita, guarda e imprime tus sesiones educativas.">
     <title>Space Lab — Sesiones Educativas</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.vsg.svg">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/print.css" media="print">
 </head>
+
 <body>
     <!-- ═══════════ TOAST CONTAINER ═══════════ -->
     <div id="toast-container" class="toast-container"></div>
@@ -45,7 +50,7 @@
 
     <!-- ═══════════ MAIN APP ═══════════ -->
     <div class="app-wrapper">
-        
+
         <!-- ─── HEADER ─── -->
         <header class="app-header glass-card">
             <div class="header-brand">
@@ -96,7 +101,7 @@
                 <!-- Tabs Navigation -->
                 <div class="sidebar-tabs">
                     <button type="button" class="sidebar-tab active" data-tab="tab-ai">
-                        <span class="tab-icon">🤖</span>
+                        <span class="tab-icon">🧠</span>
                         <span class="tab-text">Copiloto IA</span>
                     </button>
                     <button type="button" class="sidebar-tab" data-tab="tab-general">
@@ -104,13 +109,13 @@
                         <span class="tab-text">Datos</span>
                     </button>
                     <button type="button" class="sidebar-tab" data-tab="tab-propositos">
-                        <span class="tab-icon">🎯</span>
+                        <span class="tab-icon">🗺️</span>
                         <span class="tab-text">Propósitos</span>
                     </button>
                 </div>
 
                 <form id="session-form" class="session-form" autocomplete="off">
-                    
+
                     <!-- PANE 1: COPILOTO IA -->
                     <div id="tab-ai" class="tab-pane active">
                         <!-- Motor de IA para Generación -->
@@ -138,7 +143,8 @@
                             <select id="select-methodology" class="form-select">
                                 <option value="">-- Por defecto del Área --</option>
                                 <option value="polya">📐 Método de Polya (Resolución de Problemas)</option>
-                                <option value="erca">🔄 Ciclo ERCA (Experiencia, Reflexión, Conceptualización, Aplicación)</option>
+                                <option value="erca">🔄 Ciclo ERCA (Experiencia, Reflexión, Conceptualización,
+                                    Aplicación)</option>
                                 <option value="abp">📂 Aprendizaje Basado en Proyectos (ABP)</option>
                                 <option value="flipped">🎒 Aula Invertida (Flipped Classroom)</option>
                                 <option value="indagacion">🔬 Indagación Científica (STEAM)</option>
@@ -148,18 +154,22 @@
 
                         <!-- Archivo Fuente de Referencia (Gemini) -->
                         <div class="form-group source-file-group">
-                            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-top: 10px;">
+                            <label class="form-label"
+                                style="display: flex; align-items: center; gap: 6px; margin-top: 10px;">
                                 <span>📄</span> Archivo de Referencia (Opcional)
                             </label>
                             <div id="source-file-dropzone" class="source-file-dropzone">
                                 <span class="icon">📤</span>
-                                <span class="text">Haz clic o arrastra un archivo aquí (PDF, imagen, audio o texto)</span>
+                                <span class="text">Haz clic o arrastra un archivo aquí (PDF, imagen, audio o
+                                    texto)</span>
                             </div>
                             <div id="source-file-info" class="source-file-info hidden">
                                 <span class="file-name" id="source-file-name-text"></span>
-                                <button type="button" id="btn-remove-source-file" class="btn-remove-file" title="Eliminar archivo">✕</button>
+                                <button type="button" id="btn-remove-source-file" class="btn-remove-file"
+                                    title="Eliminar archivo">✕</button>
                             </div>
-                            <input type="file" id="input-source-file" class="hidden" accept=".pdf,image/*,audio/*,text/plain,.csv,.md,.json">
+                            <input type="file" id="input-source-file" class="hidden"
+                                accept=".pdf,image/*,audio/*,text/plain,.csv,.md,.json">
                         </div>
 
                         <!-- Botón principal de IA -->
@@ -174,7 +184,8 @@
                     <div id="tab-general" class="tab-pane">
                         <div class="form-group">
                             <label for="input-institucion" class="form-label">Institución Educativa</label>
-                            <input type="text" id="input-institucion" class="form-input" placeholder="I.E. N° 000 — Nombre">
+                            <input type="text" id="input-institucion" class="form-input"
+                                placeholder="I.E. N° 000 — Nombre">
                         </div>
 
                         <div class="form-row">
@@ -187,7 +198,7 @@
                                 <input type="text" id="input-ugel" class="form-input" placeholder="UGEL Padre Abad">
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="input-docente" class="form-label">Docente</label>
@@ -195,7 +206,8 @@
                             </div>
                             <div class="form-group">
                                 <label for="input-director" class="form-label">Director(a)</label>
-                                <input type="text" id="input-director" class="form-input" placeholder="Nombre del director">
+                                <input type="text" id="input-director" class="form-input"
+                                    placeholder="Nombre del director">
                             </div>
                         </div>
 
@@ -269,15 +281,19 @@
 
                         <div class="form-group">
                             <label for="input-titulo" class="form-label">Título de la Sesión</label>
-                            <input type="text" id="input-titulo" class="form-input" placeholder="Título descriptivo de la sesión">
+                            <input type="text" id="input-titulo" class="form-input"
+                                placeholder="Título descriptivo de la sesión">
                         </div>
 
                         <!-- Botones auxiliares de Datos -->
                         <div style="display: flex; gap: 8px; margin-top: 1.5rem;">
-                            <button type="button" id="btn-save-defaults" class="btn btn-ghost btn-full btn-sm" title="Guardar predeterminados en la nube" style="font-size: 0.75rem; padding: 6px;">
+                            <button type="button" id="btn-save-defaults" class="btn btn-ghost btn-full btn-sm"
+                                title="Guardar predeterminados en la nube" style="font-size: 0.75rem; padding: 6px;">
                                 ⚙️ Guardar Predets.
                             </button>
-                            <button type="button" id="btn-new" class="btn btn-ghost btn-full btn-sm" title="Limpiar formulario e iniciar nueva sesión" style="font-size: 0.75rem; padding: 6px;">
+                            <button type="button" id="btn-new" class="btn btn-ghost btn-full btn-sm"
+                                title="Limpiar formulario e iniciar nueva sesión"
+                                style="font-size: 0.75rem; padding: 6px;">
                                 🗑️ Nueva Sesión
                             </button>
                         </div>
@@ -287,27 +303,36 @@
                     <div id="tab-propositos" class="tab-pane">
                         <div class="form-group">
                             <label for="input-competencia" class="form-label">Competencia</label>
-                            <select id="select-cneb-competencia" class="form-select hidden" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
-                            <textarea id="input-competencia" class="form-textarea" rows="2" placeholder="Competencia curricular..."></textarea>
+                            <select id="select-cneb-competencia" class="form-select hidden"
+                                style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
+                            <textarea id="input-competencia" class="form-textarea" rows="2"
+                                placeholder="Competencia curricular..."></textarea>
                         </div>
                         <div class="form-group">
                             <label for="input-capacidad" class="form-label">Capacidad</label>
-                            <select id="select-cneb-capacidad" class="form-select hidden" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
-                            <textarea id="input-capacidad" class="form-textarea" rows="2" placeholder="Capacidades a desarrollar..."></textarea>
+                            <select id="select-cneb-capacidad" class="form-select hidden"
+                                style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
+                            <textarea id="input-capacidad" class="form-textarea" rows="2"
+                                placeholder="Capacidades a desarrollar..."></textarea>
                         </div>
                         <div class="form-group">
                             <label for="input-desempeno" class="form-label">Desempeño</label>
-                            <textarea id="input-desempeno" class="form-textarea" rows="2" placeholder="Desempeños esperados..."></textarea>
+                            <textarea id="input-desempeno" class="form-textarea" rows="2"
+                                placeholder="Desempeños esperados..."></textarea>
                         </div>
                         <div class="form-group">
                             <label for="input-enfoque" class="form-label">Enfoque Transversal 1</label>
-                            <select id="select-cneb-enfoque" class="form-select" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
-                            <input type="text" id="input-enfoque" class="form-input" placeholder="Ej: Enfoque de derechos">
+                            <select id="select-cneb-enfoque" class="form-select"
+                                style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
+                            <input type="text" id="input-enfoque" class="form-input"
+                                placeholder="Ej: Enfoque de derechos">
                         </div>
                         <div class="form-group">
                             <label for="input-enfoque2" class="form-label">Enfoque Transversal 2</label>
-                            <select id="select-cneb-enfoque2" class="form-select" style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
-                            <input type="text" id="input-enfoque2" class="form-input" placeholder="Ej: Enfoque ambiental">
+                            <select id="select-cneb-enfoque2" class="form-select"
+                                style="margin-bottom: 6px; font-size: 0.8rem; background-color: rgba(0, 212, 255, 0.08); border-color: var(--border-accent);"></select>
+                            <input type="text" id="input-enfoque2" class="form-input"
+                                placeholder="Ej: Enfoque ambiental">
                         </div>
 
                         <!-- Separación -->
@@ -327,10 +352,12 @@
                                 </button>
                             </div>
                             <div class="form-actions-row">
-                                <button type="button" id="btn-export-json" class="btn btn-ghost btn-full btn-sm" title="Exportar sesión a archivo JSON">
+                                <button type="button" id="btn-export-json" class="btn btn-ghost btn-full btn-sm"
+                                    title="Exportar sesión a archivo JSON">
                                     <span class="icon">📥</span> Exportar JSON
                                 </button>
-                                <button type="button" id="btn-import-json" class="btn btn-ghost btn-full btn-sm" title="Importar sesión desde archivo JSON">
+                                <button type="button" id="btn-import-json" class="btn btn-ghost btn-full btn-sm"
+                                    title="Importar sesión desde archivo JSON">
                                     <span class="icon">📤</span> Importar JSON
                                 </button>
                             </div>
@@ -346,19 +373,26 @@
                         </div>
 
                         <!-- Galería de Logos -->
-                        <div class="logo-gallery-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                        <div class="logo-gallery-section"
+                            style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
                             <h3 class="saved-title">🖼️ Galería de Logos</h3>
                             <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                                 <input type="file" id="input-upload-logo" accept="image/*" class="hidden">
-                                <button type="button" id="btn-trigger-upload-logo" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.72rem; padding: 4px;">
+                                <button type="button" id="btn-trigger-upload-logo" class="btn btn-ghost btn-sm"
+                                    style="flex: 1; font-size: 0.72rem; padding: 4px;">
                                     📤 Subir Logo
                                 </button>
-                                <button type="button" id="btn-refresh-logos" class="btn btn-ghost btn-icon" style="min-width: 30px; min-height: 30px; font-size: 0.8rem; padding: 2px;" title="Actualizar lista">
+                                <button type="button" id="btn-refresh-logos" class="btn btn-ghost btn-icon"
+                                    style="min-width: 30px; min-height: 30px; font-size: 0.8rem; padding: 2px;"
+                                    title="Actualizar lista">
                                     🔄
                                 </button>
                             </div>
-                            <div id="logos-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 120px; overflow-y: auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid var(--border);">
-                                <span style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia sesión para ver logos</span>
+                            <div id="logos-container"
+                                style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 120px; overflow-y: auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid var(--border);">
+                                <span
+                                    style="grid-column: span 4; font-size: 0.7rem; text-align: center; color: var(--text-muted); padding: 4px;">Inicia
+                                    sesión para ver logos</span>
                             </div>
                         </div>
                     </div>
@@ -367,7 +401,7 @@
 
             <!-- ═══ PREVIEW AREA ═══ -->
             <section id="preview-area" class="preview-area">
-                
+
                 <!-- Empty State -->
                 <div id="empty-state" class="empty-state">
                     <div class="empty-icon">🚀</div>
@@ -446,11 +480,12 @@
                 </div>
                 <button id="btn-close-chatbot" class="btn-close-chat">✕</button>
             </div>
-            
+
             <div id="chatbot-messages" class="chatbot-messages">
                 <div class="chat-message bot">
                     <div class="message-bubble">
-                        ¡Hola! Soy tu asistente pedagógico de Space Lab. ¿En qué puedo ayudarte hoy con tus sesiones o el Currículo Nacional? 🇵🇪🚀
+                        ¡Hola! Soy tu asistente pedagógico de Space Lab. ¿En qué puedo ayudarte hoy con tus sesiones o
+                        el Currículo Nacional? 🇵🇪🚀
                     </div>
                 </div>
             </div>
@@ -466,52 +501,68 @@
 
     <!-- ═══════════ AUTH MODAL ═══════════ -->
     <div id="auth-modal" class="load-modal hidden">
-        <div class="load-modal-content glass-card" style="max-width: 400px; padding: 2.5rem; text-align: center; position: relative;">
-            <button id="btn-close-auth" class="btn btn-ghost btn-sm" style="position: absolute; top: 1rem; right: 1rem;">✕</button>
-            <div class="load-modal-header" style="justify-content: center; margin-bottom: 0.5rem; border-bottom: none; padding-bottom: 0;">
-                <h3 id="auth-title" style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+        <div class="load-modal-content glass-card"
+            style="max-width: 400px; padding: 2.5rem; text-align: center; position: relative;">
+            <button id="btn-close-auth" class="btn btn-ghost btn-sm"
+                style="position: absolute; top: 1rem; right: 1rem;">✕</button>
+            <div class="load-modal-header"
+                style="justify-content: center; margin-bottom: 0.5rem; border-bottom: none; padding-bottom: 0;">
+                <h3 id="auth-title"
+                    style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
                     Iniciar Sesión 🌌
                 </h3>
             </div>
-            <p id="auth-subtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.4;">
+            <p id="auth-subtitle"
+                style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.4;">
                 Ingresa con tu correo y contraseña para sincronizar tus sesiones en la nube.
             </p>
-            
+
             <form id="auth-form" autocomplete="off">
                 <!-- Apodo / Username (Solo Registro) -->
                 <div id="auth-group-username" class="form-group hidden" style="text-align: left; margin-bottom: 1rem;">
                     <label for="auth-username" class="form-label">Apodo / Nombre de Usuario</label>
-                    <input type="text" id="auth-username" class="form-select" placeholder="mi-apodo" style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="text" id="auth-username" class="form-select" placeholder="mi-apodo"
+                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
                 </div>
 
                 <!-- Correo Electrónico -->
                 <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
                     <label for="auth-email" class="form-label">Correo Electrónico</label>
-                    <input type="email" id="auth-email" class="form-select" placeholder="tu-correo@ejemplo.com" required style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="email" id="auth-email" class="form-select" placeholder="tu-correo@ejemplo.com" required
+                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
                 </div>
 
                 <!-- Contraseña -->
                 <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
                     <label for="auth-password" class="form-label">Contraseña</label>
-                    <input type="password" id="auth-password" class="form-select" placeholder="Mínimo 6 caracteres" required style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="password" id="auth-password" class="form-select" placeholder="Mínimo 6 caracteres"
+                        required
+                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
                 </div>
 
                 <!-- Confirmar Contraseña (Solo Registro) -->
-                <div id="auth-group-confirm-password" class="form-group hidden" style="text-align: left; margin-bottom: 1rem;">
+                <div id="auth-group-confirm-password" class="form-group hidden"
+                    style="text-align: left; margin-bottom: 1rem;">
                     <label for="auth-confirm-password" class="form-label">Confirmar Contraseña</label>
-                    <input type="password" id="auth-confirm-password" class="form-select" placeholder="Repite tu contraseña" style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
+                    <input type="password" id="auth-confirm-password" class="form-select"
+                        placeholder="Repite tu contraseña"
+                        style="width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px;">
                 </div>
 
                 <!-- Aceptación de Términos (Solo Registro) -->
-                <div id="auth-group-terms" class="form-group hidden" style="text-align: left; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 8px;">
+                <div id="auth-group-terms" class="form-group hidden"
+                    style="text-align: left; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 8px;">
                     <input type="checkbox" id="auth-terms" style="margin-top: 3px; cursor: pointer;">
-                    <label for="auth-terms" style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; cursor: pointer; user-select: none;">
-                        Acepto los <a href="#" style="color: var(--accent); text-decoration: underline;">Términos y Condiciones</a> y la Política de Privacidad de Space Lab.
+                    <label for="auth-terms"
+                        style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; cursor: pointer; user-select: none;">
+                        Acepto los <a href="#" style="color: var(--accent); text-decoration: underline;">Términos y
+                            Condiciones</a> y la Política de Privacidad de Space Lab.
                     </label>
                 </div>
 
                 <!-- Botón de Envío -->
-                <button type="submit" id="btn-submit-auth" class="btn btn-primary btn-full" style="padding: 0.8rem; margin-bottom: 1.25rem; width: 100%; font-weight: 600;">
+                <button type="submit" id="btn-submit-auth" class="btn btn-primary btn-full"
+                    style="padding: 0.8rem; margin-bottom: 1.25rem; width: 100%; font-weight: 600;">
                     Iniciar Sesión 🚪
                 </button>
             </form>
@@ -519,7 +570,9 @@
             <!-- Toggle de Modo -->
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
                 <span id="auth-toggle-text">¿No tienes una cuenta?</span>
-                <a href="#" id="auth-toggle-mode" style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 4px;">Créala aquí</a>
+                <a href="#" id="auth-toggle-mode"
+                    style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 4px;">Créala
+                    aquí</a>
             </p>
         </div>
     </div>
@@ -537,4 +590,5 @@
     <script src="js/chatbot.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>
