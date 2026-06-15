@@ -608,6 +608,18 @@ body {
     transform: translateY(-1px);
 }
 
+.btn-pdf {
+    background: linear-gradient(135deg, #ef4444, #be123c);
+    border-color: #ef4444;
+    color: #fff;
+    font-weight: 600;
+}
+
+.btn-pdf:hover {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
+    transform: translateY(-1px);
+}
+
 .btn-ghost {
     background: transparent;
     border-color: transparent;

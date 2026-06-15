@@ -31,6 +31,7 @@
         btnGenerateAI: $('#btn-generate-ai'),
         btnToggleEdit: $('#btn-toggle-edit'),
         btnPreview: $('#btn-preview'),
+        btnExportPdf: $('#btn-export-pdf'),
         btnPrint: $('#btn-print'),
         btnSave: $('#btn-save'),
         btnLoad: $('#btn-load'),
@@ -201,6 +202,7 @@
         // Action buttons
         DOM.btnToggleEdit.addEventListener('click', toggleEditMode);
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
+        DOM.btnExportPdf.addEventListener('click', handleExportPDF);
         DOM.btnPrint.addEventListener('click', handlePrint);
         DOM.btnSave.addEventListener('click', handleSave);
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
@@ -523,6 +525,53 @@
         saveCurrentState();
 
         window.print();
+    }
+
+    async function handleExportPDF() {
+        if (!AppState.currentSession) {
+            Toast.warning('Genera una sesión primero');
+            return;
+        }
+
+        // Save current state first
+        saveCurrentState();
+
+        Loader.show('Generando archivo PDF...');
+
+        try {
+            const element = DOM.sessionSheet;
+            
+            // Temporarily set editMode to false to clean up contenteditable outlines/focus rings
+            const wasEditMode = AppState.editMode;
+            if (wasEditMode) {
+                AppState.editMode = false;
+                enforceEditMode();
+            }
+
+            const opt = {
+                margin:       [12, 10, 12, 10], // top, left, bottom, right in mm
+                filename:     `Sesion_${AppState.currentSession.metadata?.titulo || 'aprendizaje'}.pdf`.replace(/[\s/]+/g, '_'),
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Run html2pdf
+            await html2pdf().set(opt).from(element).save();
+            
+            // Restore edit mode if it was active
+            if (wasEditMode) {
+                AppState.editMode = true;
+                enforceEditMode();
+            }
+
+            Loader.hide();
+            Toast.success('PDF exportado y descargado con éxito');
+        } catch (error) {
+            console.error('[PDF] Error exporting PDF:', error);
+            Loader.hide();
+            Toast.error('Error al exportar a PDF: ' + error.message);
+        }
     }
 
     // ═══════════════════════════════════════

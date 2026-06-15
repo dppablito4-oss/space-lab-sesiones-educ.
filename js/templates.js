@@ -297,8 +297,6 @@ const Templates = (() => {
             </table>
 
             <!-- ════════ MOMENTOS DE LA SESIÓN ════════ -->
-            <div class="page-break-before"></div>
-
             <table class="momentos-table">
                 <thead>
                     <tr>
@@ -324,7 +322,7 @@ const Templates = (() => {
                         <td class="momento-content-cell" ${ce}>
                             ${inicioContent}
                         </td>
-                        <td class="eval-column-cell" rowspan="3">
+                        <td class="eval-column-cell">
                             <div class="eval-vertical-text">E V A L U A C I Ó N</div>
                         </td>
                     </tr>
@@ -342,6 +340,9 @@ const Templates = (() => {
                         <td class="momento-content-cell" ${ce}>
                             ${desarrolloContent}
                         </td>
+                        <td class="eval-column-cell">
+                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                        </td>
                     </tr>
 
                     <!-- CIERRE -->
@@ -357,6 +358,9 @@ const Templates = (() => {
                         </td>
                         <td class="momento-content-cell" ${ce}>
                             ${cierreContent}
+                        </td>
+                        <td class="eval-column-cell">
+                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
                         </td>
                     </tr>
                 </tbody>

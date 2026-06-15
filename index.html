@@ -75,6 +75,10 @@
                     <span class="icon">👁️</span>
                     <span class="btn-label">Vista Previa</span>
                 </button>
+                <button id="btn-export-pdf" class="btn btn-pdf" title="Exportar sesión a PDF">
+                    <span class="icon">📄</span>
+                    <span class="btn-label">Exportar PDF</span>
+                </button>
                 <button id="btn-print" class="btn btn-primary" title="Imprimir sesión">
                     <span class="icon">🖨️</span>
                     <span class="btn-label">Imprimir</span>
@@ -175,7 +179,7 @@
                         <!-- Botón principal de IA -->
                         <div style="margin-top: 1.5rem;">
                             <button type="button" id="btn-generate-ai" class="btn btn-accent btn-full">
-                                <span class="icon">🤖</span> Generar con IA
+                                <span class="icon">🧠</span> Generar con IA
                             </button>
                         </div>
                     </div>
@@ -588,6 +592,7 @@
     <script src="js/templates.js"></script>
     <script src="js/ai-copilot.js"></script>
     <script src="js/chatbot.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 
