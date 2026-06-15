@@ -290,6 +290,78 @@ body {
     color: var(--text-primary);
 }
 
+/* ─── SIDEBAR TABS ─── */
+.sidebar-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    margin-bottom: 0px;
+}
+
+.sidebar-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: var(--space-sm) var(--space-xs);
+    font-family: var(--font);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.sidebar-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.sidebar-tab.active {
+    color: var(--accent);
+    background: rgba(0, 212, 255, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.15);
+}
+
+.sidebar-tab .tab-icon {
+    font-size: 1.1rem;
+}
+
+.sidebar-tab .tab-text {
+    font-size: 0.72rem;
+}
+
+/* Tab Content Panes */
+.tab-pane {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-md);
+    animation: tabFadeIn 0.25s ease-out;
+}
+
+.tab-pane.active {
+    display: flex;
+}
+
+@keyframes tabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* ─── FORM STYLES ─── */
 .session-form {
     display: flex;

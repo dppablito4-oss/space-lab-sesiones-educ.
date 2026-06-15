@@ -180,6 +180,20 @@
     // ═══════════════════════════════════════
 
     function bindEvents() {
+        // Sidebar tabs switcher
+        const tabs = $$('.sidebar-tab');
+        const panes = $$('.tab-pane');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTabId = tab.dataset.tab;
+                tabs.forEach(t => t.classList.remove('active'));
+                panes.forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                const targetPane = $(`#${targetTabId}`);
+                if (targetPane) targetPane.classList.add('active');
+            });
+        });
+
         // Generate buttons
         DOM.btnGenerate.addEventListener('click', handleGenerate);
         DOM.btnGenerateAI.addEventListener('click', handleGenerateAI);
@@ -362,8 +376,8 @@
         const formData = getFormData();
 
         // Validate minimum data
-        if (!formData.metadata.area && !formData.metadata.titulo) {
-            Toast.warning('Llena al menos el Área Curricular o el Título de la sesión');
+        if (!AppState.sourceFileData && !formData.metadata.area && !formData.metadata.titulo) {
+            Toast.warning('Llena al menos el Área Curricular, el Título de la sesión o sube un archivo de referencia.');
             return;
         }
 
