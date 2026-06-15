@@ -501,10 +501,94 @@
                 <div id="print-preview" class="print-preview hidden">
                     <!-- Session Preview Mode Toggle -->
                     <div class="preview-toolbar no-print">
-                        <span class="preview-badge" id="edit-mode-badge">✏️ Modo Edición</span>
-                        <button id="btn-clean-format" class="btn btn-ghost btn-sm" title="Limpiar formato pegado">
-                            <span class="icon">🧹</span> Limpiar Formato
-                        </button>
+                        <!-- Group 1: Text Editor (Word Style) -->
+                        <div class="toolbar-group">
+                            <button type="button" id="btn-format-bold" class="btn btn-ghost btn-xs toolbar-btn" style="font-weight: 800;" title="Negrita (Ctrl+B)">B</button>
+                            <button type="button" id="btn-format-italic" class="btn btn-ghost btn-xs toolbar-btn" style="font-style: italic;" title="Cursiva (Ctrl+I)">I</button>
+                            <button type="button" id="btn-format-underline" class="btn btn-ghost btn-xs toolbar-btn" style="text-decoration: underline;" title="Subrayado (Ctrl+U)">U</button>
+                            <div class="toolbar-divider" style="margin: 0 2px; height: 18px; align-self: center;"></div>
+                            <button type="button" id="btn-format-list-bullet" class="btn btn-ghost btn-xs toolbar-btn" title="Lista de viñetas">• ☰</button>
+                            <button type="button" id="btn-format-list-number" class="btn btn-ghost btn-xs toolbar-btn" title="Lista numerada">1. ☰</button>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="toolbar-divider"></div>
+
+                        <!-- Group 2: Document Customization -->
+                        <div class="toolbar-group">
+                            <div class="toolbar-item">
+                                <label for="ribbon-font-size" class="toolbar-sublabel">Letra</label>
+                                <select id="ribbon-font-size" class="form-select select-sm toolbar-select" style="width: 80px;">
+                                    <option value="8pt">8pt</option>
+                                    <option value="9pt">9pt</option>
+                                    <option value="10pt">10pt</option>
+                                    <option value="11pt">11pt</option>
+                                    <option value="12pt">12pt</option>
+                                </select>
+                            </div>
+                            <div class="toolbar-item">
+                                <label for="ribbon-padding" class="toolbar-sublabel">Padding</label>
+                                <select id="ribbon-padding" class="form-select select-sm toolbar-select" style="width: 95px;">
+                                    <option value="2px 4px">Compacto</option>
+                                    <option value="4px 6px">Estándar</option>
+                                    <option value="6px 8px">Amplio</option>
+                                    <option value="8px 10px">Espacioso</option>
+                                </select>
+                            </div>
+                            <div class="toolbar-item">
+                                <label for="ribbon-line-height" class="toolbar-sublabel">Interlineado</label>
+                                <select id="ribbon-line-height" class="form-select select-sm toolbar-select" style="width: 70px;">
+                                    <option value="1.2">1.2</option>
+                                    <option value="1.3">1.3</option>
+                                    <option value="1.4">1.4</option>
+                                    <option value="1.5">1.5</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="toolbar-divider"></div>
+
+                        <!-- Group 3: Table Borders -->
+                        <div class="toolbar-group">
+                            <div class="toolbar-item" style="flex-direction: row; gap: 4px; align-items: center; height: 100%;">
+                                <label for="ribbon-theme-color" class="toolbar-sublabel">Borde</label>
+                                <input type="color" id="ribbon-theme-color" class="toolbar-color" value="#000000" title="Color de borde">
+                            </div>
+                            <div class="toolbar-item" style="margin-left: 6px;">
+                                <label for="ribbon-header-bg" class="toolbar-sublabel">Fondo Momentos</label>
+                                <select id="ribbon-header-bg" class="form-select select-sm toolbar-select" style="width: 105px;">
+                                    <option value="#f1f5f9">Gris</option>
+                                    <option value="#e0f2fe">Azul</option>
+                                    <option value="#dcfce7">Verde</option>
+                                    <option value="#fee2e2">Rojo</option>
+                                    <option value="#fef3c7">Amarillo</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="toolbar-divider"></div>
+
+                        <!-- Group 4: Insert / Logos -->
+                        <div class="toolbar-group">
+                            <div class="toolbar-item">
+                                <label class="toolbar-sublabel">Insertar Logo</label>
+                                <div class="btn-group" style="display: flex; gap: 4px;">
+                                    <button type="button" id="btn-ribbon-logo-left" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Cambiar Logo Izquierdo (Escudo)">👈 Izq</button>
+                                    <button type="button" id="btn-ribbon-logo-right" class="btn btn-ghost btn-sm toolbar-btn" style="height: 28px; min-height: 28px; padding: 2px 8px !important;" title="Cambiar Logo Derecho (Regional)">Der 👉</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="toolbar-divider"></div>
+
+                        <!-- Group 5: Actions -->
+                        <div class="toolbar-group toolbar-group-actions" style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+                            <span class="preview-badge" id="edit-mode-badge">✏️ Modo Edición</span>
+                            <button id="btn-clean-format" class="btn btn-ghost btn-sm toolbar-btn" style="width: 32px; height: 32px; padding: 0 !important;" title="Limpiar formato pegado">🧹</button>
+                        </div>
                     </div>
 
                     <!-- The actual A4 sheet -->

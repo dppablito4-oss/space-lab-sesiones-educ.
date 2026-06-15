@@ -87,6 +87,14 @@
         designPadding: $('#select-design-padding'),
         designLineHeight: $('#select-design-line-height'),
         designHeaderBg: $('#select-design-header-bg'),
+        // Ribbon customizer controls
+        ribbonColor: $('#ribbon-theme-color'),
+        ribbonFontSize: $('#ribbon-font-size'),
+        ribbonPadding: $('#ribbon-padding'),
+        ribbonLineHeight: $('#ribbon-line-height'),
+        ribbonHeaderBg: $('#ribbon-header-bg'),
+        btnRibbonLogoLeft: $('#btn-ribbon-logo-left'),
+        btnRibbonLogoRight: $('#btn-ribbon-logo-right'),
         // Source File Upload
         inputSourceFile: $('#input-source-file'),
         sourceFileDropzone: $('#source-file-dropzone'),
@@ -254,40 +262,193 @@
         DOM.inputUploadLogo.addEventListener('change', handleUploadLogo);
         DOM.btnRefreshLogos.addEventListener('click', loadLogosGallery);
 
-        // Design customizer controls events
+        // Design customizer controls events (Sidebar)
         DOM.designColor.addEventListener('input', (e) => {
-            DOM.designColorHex.value = e.target.value;
-            applyDesignStyles();
+            applyDesignStyles({
+                themeColor: e.target.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
+            });
             saveCurrentState();
         });
 
         DOM.designColorHex.addEventListener('input', (e) => {
             if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
-                DOM.designColor.value = e.target.value;
-                applyDesignStyles();
+                applyDesignStyles({
+                    themeColor: e.target.value,
+                    fontSize: DOM.designFontSize.value,
+                    padding: DOM.designPadding.value,
+                    lineHeight: DOM.designLineHeight.value,
+                    headerBg: DOM.designHeaderBg.value
+                });
                 saveCurrentState();
             }
         });
 
-        DOM.designFontSize.addEventListener('change', () => {
-            applyDesignStyles();
+        DOM.designFontSize.addEventListener('change', (e) => {
+            applyDesignStyles({
+                themeColor: DOM.designColor.value,
+                fontSize: e.target.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
+            });
             saveCurrentState();
         });
 
-        DOM.designPadding.addEventListener('change', () => {
-            applyDesignStyles();
+        DOM.designPadding.addEventListener('change', (e) => {
+            applyDesignStyles({
+                themeColor: DOM.designColor.value,
+                fontSize: DOM.designFontSize.value,
+                padding: e.target.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
+            });
             saveCurrentState();
         });
 
-        DOM.designLineHeight.addEventListener('change', () => {
-            applyDesignStyles();
+        DOM.designLineHeight.addEventListener('change', (e) => {
+            applyDesignStyles({
+                themeColor: DOM.designColor.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: e.target.value,
+                headerBg: DOM.designHeaderBg.value
+            });
             saveCurrentState();
         });
 
-        DOM.designHeaderBg.addEventListener('change', () => {
-            applyDesignStyles();
+        DOM.designHeaderBg.addEventListener('change', (e) => {
+            applyDesignStyles({
+                themeColor: DOM.designColor.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: e.target.value
+            });
             saveCurrentState();
         });
+
+        // Design customizer controls events (Ribbon)
+        if (DOM.ribbonColor) {
+            DOM.ribbonColor.addEventListener('input', (e) => {
+                applyDesignStyles({
+                    themeColor: e.target.value,
+                    fontSize: DOM.designFontSize.value,
+                    padding: DOM.designPadding.value,
+                    lineHeight: DOM.designLineHeight.value,
+                    headerBg: DOM.designHeaderBg.value
+                });
+                saveCurrentState();
+            });
+        }
+
+        if (DOM.ribbonFontSize) {
+            DOM.ribbonFontSize.addEventListener('change', (e) => {
+                applyDesignStyles({
+                    themeColor: DOM.designColor.value,
+                    fontSize: e.target.value,
+                    padding: DOM.designPadding.value,
+                    lineHeight: DOM.designLineHeight.value,
+                    headerBg: DOM.designHeaderBg.value
+                });
+                saveCurrentState();
+            });
+        }
+
+        if (DOM.ribbonPadding) {
+            DOM.ribbonPadding.addEventListener('change', (e) => {
+                applyDesignStyles({
+                    themeColor: DOM.designColor.value,
+                    fontSize: DOM.designFontSize.value,
+                    padding: e.target.value,
+                    lineHeight: DOM.designLineHeight.value,
+                    headerBg: DOM.designHeaderBg.value
+                });
+                saveCurrentState();
+            });
+        }
+
+        if (DOM.ribbonLineHeight) {
+            DOM.ribbonLineHeight.addEventListener('change', (e) => {
+                applyDesignStyles({
+                    themeColor: DOM.designColor.value,
+                    fontSize: DOM.designFontSize.value,
+                    padding: DOM.designPadding.value,
+                    lineHeight: e.target.value,
+                    headerBg: DOM.designHeaderBg.value
+                });
+                saveCurrentState();
+            });
+        }
+
+        if (DOM.ribbonHeaderBg) {
+            DOM.ribbonHeaderBg.addEventListener('change', (e) => {
+                applyDesignStyles({
+                    themeColor: DOM.designColor.value,
+                    fontSize: DOM.designFontSize.value,
+                    padding: DOM.designPadding.value,
+                    lineHeight: DOM.designLineHeight.value,
+                    headerBg: e.target.value
+                });
+                saveCurrentState();
+            });
+        }
+
+        // Text formatting command triggers (Word Style)
+        const formatBtnBold = document.getElementById('btn-format-bold');
+        if (formatBtnBold) {
+            formatBtnBold.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('bold', false, null);
+            });
+        }
+        const formatBtnItalic = document.getElementById('btn-format-italic');
+        if (formatBtnItalic) {
+            formatBtnItalic.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('italic', false, null);
+            });
+        }
+        const formatBtnUnderline = document.getElementById('btn-format-underline');
+        if (formatBtnUnderline) {
+            formatBtnUnderline.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('underline', false, null);
+            });
+        }
+        const formatBtnListBullet = document.getElementById('btn-format-list-bullet');
+        if (formatBtnListBullet) {
+            formatBtnListBullet.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('insertUnorderedList', false, null);
+            });
+        }
+        const formatBtnListNumber = document.getElementById('btn-format-list-number');
+        if (formatBtnListNumber) {
+            formatBtnListNumber.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('insertOrderedList', false, null);
+            });
+        }
+
+        // Ribbon Logo triggers
+        if (DOM.btnRibbonLogoLeft) {
+            DOM.btnRibbonLogoLeft.addEventListener('click', (e) => {
+                e.preventDefault();
+                const logoImg = document.getElementById('header-logo-left');
+                if (logoImg) logoImg.click();
+            });
+        }
+        if (DOM.btnRibbonLogoRight) {
+            DOM.btnRibbonLogoRight.addEventListener('click', (e) => {
+                e.preventDefault();
+                const logoImg = document.getElementById('header-logo-regional');
+                if (logoImg) logoImg.click();
+            });
+        }
 
         // Click on logo images inside document to change them
         DOM.sessionSheet.addEventListener('click', async (e) => {
@@ -1420,6 +1581,21 @@
             lineHeight: DOM.designLineHeight.value,
             headerBg: DOM.designHeaderBg.value
         };
+
+        // Sync Sidebar inputs
+        DOM.designColor.value = d.themeColor || '#000000';
+        DOM.designColorHex.value = d.themeColor || '#000000';
+        DOM.designFontSize.value = d.fontSize || '10pt';
+        DOM.designPadding.value = d.padding || '4px 6px';
+        DOM.designLineHeight.value = d.lineHeight || '1.4';
+        DOM.designHeaderBg.value = d.headerBg || '#f1f5f9';
+
+        // Sync Ribbon inputs
+        if (DOM.ribbonColor) DOM.ribbonColor.value = d.themeColor || '#000000';
+        if (DOM.ribbonFontSize) DOM.ribbonFontSize.value = d.fontSize || '10pt';
+        if (DOM.ribbonPadding) DOM.ribbonPadding.value = d.padding || '4px 6px';
+        if (DOM.ribbonLineHeight) DOM.ribbonLineHeight.value = d.lineHeight || '1.4';
+        if (DOM.ribbonHeaderBg) DOM.ribbonHeaderBg.value = d.headerBg || '#f1f5f9';
 
         sheet.style.setProperty('--theme-border-color', d.themeColor || '#000000');
         sheet.style.setProperty('--session-font-size', d.fontSize || '10pt');
