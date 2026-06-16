@@ -559,16 +559,20 @@ Grado: ${grado || 'General'}`;
         return result.trim().replace(/^```html|```$/g, '');
     }
 
-    /**
-     * Improve/Correct text selection.
-     */
-    async function improveText(text, mode) {
-        const isCorrectMode = mode === 'correct';
-        const systemPrompt = isCorrectMode 
-            ? `Corrige los errores ortográficos, gramaticales y de puntuación del texto de manera exacta, sin cambiar la estructura o el significado original. Devuelve únicamente el texto corregido sin explicaciones ni comentarios adicionales.`
-            : `Eres un redactor experto y asesor pedagógico del Currículo Nacional. Mejora la redacción técnica, ortografía y estilo del texto pedagógico proporcionado, haciéndolo más formal, claro y profesional. Devuelve únicamente el texto mejorado final sin introducciones, comentarios ni explicaciones adicionales.`;
+    async function improveText(text, instruction) {
+        const systemPrompt = `Eres un asesor pedagógico y experto redactor del Currículo Nacional del Perú. Tu tarea es reescribir y refinar el fragmento de texto de la sesión de aprendizaje proporcionado por el docente, basándote ESTRICTAMENTE en la instrucción de estilo indicada.
+        
+REGLAS CRÍTICAS:
+1. Aplica la instrucción de refinamiento al texto de forma precisa.
+2. Devuelve ÚNICAMENTE el texto procesado resultante.
+3. NO agregues introducciones, preámbulos, explicaciones, notas, comentarios de autor ni comillas de apertura/cierre.
+4. Respeta y conserva el marcado HTML básico si el texto original lo contiene (como <strong>, <br>, <li>, <ul>).`;
 
-        const userPrompt = `Texto a procesar: "${text}"`;
+        const userPrompt = `Texto original:
+"${text}"
+
+Instrucción de refinamiento:
+${instruction}`;
 
         const result = await runPrompt(systemPrompt, userPrompt);
         return result.trim();

@@ -237,6 +237,8 @@
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
         DOM.btnExportPdf.addEventListener('click', handleExportPDF);
         
+        // Word export listeners removed (can be restored if needed in the future)
+        /*
         const btnExportWord = document.getElementById('btn-export-word');
         if (btnExportWord) {
             btnExportWord.addEventListener('click', handleExportWord);
@@ -245,6 +247,7 @@
         if (btnExportWordPreview) {
             btnExportWordPreview.addEventListener('click', handleExportWord);
         }
+        */
         
         const btnAiRubrica = document.getElementById('btn-ai-rubrica');
         if (btnAiRubrica) {
@@ -587,6 +590,9 @@
 
         // Logos Gallery Modal listeners
         initLogosGalleryModal();
+
+        // Refine text modal listeners
+        initRefineTextModal();
     }
 
     // ═══════════════════════════════════════
@@ -1309,11 +1315,11 @@
         }
     }
 
-    async function handleAiImproveText(mode = 'improve') {
+    async function handleAiImproveText() {
         // Intercept: Check user authentication
         const user = await SupabaseClient.getCurrentUser();
         if (!user) {
-            Toast.warning('Debes crear una cuenta para mejorar redacción con IA');
+            Toast.warning('Debes crear una cuenta para refinar texto con IA');
             if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
                 window.AuthUi.openRegister();
             }
@@ -1336,41 +1342,27 @@
             return;
         }
 
-        Loader.show('🤖 Refinando redacción con IA...');
+        // Store selection range and text globally in AppState
+        AppState.selectionRange = selection.getRangeAt(0).cloneRange();
+        AppState.selectedText = selectedText;
 
-        try {
-            const resultText = await AiCopilot.improveText(selectedText, mode);
+        // Open Refine Text Modal
+        const modal = document.getElementById('refine-text-modal');
+        const preview = document.getElementById('refine-text-preview');
+        const customInput = document.getElementById('input-refine-custom');
+        const optBtns = document.querySelectorAll('.refine-opt-btn');
+
+        if (modal) {
+            if (preview) preview.textContent = selectedText;
+            if (customInput) customInput.value = '';
             
-            // Replace text inside current selection range
-            const sel = window.getSelection();
-            if (sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0);
-                range.deleteContents();
-                
-                // If the text has basic formatting, we insert it
-                const container = document.createElement('span');
-                container.innerHTML = resultText;
-                
-                // Insert node and select it
-                range.insertNode(container);
-                
-                // Unify range selection
-                sel.removeAllRanges();
-                const newRange = document.createRange();
-                newRange.selectNode(container);
-                sel.addRange(newRange);
+            // Set first option active by default
+            optBtns.forEach((btn, index) => {
+                if (index === 0) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
 
-                saveCurrentState();
-                checkTimeBalance();
-                Loader.hide();
-                Toast.success('✨ Redacción técnica mejorada con éxito');
-            } else {
-                Loader.hide();
-                Toast.warning('Se perdió la selección de texto. Inténtalo de nuevo.');
-            }
-        } catch (error) {
-            Loader.hide();
-            Toast.error('Error al mejorar redacción: ' + error.message);
+            modal.classList.remove('hidden');
         }
     }
 
@@ -3462,6 +3454,105 @@
             modalFileInput.addEventListener('change', async (e) => {
                 if (e.target.files && e.target.files.length > 0) {
                     await handleModalLogoUpload(e.target.files[0]);
+                }
+            });
+        }
+    }
+
+    function initRefineTextModal() {
+        const modal = document.getElementById('refine-text-modal');
+        if (!modal) return;
+
+        const closeBtn = document.getElementById('btn-close-refine-modal');
+        const cancelBtn = document.getElementById('btn-refine-cancel');
+        const submitBtn = document.getElementById('btn-refine-submit');
+        const customInput = document.getElementById('input-refine-custom');
+        const optBtns = document.querySelectorAll('.refine-opt-btn');
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            AppState.selectionRange = null;
+            AppState.selectedText = '';
+        };
+
+        [closeBtn, cancelBtn].forEach(btn => {
+            if (btn) btn.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        optBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                optBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (customInput) customInput.value = '';
+            });
+        });
+
+        if (customInput) {
+            customInput.addEventListener('focus', () => {
+                optBtns.forEach(b => b.classList.remove('active'));
+            });
+        }
+
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async () => {
+                const range = AppState.selectionRange;
+                const text = AppState.selectedText;
+
+                if (!text || !range) {
+                    Toast.warning('Se perdió la selección del texto original.');
+                    closeModal();
+                    return;
+                }
+
+                let instruction = '';
+                const customText = customInput ? customInput.value.trim() : '';
+                if (customText) {
+                    instruction = customText;
+                } else {
+                    const activeOpt = document.querySelector('.refine-opt-btn.active');
+                    if (activeOpt) {
+                        instruction = activeOpt.dataset.instruction;
+                    } else {
+                        Toast.warning('Por favor selecciona una opción o escribe una instrucción.');
+                        return;
+                    }
+                }
+
+                closeModal();
+                Loader.show('🤖 Refinando redacción con IA...');
+
+                try {
+                    const resultText = await AiCopilot.improveText(text, instruction);
+                    
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    
+                    range.deleteContents();
+                    
+                    const container = document.createElement('span');
+                    container.innerHTML = resultText;
+                    range.insertNode(container);
+                    
+                    sel.removeAllRanges();
+                    const newRange = document.createRange();
+                    newRange.selectNode(container);
+                    sel.addRange(newRange);
+
+                    saveCurrentState();
+                    checkTimeBalance();
+                    Loader.hide();
+                    Toast.success('✨ Texto refinado correctamente por la IA');
+                } catch (error) {
+                    Loader.hide();
+                    console.error('[AI Refinement] Error:', error);
+                    Toast.error('Error al refinar texto: ' + error.message);
                 }
             });
         }

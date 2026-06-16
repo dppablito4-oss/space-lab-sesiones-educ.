@@ -2289,4 +2289,29 @@ body {
     transform: scale(1.3);
 }
 
+/* ════════════ REFINE TEXT OPTIONS ════════════ */
+.refine-opt-btn {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    background: rgba(255,255,255,0.02) !important;
+    color: #a1a1aa !important;
+    font-size: 0.78rem !important;
+    padding: 8px 12px !important;
+    transition: all 0.2s !important;
+}
+
+.refine-opt-btn:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,0.15) !important;
+}
+
+.refine-opt-btn.active {
+    background: rgba(0, 210, 255, 0.12) !important;
+    border-color: #00d2ff !important;
+    color: #00d2ff !important;
+    font-weight: 600 !important;
+}
+
 
