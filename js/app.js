@@ -241,6 +241,10 @@
         if (btnExportWord) {
             btnExportWord.addEventListener('click', handleExportWord);
         }
+        const btnExportWordPreview = document.getElementById('btn-export-word-preview');
+        if (btnExportWordPreview) {
+            btnExportWordPreview.addEventListener('click', handleExportWord);
+        }
         
         const btnAiRubrica = document.getElementById('btn-ai-rubrica');
         if (btnAiRubrica) {
@@ -961,18 +965,73 @@
         }
 
         const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
-        const filename = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.doc`;
+        const filename = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.docx`;
 
-        Loader.show('📝 Generando archivo de Word...');
+        Loader.show('📝 Generando archivo de Word (.docx)...');
 
         try {
             // Save before exporting
             saveCurrentState();
 
-            // Get sheet content
-            const content = DOM.sessionSheet.innerHTML;
+            // Clone the session sheet to clean up
+            const clone = DOM.sessionSheet.cloneNode(true);
             
-            // Get styles
+            // Remove no-print and resize handle elements
+            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
+            noPrintElements.forEach(el => el.remove());
+
+            // Convert images in the clone to base64 to ensure they embed in the docx
+            const images = clone.querySelectorAll('img');
+            
+            function urlToBase64(url) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    img.onload = function() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth || img.width;
+                            canvas.height = img.naturalHeight || img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                        } catch (e) {
+                            reject(e);
+                        }
+                    };
+                    img.onerror = function(err) {
+                        reject(err);
+                    };
+                    
+                    // Break cache for CORS if needed, but not for dataURIs
+                    if (url.startsWith('data:')) {
+                        resolve(url);
+                        return;
+                    }
+                    
+                    if (url.indexOf('?') === -1) {
+                        img.src = url + '?t=' + Date.now();
+                    } else {
+                        img.src = url + '&t=' + Date.now();
+                    }
+                });
+            }
+
+            for (let img of images) {
+                if (img.src) {
+                    try {
+                        const base64 = await urlToBase64(img.src);
+                        img.src = base64;
+                    } catch (e) {
+                        console.warn('Could not convert image to base64 for Word export:', img.src, e);
+                        // Fallback: keep original URL
+                    }
+                }
+            }
+
+            const cleanHtml = clone.innerHTML;
+            
+            // Get current styles from sheets to embed in docx
             let styles = '';
             const styleSheets = document.styleSheets;
             for (let i = 0; i < styleSheets.length; i++) {
@@ -988,32 +1047,24 @@
                 }
             }
 
-            // Fallback default custom styles to ensure design properties are embedded
+            // Fallback design properties
             const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
             const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
             const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
             
             const htmlContent = `
-                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                <!DOCTYPE html>
+                <html>
                 <head>
                     <meta charset="utf-8">
                     <title>${titulo}</title>
                     <style>
-                        @page Section1 {
-                            size: 595.3pt 841.9pt; /* A4 size */
-                            margin: 1.0in 1.0in 1.0in 1.0in;
-                            mso-header-margin: .5in;
-                            mso-footer-margin: .5in;
-                            mso-paper-source: 0;
-                        }
-                        div.Section1 {
-                            page: Section1;
-                        }
                         body {
                             font-family: ${activeFont};
                             font-size: ${activeSize};
                             color: #000000;
                             background-color: #ffffff;
+                            margin: 1in;
                         }
                         table {
                             border-collapse: collapse;
@@ -1026,20 +1077,71 @@
                             font-size: 9.5pt;
                             vertical-align: top;
                         }
-                        /* Embed general app styles */
+                        th {
+                            background-color: #f1f5f9;
+                            font-weight: bold;
+                        }
+                        .session-title-bar-official {
+                            text-align: center;
+                            font-size: 13pt;
+                            font-weight: bold;
+                            margin-top: 10px;
+                            margin-bottom: 10px;
+                            text-transform: uppercase;
+                        }
+                        .subsection-title-bar {
+                            background-color: #e2e8f0;
+                            font-weight: bold;
+                            font-size: 9.5pt;
+                            padding: 4px 6px;
+                            margin-top: 15px;
+                            margin-bottom: 6px;
+                            border-left: 4px solid #000000;
+                            text-transform: uppercase;
+                        }
+                        .subsection-content-box {
+                            border: 1px solid #000000;
+                            padding: 8px;
+                            margin-bottom: 10px;
+                            font-size: 9pt;
+                        }
+                        .official-logo-cell {
+                            border: none !important;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                        .cell-peru {
+                            background-color: #c0392b !important;
+                            color: #ffffff !important;
+                            text-align: center;
+                        }
+                        .cell-minedu {
+                            background-color: #2c3e50 !important;
+                            color: #ffffff !important;
+                            text-align: center;
+                        }
+                        .cell-dre, .cell-ugel, .cell-agp {
+                            background-color: #7f8c8d !important;
+                            color: #ffffff !important;
+                            text-align: center;
+                        }
+                        /* General application print styles */
                         ${styles}
                     </style>
                 </head>
                 <body>
-                    <div class="Section1">
-                        ${content}
-                    </div>
+                    ${cleanHtml}
                 </body>
                 </html>
             `;
 
-            const blob = new Blob(['\ufeff' + htmlContent], {
-                type: 'application/msword;charset=utf-8'
+            if (typeof htmlDocx === 'undefined') {
+                throw new Error('La librería de conversión html-docx-js no se cargó correctamente.');
+            }
+
+            const blob = htmlDocx.asBlob(htmlContent, {
+                orientation: 'portrait',
+                margins: { top: 720, right: 720, bottom: 720, left: 720 }
             });
 
             const url = URL.createObjectURL(blob);
@@ -1052,8 +1154,9 @@
             URL.revokeObjectURL(url);
 
             Loader.hide();
-            Toast.success('¡Archivo de Word (.doc) descargado con éxito!');
+            Toast.success('¡Sesión exportada a Word (.docx) correctamente!');
         } catch (error) {
+            console.error('[Word Export] Error:', error);
             Loader.hide();
             Toast.error('Error al exportar a Word: ' + error.message);
         }
