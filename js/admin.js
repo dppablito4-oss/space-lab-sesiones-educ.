@@ -199,7 +199,11 @@
                         <td><strong>${escHTML(s.titulo || 'Sin Título')}</strong></td>
                         <td>${formatDate(s.last_saved)}</td>
                         <td>
-                            <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}">👁️ Ver JSON</button>
+                            <div style="display: flex; gap: 4px; justify-content: center;">
+                                <button class="btn btn-ghost btn-sm btn-preview" data-id="${s.id}" title="Previsualizar Sesión">👁️ Previsualizar</button>
+                                <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}" title="Ver JSON de la sesión">📦 JSON</button>
+                                <button class="btn btn-danger-ghost btn-sm btn-delete-session" data-id="${s.id}" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" title="Eliminar Sesión">🗑️ Eliminar</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -216,9 +220,130 @@
                 });
             });
 
+            // Vincular evento de previsualización
+            tbody.querySelectorAll('.btn-preview').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const session = sessions.find(s => s.id === id);
+                    if (session) {
+                        previewSessionHtml(session);
+                    }
+                });
+            });
+
+            // Vincular evento de eliminación
+            tbody.querySelectorAll('.btn-delete-session').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    deleteServerSession(id);
+                });
+            });
+
         } catch (e) {
             Toast.error('Error al cargar sesiones: ' + e.message);
             tbody.innerHTML = '<tr><td colspan="6" class="table-empty" style="color: var(--danger);">Error al cargar sesiones</td></tr>';
+        }
+    }
+
+    // Previsualizar la sesión en HTML con estilos e iframe aislado
+    function previewSessionHtml(session) {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.style.zIndex = '1000';
+        
+        overlay.innerHTML = `
+            <div class="glass-card" style="width: 95%; max-width: 900px; height: 90vh; padding: 1.5rem; display: flex; flex-direction: column; position: relative; gap: 1rem;">
+                <button id="btn-close-preview" class="btn btn-ghost btn-sm" style="position: absolute; top: 1rem; right: 1rem;">✕</button>
+                <h3 style="margin-top: 0; margin-bottom: 0;">Previsualización de Sesión: ${escHTML(session.titulo || 'Sin Título')}</h3>
+                
+                <div style="flex: 1; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; background: #ffffff;">
+                    <iframe id="preview-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.8rem; color: #a1a1aa;">Docente: ${escHTML(session.user_id)}</span>
+                    <button id="btn-print-preview" class="btn btn-primary">Imprimir / Guardar PDF 🖨️</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const iframe = overlay.querySelector('#preview-iframe');
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>${escHTML(session.titulo || 'Sesión de Aprendizaje')}</title>
+                <link rel="stylesheet" href="css/style.css">
+                <link rel="stylesheet" href="css/print.css" media="print">
+                <style>
+                    body {
+                        background: #f1f5f9;
+                        padding: 20px;
+                        display: flex;
+                        justify-content: center;
+                        font-family: Arial, sans-serif;
+                    }
+                    .session-sheet {
+                        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+                        background-color: #ffffff;
+                        width: 100%;
+                        max-width: 800px;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="session-sheet" style="--theme-border-color: ${session.session_data?.design?.themeColor || '#000000'}; --session-font-family: ${session.session_data?.design?.fontFamily || 'Arial, sans-serif'}; --session-font-size: ${session.session_data?.design?.fontSize || '10pt'}; --session-cell-padding: ${session.session_data?.design?.padding || '4px 6px'}; --session-line-height: ${session.session_data?.design?.lineHeight || '1.4'}; --theme-label-bg: ${session.session_data?.design?.headerBg || '#f1f5f9'};">
+                    ${session.htmlContent || '<h3>No hay contenido HTML guardado para esta sesión</h3>'}
+                </div>
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        const close = () => document.body.removeChild(overlay);
+        overlay.querySelector('#btn-close-preview').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+
+        overlay.querySelector('#btn-print-preview').addEventListener('click', () => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        });
+    }
+
+    // Eliminar la sesión del servidor con diálogo de confirmación
+    async function deleteServerSession(id) {
+        const confirmed = await ConfirmDialog.show({
+            title: '¿Eliminar Sesión?',
+            message: `¿Estás seguro de que deseas eliminar permanentemente la sesión con ID: ${id}? Esta acción no se puede deshacer y afectará al docente creador.`,
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const { error } = await SupabaseClient.client
+                .from('sesiones')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            Toast.success('Sesión eliminada correctamente');
+            fetchServerSessions(); // Recargar lista
+        } catch (e) {
+            console.error('[Admin] Error al eliminar sesión:', e);
+            Toast.error('Error al eliminar sesión: ' + e.message);
         }
     }
 

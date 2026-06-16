@@ -115,6 +115,10 @@ DROP POLICY IF EXISTS "Admins can view all sessions" ON public.sesiones;
 CREATE POLICY "Admins can view all sessions" ON public.sesiones
     FOR SELECT USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can delete all sessions" ON public.sesiones;
+CREATE POLICY "Admins can delete all sessions" ON public.sesiones
+    FOR DELETE USING (public.is_admin());
+
 
 -- 3. Tabla de Configuración de Correo Corporativo (SMTP)
 CREATE TABLE IF NOT EXISTS public.corporate_email_settings (
