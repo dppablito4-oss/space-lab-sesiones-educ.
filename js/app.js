@@ -3388,6 +3388,11 @@
         const menu = document.getElementById('editor-context-menu');
         if (!menu) return;
 
+        // Prevent selection from being lost when clicking inside the context menu
+        menu.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+        });
+
         DOM.sessionSheet.addEventListener('contextmenu', (e) => {
             if (AppState.previewMode) return;
 
