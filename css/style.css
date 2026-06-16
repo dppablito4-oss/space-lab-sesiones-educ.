@@ -2225,4 +2225,68 @@ body {
     border-color: #ef4444;
 }
 
+/* ════════════ CONTEXT MENU ════════════ */
+.editor-context-menu {
+    background: rgba(15, 16, 21, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 6px 0;
+    width: 200px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    z-index: 10000;
+}
+
+.context-menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.context-menu-item {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    color: #e4e4e7;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.context-menu-item:hover {
+    background: rgba(0, 210, 255, 0.1) !important;
+    color: #00d2ff !important;
+}
+
+.context-menu-item .shortcut {
+    color: #71717a;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 4px 0;
+}
+
+/* ════════════ RESIZE HANDLE ════════════ */
+.logo-resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #00d2ff;
+    border: 1px solid #ffffff;
+    cursor: se-resize;
+    z-index: 10050;
+    border-radius: 2px;
+    box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    transition: transform 0.1s ease;
+}
+.logo-resize-handle:hover {
+    transform: scale(1.3);
+}
+
 

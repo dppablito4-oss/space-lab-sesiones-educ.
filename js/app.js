@@ -15,7 +15,9 @@
         sourceFileData: null, // Stores { name, type, base64, textContent }
         activeLogoTarget: null, // Stores target logo id: 'header-logo-left' or 'header-logo-regional'
         activeTableCell: null, // Stores currently active/focused table cell
-        zoomScale: 1.0 // Custom zoom level for the sheet (1.0 = 100%)
+        zoomScale: 1.0, // Custom zoom level for the sheet (1.0 = 100%)
+        undoStack: [],
+        redoStack: []
     };
 
     // ─── DOM REFERENCES ───
@@ -575,6 +577,12 @@
 
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
+
+        // Word-like Right-Click Context Menu
+        initContextMenu();
+
+        // Logos Gallery Modal listeners
+        initLogosGalleryModal();
     }
 
     // ═══════════════════════════════════════
@@ -1288,21 +1296,157 @@
             Toast.error('Error al guardar la sesión');
         }
     }
+    let isUndoingOrRedoing = false;
 
     function saveCurrentState() {
         if (!AppState.currentSession) return;
+        if (isUndoingOrRedoing) return;
 
-        // Capture current HTML content (with user edits)
-        AppState.currentSession.htmlContent = DOM.sessionSheet.innerHTML;
+        const currentHtml = DOM.sessionSheet.innerHTML;
+        const previousState = AppState.currentSession.htmlContent || '';
+
+        // If the HTML changed, push the previous state to the undo stack
+        if (currentHtml && currentHtml !== previousState) {
+            AppState.undoStack.push({
+                html: previousState,
+                metadata: JSON.parse(JSON.stringify(AppState.currentSession.metadata || {}))
+            });
+            if (AppState.undoStack.length > 50) {
+                AppState.undoStack.shift();
+            }
+            AppState.redoStack = []; // Clear redo stack on new action
+        }
+
+        AppState.currentSession.htmlContent = currentHtml;
         AppState.currentSession.lastSaved = new Date().toISOString();
 
         Storage.setCurrentSession(AppState.currentSession);
 
-        // If this session already exists in the saved list, auto-save it there too
         if (Storage.getSession(AppState.currentSession.id)) {
             Storage.saveSession(AppState.currentSession);
             renderSavedList();
         }
+    }
+
+    function undo() {
+        if (!AppState.undoStack || AppState.undoStack.length === 0) {
+            Toast.warning('No hay más acciones para deshacer.');
+            return;
+        }
+
+        isUndoingOrRedoing = true;
+        const currentHtml = DOM.sessionSheet.innerHTML;
+        AppState.redoStack.push({
+            html: currentHtml,
+            metadata: JSON.parse(JSON.stringify(AppState.currentSession.metadata || {}))
+        });
+        if (AppState.redoStack.length > 50) {
+            AppState.redoStack.shift();
+        }
+
+        const prevState = AppState.undoStack.pop();
+        DOM.sessionSheet.innerHTML = prevState.html;
+
+        AppState.currentSession.metadata = prevState.metadata;
+        populateForm(AppState.currentSession);
+
+        AppState.currentSession.htmlContent = prevState.html;
+        Storage.setCurrentSession(AppState.currentSession);
+        if (Storage.getSession(AppState.currentSession.id)) {
+            Storage.saveSession(AppState.currentSession);
+            renderSavedList();
+        }
+
+        // Hide resize handle if active logo target is modified
+        const resizeHandle = document.getElementById('logo-resize-handle');
+        if (resizeHandle) resizeHandle.style.display = 'none';
+
+        checkTimeBalance();
+        isUndoingOrRedoing = false;
+        Toast.success('Deshecho');
+    }
+
+    function redo() {
+        if (!AppState.redoStack || AppState.redoStack.length === 0) {
+            Toast.warning('No hay más acciones para rehacer.');
+            return;
+        }
+
+        isUndoingOrRedoing = true;
+        const currentHtml = DOM.sessionSheet.innerHTML;
+        AppState.undoStack.push({
+            html: currentHtml,
+            metadata: JSON.parse(JSON.stringify(AppState.currentSession.metadata || {}))
+        });
+        if (AppState.undoStack.length > 50) {
+            AppState.undoStack.shift();
+        }
+
+        const nextState = AppState.redoStack.pop();
+        DOM.sessionSheet.innerHTML = nextState.html;
+
+        AppState.currentSession.metadata = nextState.metadata;
+        populateForm(AppState.currentSession);
+
+        AppState.currentSession.htmlContent = nextState.html;
+        Storage.setCurrentSession(AppState.currentSession);
+        if (Storage.getSession(AppState.currentSession.id)) {
+            Storage.saveSession(AppState.currentSession);
+            renderSavedList();
+        }
+
+        const resizeHandle = document.getElementById('logo-resize-handle');
+        if (resizeHandle) resizeHandle.style.display = 'none';
+
+        checkTimeBalance();
+        isUndoingOrRedoing = false;
+        Toast.success('Rehecho');
+    }
+
+    function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        if (width > height) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        } else {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error('Canvas compression failed'));
+                            return;
+                        }
+                        const compressedFile = new File([blob], file.name, {
+                            type: file.type || 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    }, file.type || 'image/jpeg', quality);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
     }
 
     function loadLastSession() {
@@ -1595,25 +1739,63 @@
     // ═══════════════════════════════════════
 
     function handleKeyboard(e) {
+        const key = e.key.toLowerCase();
+        
         // Ctrl+S: Save
-        if (e.ctrlKey && e.key === 's') {
+        if (e.ctrlKey && key === 's') {
             e.preventDefault();
             handleSave();
         }
         // Ctrl+P: Print
-        if (e.ctrlKey && e.key === 'p') {
+        if (e.ctrlKey && key === 'p') {
             e.preventDefault();
             handlePrint();
         }
         // Ctrl+E: Toggle edit
-        if (e.ctrlKey && e.key === 'e') {
+        if (e.ctrlKey && key === 'e') {
             e.preventDefault();
             toggleEditMode();
+        }
+        // Ctrl+Z: Undo
+        if (e.ctrlKey && key === 'z') {
+            e.preventDefault();
+            undo();
+        }
+        // Ctrl+Y: Redo
+        if (e.ctrlKey && key === 'y') {
+            e.preventDefault();
+            redo();
+        }
+        // Ctrl+B or Ctrl+N: Bold (N is bold in Spanish MS Word)
+        if (e.ctrlKey && (key === 'b' || key === 'n')) {
+            e.preventDefault();
+            document.execCommand('bold', false, null);
+            saveCurrentState();
+        }
+        // Ctrl+I or Ctrl+K: Italic (K is italic in Spanish MS Word)
+        if (e.ctrlKey && (key === 'i' || key === 'k')) {
+            e.preventDefault();
+            document.execCommand('italic', false, null);
+            saveCurrentState();
+        }
+        // Ctrl+U: Underline
+        if (e.ctrlKey && key === 'u') {
+            e.preventDefault();
+            document.execCommand('underline', false, null);
+            saveCurrentState();
         }
         // Escape: Close modals/sidebar
         if (e.key === 'Escape') {
             closeSidebar();
             DOM.loadModal.classList.add('hidden');
+            const galleryModal = document.getElementById('logos-gallery-modal');
+            if (galleryModal) galleryModal.classList.add('hidden');
+            const menu = document.getElementById('editor-context-menu');
+            if (menu) {
+                menu.style.display = 'none';
+                menu.classList.add('hidden');
+            }
+            hideResizeHandle();
             if (AppState.previewMode) togglePreviewMode();
         }
     }
@@ -2130,10 +2312,14 @@
         
         if (isAutoHeight) {
             heightContainer.classList.add('hidden');
+            heightContainer.style.display = 'none';
             fitContainer.classList.add('hidden');
+            fitContainer.style.display = 'none';
         } else {
             heightContainer.classList.remove('hidden');
+            heightContainer.style.display = 'flex';
             fitContainer.classList.remove('hidden');
+            fitContainer.style.display = 'flex';
             let numericHeight = parseInt(currentHeight, 10);
             if (isNaN(numericHeight)) {
                 numericHeight = target.offsetHeight || 65;
@@ -2150,6 +2336,12 @@
                 btn.classList.remove('active');
             }
         });
+
+        // 3. Position the Resize Handle
+        const handle = getOrCreateResizeHandle();
+        handle.style.display = 'block';
+        handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+        handle.style.left = `${window.scrollX + rect.right - 5}px`;
     }
 
     function initLogoEditorListeners() {
@@ -2157,8 +2349,8 @@
         if (!popover) return;
 
         const closeBtn = document.getElementById('logo-editor-close');
-        const uploadBtn = document.getElementById('logo-editor-upload');
-        const urlBtn = document.getElementById('logo-editor-url');
+        const galleryTrigger = document.getElementById('logo-editor-gallery-trigger');
+        const swapBtn = document.getElementById('logo-editor-swap');
         const deleteBtn = document.getElementById('logo-editor-delete');
         const widthSlider = document.getElementById('logo-editor-width-slider');
         const widthVal = document.getElementById('logo-editor-width-val');
@@ -2170,10 +2362,25 @@
         const fitBtns = popover.querySelectorAll('.btn-fit');
         const resetBtn = document.getElementById('logo-editor-reset');
 
-        closeBtn.addEventListener('click', () => {
-            popover.style.display = 'none';
-            popover.classList.add('hidden');
-        });
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                popover.style.display = 'none';
+                popover.classList.add('hidden');
+                hideResizeHandle();
+            });
+        }
+
+        if (galleryTrigger) {
+            galleryTrigger.addEventListener('click', () => {
+                openLogosGalleryModal();
+            });
+        }
+
+        if (swapBtn) {
+            swapBtn.addEventListener('click', () => {
+                swapLogos();
+            });
+        }
 
         widthSlider.addEventListener('input', () => {
             if (!AppState.activeLogoTarget) return;
@@ -2191,6 +2398,14 @@
             } else {
                 target.style.height = `${heightSlider.value}px`;
             }
+
+            // Reposition handle dynamically when width changes
+            const rect = target.getBoundingClientRect();
+            const handle = document.getElementById('logo-resize-handle');
+            if (handle) {
+                handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+                handle.style.left = `${window.scrollX + rect.right - 5}px`;
+            }
             saveCurrentState();
         });
 
@@ -2204,6 +2419,14 @@
             target.style.height = `${h}px`;
             target.style.maxWidth = 'none';
             target.style.maxHeight = 'none';
+
+            // Reposition handle dynamically when height changes
+            const rect = target.getBoundingClientRect();
+            const handle = document.getElementById('logo-resize-handle');
+            if (handle) {
+                handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+                handle.style.left = `${window.scrollX + rect.right - 5}px`;
+            }
             saveCurrentState();
         });
 
@@ -2214,18 +2437,30 @@
 
             if (aspectRatioCheckbox.checked) {
                 heightContainer.classList.add('hidden');
+                heightContainer.style.display = 'none';
                 fitContainer.classList.add('hidden');
+                fitContainer.style.display = 'none';
                 target.style.height = 'auto';
                 target.style.objectFit = 'contain';
             } else {
                 heightContainer.classList.remove('hidden');
+                heightContainer.style.display = 'flex';
                 fitContainer.classList.remove('hidden');
+                fitContainer.style.display = 'flex';
                 const h = heightSlider.value;
                 heightVal.textContent = `${h}px`;
                 target.style.height = `${h}px`;
-                
+
                 const activeBtn = popover.querySelector('.btn-fit.active');
                 target.style.objectFit = activeBtn ? activeBtn.dataset.fit : 'contain';
+            }
+
+            // Reposition handle dynamically
+            const rect = target.getBoundingClientRect();
+            const handle = document.getElementById('logo-resize-handle');
+            if (handle) {
+                handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+                handle.style.left = `${window.scrollX + rect.right - 5}px`;
             }
             saveCurrentState();
         });
@@ -2244,24 +2479,6 @@
             });
         });
 
-        uploadBtn.addEventListener('click', () => {
-            DOM.inputUploadLogo.click();
-        });
-
-        urlBtn.addEventListener('click', () => {
-            if (!AppState.activeLogoTarget) return;
-            const target = document.getElementById(AppState.activeLogoTarget);
-            if (!target) return;
-
-            const newUrl = prompt('Introduce la URL de la imagen para el logo:', target.src);
-            if (newUrl && newUrl.trim() !== '') {
-                target.src = newUrl.trim();
-                target.style.display = 'block';
-                saveCurrentState();
-                Toast.success('Logo actualizado');
-            }
-        });
-
         deleteBtn.addEventListener('click', () => {
             if (!AppState.activeLogoTarget) return;
             const target = document.getElementById(AppState.activeLogoTarget);
@@ -2270,6 +2487,7 @@
             target.style.display = 'none';
             popover.style.display = 'none';
             popover.classList.add('hidden');
+            hideResizeHandle();
             saveCurrentState();
             Toast.success('Logo removido');
         });
@@ -2294,6 +2512,7 @@
 
             popover.style.display = 'none';
             popover.classList.add('hidden');
+            hideResizeHandle();
             saveCurrentState();
             Toast.success('Valores restablecidos');
         });
@@ -2303,9 +2522,13 @@
                 const clickedLogo = e.target.classList.contains('official-logo-img');
                 const clickedRibbonLeft = e.target.id === 'btn-ribbon-logo-left';
                 const clickedRibbonRight = e.target.id === 'btn-ribbon-logo-right';
-                if (!clickedLogo && !clickedRibbonLeft && !clickedRibbonRight) {
+                const clickedResizeHandle = e.target.id === 'logo-resize-handle' || e.target.classList.contains('logo-resize-handle');
+                const clickedContextMenu = e.target.closest('#editor-context-menu');
+                const clickedModal = e.target.closest('#logos-gallery-modal');
+                if (!clickedLogo && !clickedRibbonLeft && !clickedRibbonRight && !clickedResizeHandle && !clickedContextMenu && !clickedModal) {
                     popover.style.display = 'none';
                     popover.classList.add('hidden');
+                    hideResizeHandle();
                 }
             }
         });
@@ -2684,6 +2907,461 @@
         zoomIndicatorTimeout = setTimeout(() => {
             indicator.style.opacity = '0';
         }, 1200);
+    }
+
+    // ═══════════════════════════════════════
+    // WORD-STYLE EDITING & LOGO GALERIA FEATURES
+    // ═══════════════════════════════════════
+
+    let selectedGalleryLogoUrl = null;
+
+    function swapLogos() {
+        const logoLeft = document.getElementById('header-logo-left');
+        const logoRegional = document.getElementById('header-logo-regional');
+        if (!logoLeft || !logoRegional) {
+            Toast.warning('Genera la sesión primero para poder intercambiar los logos');
+            return;
+        }
+
+        const srcLeft = logoLeft.getAttribute('src');
+        const srcRegional = logoRegional.getAttribute('src');
+        logoLeft.setAttribute('src', srcRegional || '');
+        logoRegional.setAttribute('src', srcLeft || '');
+
+        const styleLeft = logoLeft.getAttribute('style');
+        const styleRegional = logoRegional.getAttribute('style');
+        
+        if (styleRegional !== null) {
+            logoLeft.setAttribute('style', styleRegional);
+        } else {
+            logoLeft.removeAttribute('style');
+        }
+        if (styleLeft !== null) {
+            logoRegional.setAttribute('style', styleLeft);
+        } else {
+            logoRegional.removeAttribute('style');
+        }
+        
+        logoLeft.style.transform = 'scale(1.15)';
+        logoRegional.style.transform = 'scale(1.15)';
+        setTimeout(() => {
+            logoLeft.style.transform = '';
+            logoRegional.style.transform = '';
+        }, 300);
+
+        if (AppState.activeLogoTarget) {
+            AppState.activeLogoTarget = AppState.activeLogoTarget === 'header-logo-left' ? 'header-logo-regional' : 'header-logo-left';
+            const newActiveLogo = document.getElementById(AppState.activeLogoTarget);
+            if (newActiveLogo) {
+                openLogoEditor(newActiveLogo);
+            }
+        }
+
+        saveCurrentState();
+        Toast.success('Posición de logos intercambiada');
+    }
+
+    function getOrCreateResizeHandle() {
+        let handle = document.getElementById('logo-resize-handle');
+        if (!handle) {
+            handle = document.createElement('div');
+            handle.id = 'logo-resize-handle';
+            handle.className = 'logo-resize-handle no-print';
+            document.body.appendChild(handle);
+            handle.addEventListener('mousedown', initResizeDrag);
+        }
+        return handle;
+    }
+
+    function hideResizeHandle() {
+        const handle = document.getElementById('logo-resize-handle');
+        if (handle) {
+            handle.style.display = 'none';
+        }
+    }
+
+    function initResizeDrag(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!AppState.activeLogoTarget) return;
+        const target = document.getElementById(AppState.activeLogoTarget);
+        if (!target) return;
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const rect = target.getBoundingClientRect();
+        const startWidth = rect.width;
+        const startHeight = rect.height;
+        const aspectRatio = startWidth / startHeight;
+
+        const handle = document.getElementById('logo-resize-handle');
+        const popover = document.getElementById('logo-editor-popover');
+        const widthSlider = document.getElementById('logo-editor-width-slider');
+        const widthVal = document.getElementById('logo-editor-width-val');
+        const heightSlider = document.getElementById('logo-editor-height-slider');
+        const heightVal = document.getElementById('logo-editor-height-val');
+        const heightContainer = document.getElementById('logo-editor-height-container');
+        const fitContainer = document.getElementById('logo-editor-fit-container');
+        const aspectRatioCheckbox = document.getElementById('logo-editor-aspect-ratio');
+
+        document.body.style.cursor = 'se-resize';
+        document.body.style.userSelect = 'none';
+
+        function onMouseMove(moveEvt) {
+            const zoom = AppState.zoomScale || 1.0;
+            const deltaX = (moveEvt.clientX - startX) / zoom;
+            const deltaY = (moveEvt.clientY - startY) / zoom;
+
+            let newWidth = Math.max(30, Math.min(300, startWidth + deltaX));
+            let newHeight;
+
+            const keepAspect = !moveEvt.ctrlKey;
+            
+            if (keepAspect) {
+                newHeight = newWidth / aspectRatio;
+                target.style.height = 'auto';
+                target.style.width = `${newWidth}px`;
+                target.style.maxWidth = 'none';
+                target.style.maxHeight = 'none';
+                
+                aspectRatioCheckbox.checked = true;
+                heightContainer.classList.add('hidden');
+                heightContainer.style.display = 'none';
+                fitContainer.classList.add('hidden');
+                fitContainer.style.display = 'none';
+            } else {
+                newHeight = Math.max(30, Math.min(300, startHeight + deltaY));
+                target.style.width = `${newWidth}px`;
+                target.style.height = `${newHeight}px`;
+                target.style.maxWidth = 'none';
+                target.style.maxHeight = 'none';
+                
+                aspectRatioCheckbox.checked = false;
+                heightContainer.classList.remove('hidden');
+                heightContainer.style.display = 'flex';
+                fitContainer.classList.remove('hidden');
+                fitContainer.style.display = 'flex';
+                
+                heightSlider.value = Math.round(newHeight);
+                heightVal.textContent = `${Math.round(newHeight)}px`;
+            }
+
+            widthSlider.value = Math.round(newWidth);
+            widthVal.textContent = `${Math.round(newWidth)}px`;
+
+            const newRect = target.getBoundingClientRect();
+            handle.style.top = `${window.scrollY + newRect.bottom - 5}px`;
+            handle.style.left = `${window.scrollX + newRect.right - 5}px`;
+
+            if (popover && !popover.classList.contains('hidden')) {
+                let popTop = window.scrollY + newRect.bottom + 10;
+                let popLeft = window.scrollX + newRect.left + (newRect.width / 2) - (popover.offsetWidth / 2);
+                if (popLeft < 10) popLeft = 10;
+                if (popLeft + popover.offsetWidth > window.innerWidth - 10) {
+                    popLeft = window.innerWidth - popover.offsetWidth - 10;
+                }
+                popover.style.top = `${popTop}px`;
+                popover.style.left = `${popLeft}px`;
+            }
+        }
+
+        function onMouseUp() {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            saveCurrentState();
+        }
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }
+
+    async function openLogosGalleryModal() {
+        const modal = document.getElementById('logos-gallery-modal');
+        if (!modal) return;
+
+        const posSelector = document.getElementById('modal-logo-position-selector');
+        if (posSelector) posSelector.classList.add('hidden');
+        selectedGalleryLogoUrl = null;
+
+        modal.classList.remove('hidden');
+        await refreshModalLogosList();
+    }
+
+    async function refreshModalLogosList() {
+        const container = document.getElementById('modal-logos-container');
+        if (!container) return;
+
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: #a1a1aa; padding: 10px;">Inicia sesión para ver tus logos subidos</span>`;
+            return;
+        }
+
+        container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: #a1a1aa; padding: 10px;">Cargando logos de Supabase...</span>`;
+        try {
+            const logos = await SupabaseClient.listLogos();
+            if (logos.length === 0) {
+                container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: #a1a1aa; padding: 10px;">No tienes logos subidos previamente</span>`;
+                return;
+            }
+
+            container.innerHTML = logos.map(logo => `
+                <div class="modal-logo-item" data-url="${logo.url}" style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px; cursor: pointer; transition: all 0.2s;" title="Clic para seleccionar">
+                    <img src="${logo.url}" alt="${logo.name}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.modal-logo-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const url = item.dataset.url;
+                    handleSelectModalLogo(url);
+                });
+            });
+        } catch (e) {
+            console.error('[Modal Gallery] Error loading logos:', e);
+            container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: var(--danger); padding: 10px;">Error al cargar logos</span>`;
+        }
+    }
+
+    function handleSelectModalLogo(url) {
+        if (AppState.activeLogoTarget) {
+            applyLogoToDocument(url, AppState.activeLogoTarget);
+            document.getElementById('logos-gallery-modal').classList.add('hidden');
+        } else {
+            selectedGalleryLogoUrl = url;
+            const posSelector = document.getElementById('modal-logo-position-selector');
+            if (posSelector) posSelector.classList.remove('hidden');
+        }
+    }
+
+    async function handleModalLogoUpload(file) {
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes iniciar sesión para subir logos a la galería.');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            Toast.warning('Por favor selecciona una imagen válida (PNG, JPG)');
+            return;
+        }
+
+        Loader.show('Comprimiendo y subiendo logo...');
+        try {
+            const compressedFile = await compressImage(file, 800, 800, 0.8);
+            const publicUrl = await SupabaseClient.uploadLogo(compressedFile);
+            Toast.success('Logo subido correctamente');
+            
+            await refreshModalLogosList();
+            await loadLogosGallery();
+            
+            handleSelectModalLogo(publicUrl);
+        } catch (err) {
+            Toast.error('Error al subir logo: ' + err.message);
+        } finally {
+            Loader.hide();
+            const modalFileInput = document.getElementById('input-modal-upload-logo');
+            if (modalFileInput) modalFileInput.value = '';
+        }
+    }
+
+    function initContextMenu() {
+        const menu = document.getElementById('editor-context-menu');
+        if (!menu) return;
+
+        DOM.sessionSheet.addEventListener('contextmenu', (e) => {
+            if (AppState.previewMode) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const isLogo = e.target.classList.contains('official-logo-img');
+            const itemEditLogo = document.getElementById('menu-item-edit-logo');
+            const itemSwapLogos = document.getElementById('menu-item-swap-logos');
+
+            if (isLogo) {
+                AppState.activeLogoTarget = e.target.id;
+                if (itemEditLogo) itemEditLogo.classList.remove('hidden');
+                if (itemSwapLogos) itemSwapLogos.classList.remove('hidden');
+            } else {
+                if (itemEditLogo) itemEditLogo.classList.add('hidden');
+                if (itemSwapLogos) itemSwapLogos.classList.add('hidden');
+            }
+
+            menu.style.display = 'block';
+            menu.classList.remove('hidden');
+
+            let top = window.scrollY + e.clientY;
+            let left = window.scrollX + e.clientX;
+
+            if (left + menu.offsetWidth > window.innerWidth - 10) {
+                left = window.innerWidth - menu.offsetWidth - 10;
+            }
+            if (e.clientY + menu.offsetHeight > window.innerHeight - 10) {
+                top = window.scrollY + e.clientY - menu.offsetHeight;
+            }
+
+            menu.style.top = `${top}px`;
+            menu.style.left = `${left}px`;
+        });
+
+        window.addEventListener('click', (e) => {
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+                menu.style.display = 'none';
+                menu.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('menu-item-bold').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('bold', false, null);
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-italic').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('italic', false, null);
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-underline').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('underline', false, null);
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-cut').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('cut');
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-copy').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('copy');
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-paste').addEventListener('click', async (e) => {
+            e.preventDefault();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+            try {
+                const text = await navigator.clipboard.readText();
+                document.execCommand('insertText', false, text);
+                saveCurrentState();
+            } catch (err) {
+                Toast.info('Usa Ctrl+V para pegar contenido');
+            }
+        });
+
+        document.getElementById('menu-item-ai-improve').addEventListener('click', (e) => {
+            e.preventDefault();
+            handleAiImproveText('improve');
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-ai-rubrica').addEventListener('click', (e) => {
+            e.preventDefault();
+            handleAiRubrica();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-edit-logo').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (AppState.activeLogoTarget) {
+                const logo = document.getElementById(AppState.activeLogoTarget);
+                if (logo) openLogoEditor(logo);
+            }
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-swap-logos').addEventListener('click', (e) => {
+            e.preventDefault();
+            swapLogos();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+    }
+
+    function initLogosGalleryModal() {
+        const btnApplyLeft = document.getElementById('btn-modal-apply-left');
+        const btnApplyRight = document.getElementById('btn-modal-apply-right');
+        const btnCloseModal = document.getElementById('btn-close-gallery-modal');
+        const btnCloseModal2 = document.getElementById('btn-modal-gallery-close');
+        const modalDropzone = document.getElementById('modal-logo-dropzone');
+        const modalFileInput = document.getElementById('input-modal-upload-logo');
+
+        if (btnApplyLeft) {
+            btnApplyLeft.addEventListener('click', () => {
+                if (selectedGalleryLogoUrl) {
+                    applyLogoToDocument(selectedGalleryLogoUrl, 'header-logo-left');
+                    document.getElementById('logos-gallery-modal').classList.add('hidden');
+                }
+            });
+        }
+        if (btnApplyRight) {
+            btnApplyRight.addEventListener('click', () => {
+                if (selectedGalleryLogoUrl) {
+                    applyLogoToDocument(selectedGalleryLogoUrl, 'header-logo-regional');
+                    document.getElementById('logos-gallery-modal').classList.add('hidden');
+                }
+            });
+        }
+        [btnCloseModal, btnCloseModal2].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    document.getElementById('logos-gallery-modal').classList.add('hidden');
+                });
+            }
+        });
+
+        if (modalDropzone) {
+            modalDropzone.addEventListener('click', () => {
+                modalFileInput.click();
+            });
+            modalDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                modalDropzone.style.borderColor = '#00d2ff';
+                modalDropzone.style.background = 'rgba(0, 210, 255, 0.05)';
+            });
+            modalDropzone.addEventListener('dragleave', () => {
+                modalDropzone.style.borderColor = 'rgba(0, 210, 255, 0.2)';
+                modalDropzone.style.background = 'rgba(0, 210, 255, 0.02)';
+            });
+            modalDropzone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                modalDropzone.style.borderColor = 'rgba(0, 210, 255, 0.2)';
+                modalDropzone.style.background = 'rgba(0, 210, 255, 0.02)';
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    await handleModalLogoUpload(e.dataTransfer.files[0]);
+                }
+            });
+        }
+        if (modalFileInput) {
+            modalFileInput.addEventListener('change', async (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    await handleModalLogoUpload(e.target.files[0]);
+                }
+            });
+        }
     }
 
     // Expose styling API globally for agentic chatbot features

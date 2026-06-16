@@ -950,9 +950,9 @@
         </div>
         <div class="popover-body" style="padding: 12px 0 0 0; display: flex; flex-direction: column; gap: 12px;">
             <!-- Actions -->
-            <div class="popover-action-row" style="display: flex; gap: 6px;">
-                <button type="button" id="logo-editor-upload" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;">📤 Subir</button>
-                <button type="button" id="logo-editor-url" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;">🔗 URL</button>
+            <div class="popover-action-row" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" id="logo-editor-gallery-trigger" class="btn btn-ghost btn-sm" style="flex: 1.5; font-size: 0.75rem; padding: 4px 8px !important; min-width: 100px;">🖼️ Galería / Subir</button>
+                <button type="button" id="logo-editor-swap" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;" title="Intercambiar lado izquierdo y derecho">🔄 Lado</button>
                 <button type="button" id="logo-editor-delete" class="btn btn-danger-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">🗑️ Quitar</button>
             </div>
             
@@ -995,6 +995,61 @@
                 <button type="button" id="logo-editor-reset" class="btn btn-accent btn-full" style="font-size: 0.75rem; padding: 6px 12px; height: auto;">Restablecer valores</button>
             </div>
         </div>
+    </div>
+
+    <!-- ═══════════ LOGOS GALLERY MODAL ═══════════ -->
+    <div id="logos-gallery-modal" class="load-modal hidden no-print" style="z-index: 9998;">
+        <div class="load-modal-content glass-card" style="max-width: 520px; padding: 2rem; position: relative;">
+            <button id="btn-close-gallery-modal" class="btn btn-ghost btn-sm" style="position: absolute; top: 1rem; right: 1rem; color: #71717a; font-size: 1rem; cursor: pointer; background: none; border: none; padding: 0;">✕</button>
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 8px;">🖼️ Galería de Logos del Encabezado</h3>
+            
+            <!-- Upload Area -->
+            <div id="modal-logo-dropzone" class="source-file-dropzone" style="border: 2px dashed rgba(0, 210, 255, 0.2); background: rgba(0, 210, 255, 0.02); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 1.5rem;">
+                <span class="icon" style="font-size: 1.8rem; display: block; margin-bottom: 8px;">📤</span>
+                <span class="text" style="font-size: 0.8rem; color: #a1a1aa; line-height: 1.4;">Sube tu logo para el encabezado (PNG, JPG)<br><strong style="color: #00d2ff;">Se comprimirá automáticamente</strong> para un rendimiento ultra-rápido</span>
+                <input type="file" id="input-modal-upload-logo" accept="image/*" class="hidden">
+            </div>
+
+            <!-- Divider -->
+            <div class="toolbar-divider" style="margin: 1.5rem 0; background: rgba(255,255,255,0.06); height: 1px; width: 100%;"></div>
+
+            <!-- Gallery List -->
+            <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #e4e4e7;">Tus logos subidos previamente:</h4>
+            <div id="modal-logos-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-height: 200px; overflow-y: auto; padding: 8px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 1.5rem;">
+                <!-- Cargado dinámicamente -->
+            </div>
+
+            <!-- Position prompt wrapper (if target not set) -->
+            <div id="modal-logo-position-selector" class="hidden" style="margin-bottom: 1.5rem; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 8px;">
+                <p style="font-size: 0.8rem; color: #a1a1aa; margin: 0 0 10px 0;">¿Dónde deseas aplicar el logo seleccionado?</p>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button type="button" id="btn-modal-apply-left" class="btn btn-ghost btn-sm" style="font-size: 0.75rem; padding: 6px 12px;">👈 Izquierda (Escudo)</button>
+                    <button type="button" id="btn-modal-apply-right" class="btn btn-primary btn-sm" style="font-size: 0.75rem; padding: 6px 12px;">Derecha (Regional/I.E.) 👉</button>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" id="btn-modal-gallery-close" class="btn btn-ghost btn-sm" style="font-size: 0.8rem; padding: 6px 16px;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ EDITOR CONTEXT MENU ═══════════ -->
+    <div id="editor-context-menu" class="editor-context-menu hidden no-print" style="position: absolute; display: none; z-index: 10000;">
+        <ul class="context-menu-list">
+            <li id="menu-item-bold" class="context-menu-item"><strong>Negrita</strong> <span class="shortcut">Ctrl+B</span></li>
+            <li id="menu-item-italic" class="context-menu-item"><em>Cursiva</em> <span class="shortcut">Ctrl+I</span></li>
+            <li id="menu-item-underline" class="context-menu-item"><span style="text-decoration: underline;">Subrayado</span> <span class="shortcut">Ctrl+U</span></li>
+            <li class="context-menu-divider"></li>
+            <li id="menu-item-cut" class="context-menu-item">Cortar <span class="shortcut">Ctrl+X</span></li>
+            <li id="menu-item-copy" class="context-menu-item">Copiar <span class="shortcut">Ctrl+C</span></li>
+            <li id="menu-item-paste" class="context-menu-item">Pegar <span class="shortcut">Ctrl+V</span></li>
+            <li class="context-menu-divider"></li>
+            <li id="menu-item-ai-improve" class="context-menu-item">🪄 Refinar con IA</li>
+            <li id="menu-item-ai-rubrica" class="context-menu-item">🎯 Rúbrica con IA</li>
+            <li id="menu-item-edit-logo" class="context-menu-item hidden">🖼️ Ajustes de Logo</li>
+            <li id="menu-item-swap-logos" class="context-menu-item hidden">🔄 Intercambiar Lado</li>
+        </ul>
     </div>
 
     <!-- Scripts -->
