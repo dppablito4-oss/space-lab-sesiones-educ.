@@ -152,38 +152,43 @@
 
     /* Official Header Table Print Overrides */
     .session-sheet .official-header-table td {
-        padding: 4px 6px;
-        font-size: 7.5pt;
-        line-height: 1.2;
-        text-align: center;
-        vertical-align: middle;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        padding: 0;
+        border: none !important;
+        background: transparent !important;
     }
-    .session-sheet .official-header-table .official-logo-cell {
+    .session-sheet .official-header-table .official-header-logos-cell {
         border: none !important;
         background-color: #ffffff !important;
+        padding: 0 !important;
+    }
+    .session-sheet .official-header-logos-container {
+        width: 100%;
+        margin-bottom: 15px;
+        border-bottom: 2px solid var(--theme-border-color, #000) !important;
+        padding-bottom: 8px;
+    }
+    .session-sheet .official-header-logos-list {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 15px !important;
+        flex-wrap: wrap !important;
+    }
+    .session-sheet .official-logo-item {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         padding: 2px !important;
+        border: none !important;
+        background: transparent !important;
     }
-    .session-sheet .official-header-table .cell-peru {
-        background-color: #c0392b !important;
-        color: #ffffff !important;
-        border: 1px solid #ffffff !important;
-    }
-    .session-sheet .official-header-table .cell-peru strong {
-        color: #ffffff !important;
-    }
-    .session-sheet .official-header-table .cell-minedu {
-        background-color: #2c3e50 !important;
-        color: #ffffff !important;
-        border: 1px solid #ffffff !important;
-    }
-    .session-sheet .official-header-table .cell-dre,
-    .session-sheet .official-header-table .cell-ugel,
-    .session-sheet .official-header-table .cell-agp {
-        background-color: #7f8c8d !important;
-        color: #ffffff !important;
-        border: 1px solid #ffffff !important;
+    .session-sheet .official-logo-img {
+        max-height: 48px !important;
+        object-fit: contain !important;
+        display: block !important;
+        margin: 0 auto !important;
+        border: none !important;
+        background: transparent !important;
     }
 
     /* Avoid splitting a single moment row across pages */

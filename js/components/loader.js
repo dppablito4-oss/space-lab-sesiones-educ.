@@ -3,20 +3,31 @@
    ═══════════════════════════════════════════════════ */
 
 const Loader = (() => {
-    const overlay = document.getElementById('loader-overlay');
-    const textEl = document.getElementById('loader-text');
+    let overlay = null;
+    let textEl = null;
+    let initialized = false;
+
+    function init() {
+        if (initialized) return;
+        overlay = document.getElementById('loader-overlay');
+        textEl = document.getElementById('loader-text');
+        initialized = true;
+    }
 
     function show(message = 'Generando sesión con IA...') {
-        textEl.textContent = message;
-        overlay.classList.remove('hidden');
+        init();
+        if (textEl) textEl.textContent = message;
+        if (overlay) overlay.classList.remove('hidden');
     }
 
     function hide() {
-        overlay.classList.add('hidden');
+        init();
+        if (overlay) overlay.classList.add('hidden');
     }
 
     function updateText(message) {
-        textEl.textContent = message;
+        init();
+        if (textEl) textEl.textContent = message;
     }
 
     return { show, hide, updateText };

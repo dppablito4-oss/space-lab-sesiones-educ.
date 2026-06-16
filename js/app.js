@@ -99,8 +99,7 @@
         ribbonPadding: $('#ribbon-padding'),
         ribbonLineHeight: $('#ribbon-line-height'),
         ribbonHeaderBg: $('#ribbon-header-bg'),
-        btnRibbonLogoLeft: $('#btn-ribbon-logo-left'),
-        btnRibbonLogoRight: $('#btn-ribbon-logo-right'),
+        btnRibbonAddLogo: $('#btn-ribbon-add-logo'),
         // Ribbon Text formatting manual controls
         btnFormatUndo: $('#btn-format-undo'),
         btnFormatRedo: $('#btn-format-redo'),
@@ -508,39 +507,36 @@
             });
         }
 
-        // Ribbon Logo triggers (opens interactive editor)
-        if (DOM.btnRibbonLogoLeft) {
-            DOM.btnRibbonLogoLeft.addEventListener('click', (e) => {
+        // Ribbon Add Logo trigger
+        if (DOM.btnRibbonAddLogo) {
+            DOM.btnRibbonAddLogo.addEventListener('click', (e) => {
                 e.preventDefault();
-                const logoImg = document.getElementById('header-logo-left');
-                if (logoImg) {
-                    logoImg.style.display = 'block';
-                    openLogoEditor(logoImg);
+                const logosList = document.getElementById('official-header-logos-list');
+                if (logosList) {
+                    AppState.activeLogoTarget = null; // Reset target so it appends
+                    openLogosGalleryModal();
                 } else {
-                    Toast.warning('Genera la sesión primero para poder editar el logo');
-                }
-            });
-        }
-        if (DOM.btnRibbonLogoRight) {
-            DOM.btnRibbonLogoRight.addEventListener('click', (e) => {
-                e.preventDefault();
-                const logoImg = document.getElementById('header-logo-regional');
-                if (logoImg) {
-                    logoImg.style.display = 'block';
-                    openLogoEditor(logoImg);
-                } else {
-                    Toast.warning('Genera la sesión primero para poder editar el logo');
+                    Toast.warning('Genera la sesión primero para poder añadir un logo');
                 }
             });
         }
 
-        // Click on logo images inside document to open floating editor popover
+        // Click on logo images or add-logo placeholder inside document
         DOM.sessionSheet.addEventListener('click', (e) => {
             const target = e.target;
             if (target && target.classList.contains('official-logo-img')) {
                 e.stopPropagation();
                 openLogoEditor(target);
+            } else if (target && (target.id === 'btn-add-header-logo' || target.closest('#btn-add-header-logo'))) {
+                e.stopPropagation();
+                AppState.activeLogoTarget = null; // Reset target so it appends
+                openLogosGalleryModal();
             }
+        });
+
+        // Listen for logo removal event to save state
+        window.addEventListener('logo-removed', () => {
+            saveCurrentState();
         });
 
         // Initialize Floating Logo Editor global listeners once
@@ -601,14 +597,18 @@
 
 
     function getFormData() {
-        const logoImg = $('#header-logo-regional');
-        const logoUrl = logoImg ? logoImg.getAttribute('src') : '';
-        const logoLeftImg = $('#header-logo-left');
-        const logoLeftUrl = logoLeftImg ? logoLeftImg.getAttribute('src') : '';
+        const logos = [];
+        const logoImgs = DOM.sessionSheet.querySelectorAll('.official-logo-img');
+        logoImgs.forEach((img, index) => {
+            logos.push({
+                id: img.id || `header-logo-${Date.now()}-${index}`,
+                url: img.getAttribute('src') || '',
+                style: img.getAttribute('style') || ''
+            });
+        });
 
-        // Capture style attributes to save customizations (width, height, display, objectFit)
-        const logoLeftStyle = logoLeftImg ? logoLeftImg.getAttribute('style') : '';
-        const logoRegionalStyle = logoImg ? logoImg.getAttribute('style') : '';
+        const firstLogo = logos[0] || {};
+        const secondLogo = logos[1] || {};
 
         return {
             metadata: {
@@ -628,10 +628,11 @@
                 titulo: DOM.inputTitulo.value,
                 methodology: DOM.selectMethodology.value,
                 ai_provider: DOM.selectAiProvider.value,
-                logo_regional_url: logoUrl,
-                logo_left_url: logoLeftUrl,
-                logo_left_style: logoLeftStyle,
-                logo_regional_style: logoRegionalStyle
+                logo_regional_url: secondLogo.url || '',
+                logo_left_url: firstLogo.url || '',
+                logo_left_style: firstLogo.style || '',
+                logo_regional_style: secondLogo.style || '',
+                logos: logos
             },
             proposito: {
                 competencia: DOM.inputCompetencia.value,
@@ -931,9 +932,18 @@
                 enforceEditMode();
             }
 
-            // Temporarily reset zoom to 1.0 to ensure correct PDF page rendering layout
+            // Temporarily reset zoom and transform to 1.0 to ensure correct PDF page rendering layout
             const currentZoom = DOM.sessionSheet.style.zoom;
+            const currentTransform = DOM.sessionSheet.style.transform;
+            const currentTransformOrigin = DOM.sessionSheet.style.transformOrigin;
+            const currentParentHeight = DOM.sessionSheet.parentElement ? DOM.sessionSheet.parentElement.style.height : '';
+
             DOM.sessionSheet.style.zoom = '1';
+            DOM.sessionSheet.style.transform = 'none';
+            DOM.sessionSheet.style.transformOrigin = '';
+            if (DOM.sessionSheet.parentElement) {
+                DOM.sessionSheet.parentElement.style.height = '';
+            }
 
             const opt = {
                 margin:       [12, 10, 12, 10], // top, left, bottom, right in mm
@@ -946,8 +956,13 @@
             // Run html2pdf
             await html2pdf().set(opt).from(element).save();
             
-            // Restore zoom
+            // Restore zoom and transform
             DOM.sessionSheet.style.zoom = currentZoom;
+            DOM.sessionSheet.style.transform = currentTransform;
+            DOM.sessionSheet.style.transformOrigin = currentTransformOrigin;
+            if (DOM.sessionSheet.parentElement) {
+                DOM.sessionSheet.parentElement.style.height = currentParentHeight;
+            }
 
             // Restore edit mode if it was active
             if (wasEditMode) {
@@ -1502,9 +1517,13 @@
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
+            reader.onerror = () => reject(new Error('Error al leer el archivo de imagen.'));
             reader.onload = (event) => {
                 const img = new Image();
                 img.src = event.target.result;
+                img.onerror = () => {
+                    reject(new Error('Formato de imagen inválido o archivo corrupto.'));
+                };
                 img.onload = () => {
                     let width = img.width;
                     let height = img.height;
@@ -2093,6 +2112,7 @@
             comp.capacidades.map(c => `<option value="${escHTML(c)}">${escHTML(c)}</option>`).join('');
 
         DOM.selectCnebCapacidad.classList.remove('hidden');
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleCapacidadChange() {
@@ -2107,18 +2127,21 @@
         } else {
             DOM.inputCapacidad.value = '• ' + capValue;
         }
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleEnfoqueChange() {
         const enfoqueValue = DOM.selectCnebEnfoque.value;
         if (!enfoqueValue) return;
         DOM.inputEnfoque.value = enfoqueValue;
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleEnfoque2Change() {
         const enfoqueValue = DOM.selectCnebEnfoque2.value;
         if (!enfoqueValue) return;
         DOM.inputEnfoque2.value = enfoqueValue;
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleExportJson() {
@@ -2326,13 +2349,8 @@
         let id = targetId || AppState.activeLogoTarget;
         
         if (!id) {
-            const confirmed = await ConfirmDialog.show({
-                title: 'Seleccionar Posición',
-                message: '¿En qué posición deseas colocar este logo?',
-                confirmText: 'Derecha (Regional/I.E.)',
-                cancelText: 'Izquierda (Escudo/Nacional)'
-            });
-            id = confirmed ? 'header-logo-regional' : 'header-logo-left';
+            addLogoToHeader(url);
+            return;
         }
 
         const logoImg = document.getElementById(id);
@@ -2356,7 +2374,46 @@
             saveCurrentState();
             Toast.success('Logo actualizado');
         } else {
-            Toast.warning('Genera la sesión primero para poder aplicar el logo');
+            // Fallback to adding it
+            addLogoToHeader(url);
+        }
+    }
+
+    function addLogoToHeader(url) {
+        const logosList = document.getElementById('official-header-logos-list');
+        if (!logosList) {
+            Toast.warning('Genera la sesión primero para poder añadir logos');
+            return;
+        }
+
+        const placeholder = document.getElementById('btn-add-header-logo');
+        const id = `header-logo-${Date.now()}`;
+        const newLogoHtml = `
+            <div class="official-logo-item" draggable="true">
+                <img id="${id}" src="${url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="width: 65px; height: auto; object-fit: contain; cursor: pointer;" title="Haz clic para editar, arrastra para reordenar" draggable="false">
+                <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+            </div>
+        `;
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newLogoHtml.trim();
+        const newLogoNode = tempDiv.firstChild;
+
+        if (placeholder) {
+            logosList.insertBefore(newLogoNode, placeholder);
+        } else {
+            logosList.appendChild(newLogoNode);
+        }
+
+        saveCurrentState();
+        Toast.success('Logo añadido al encabezado');
+        
+        // Open editor popover on the newly added logo immediately so they can adjust size
+        const img = newLogoNode.querySelector('img');
+        if (img) {
+            setTimeout(() => {
+                openLogoEditor(img);
+            }, 100);
         }
     }
 
@@ -2579,7 +2636,13 @@
             const target = document.getElementById(AppState.activeLogoTarget);
             if (!target) return;
 
-            target.style.display = 'none';
+            const item = target.closest('.official-logo-item');
+            if (item) {
+                item.remove();
+            } else {
+                target.style.display = 'none';
+            }
+
             popover.style.display = 'none';
             popover.classList.add('hidden');
             hideResizeHandle();
@@ -2633,37 +2696,93 @@
         const sheet = DOM.sessionSheet;
         if (!sheet) return;
 
+        // Helper to find closest element during drag reordering
+        function getDragAfterElement(container, x) {
+            const draggableElements = [...container.querySelectorAll('.official-logo-item:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = x - box.left - box.width / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // Drag start delegation
+        sheet.addEventListener('dragstart', (e) => {
+            const logoItem = e.target.closest('.official-logo-item');
+            if (logoItem) {
+                logoItem.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', logoItem.querySelector('img').id);
+            }
+        });
+
+        // Drag over delegation
         sheet.addEventListener('dragover', (e) => {
-            const target = e.target;
-            const logoCell = target.closest('.official-logo-cell');
-            if (logoCell) {
-                e.preventDefault();
-                logoCell.style.outline = '2px dashed var(--accent)';
-            }
-        });
-
-        sheet.addEventListener('dragleave', (e) => {
-            const target = e.target;
-            const logoCell = target.closest('.official-logo-cell');
-            if (logoCell) {
-                logoCell.style.outline = '';
-            }
-        });
-
-        sheet.addEventListener('drop', (e) => {
-            const target = e.target;
-            const logoCell = target.closest('.official-logo-cell');
-            if (logoCell) {
-                e.preventDefault();
-                logoCell.style.outline = '';
-                
-                const url = e.dataTransfer.getData('text/plain');
-                if (url) {
-                    const img = logoCell.querySelector('img');
-                    if (img) {
-                        applyLogoToDocument(url, img.id);
+            const logosList = e.target.closest('#official-header-logos-list');
+            if (logosList) {
+                const dragging = sheet.querySelector('.official-logo-item.dragging');
+                if (dragging) {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(logosList, e.clientX);
+                    const placeholder = document.getElementById('btn-add-header-logo');
+                    if (afterElement == null) {
+                        if (placeholder) {
+                            logosList.insertBefore(dragging, placeholder);
+                        } else {
+                            logosList.appendChild(dragging);
+                        }
+                    } else {
+                        logosList.insertBefore(dragging, afterElement);
+                    }
+                } else {
+                    // Check if dragging gallery logo
+                    const isUrl = e.dataTransfer.types.includes('text/uri-list') || e.dataTransfer.types.includes('text/plain');
+                    if (isUrl) {
+                        e.preventDefault();
+                        logosList.style.outline = '2px dashed var(--accent)';
                     }
                 }
+            }
+        });
+
+        // Drag leave delegation
+        sheet.addEventListener('dragleave', (e) => {
+            const logosList = e.target.closest('#official-header-logos-list');
+            if (logosList && !logosList.contains(e.relatedTarget)) {
+                logosList.style.outline = '';
+            }
+        });
+
+        // Drop delegation
+        sheet.addEventListener('drop', (e) => {
+            const logosList = e.target.closest('#official-header-logos-list');
+            if (logosList) {
+                logosList.style.outline = '';
+                const dragging = sheet.querySelector('.official-logo-item.dragging');
+                if (dragging) {
+                    e.preventDefault();
+                    dragging.classList.remove('dragging');
+                    saveCurrentState();
+                } else {
+                    // Drop gallery URL
+                    const url = e.dataTransfer.getData('text/plain');
+                    if (url) {
+                        e.preventDefault();
+                        addLogoToHeader(url);
+                    }
+                }
+            }
+        });
+
+        // Drag end delegation
+        sheet.addEventListener('dragend', (e) => {
+            const dragging = sheet.querySelector('.official-logo-item.dragging');
+            if (dragging) {
+                dragging.classList.remove('dragging');
             }
         });
     }
@@ -2963,8 +3082,24 @@
         const sheet = DOM.sessionSheet;
         if (!sheet) return;
         
-        // Apply scale using CSS zoom
-        sheet.style.zoom = AppState.zoomScale;
+        // Firefox compatibility fallback:
+        // Firefox does not support css zoom. We check if zoom is supported in style.
+        if ('zoom' in sheet.style) {
+            sheet.style.zoom = AppState.zoomScale;
+            sheet.style.transform = '';
+            sheet.style.transformOrigin = '';
+            const parent = sheet.parentElement;
+            if (parent) parent.style.height = '';
+        } else {
+            // Firefox and others without zoom support
+            sheet.style.transform = `scale(${AppState.zoomScale})`;
+            sheet.style.transformOrigin = 'top center';
+            const parent = sheet.parentElement;
+            if (parent) {
+                // Adjust height of the parent container so scrollbar and footer elements render properly
+                parent.style.height = `${sheet.scrollHeight * AppState.zoomScale + 40}px`;
+            }
+        }
         
         // Show temporary zoom floating percentage indicator
         showZoomIndicator();
@@ -3011,49 +3146,35 @@
     let selectedGalleryLogoUrl = null;
 
     function swapLogos() {
-        const logoLeft = document.getElementById('header-logo-left');
-        const logoRegional = document.getElementById('header-logo-regional');
-        if (!logoLeft || !logoRegional) {
-            Toast.warning('Genera la sesión primero para poder intercambiar los logos');
-            return;
-        }
+        if (!AppState.activeLogoTarget) return;
+        const target = document.getElementById(AppState.activeLogoTarget);
+        if (!target) return;
 
-        const srcLeft = logoLeft.getAttribute('src');
-        const srcRegional = logoRegional.getAttribute('src');
-        logoLeft.setAttribute('src', srcRegional || '');
-        logoRegional.setAttribute('src', srcLeft || '');
+        const item = target.closest('.official-logo-item');
+        if (!item) return;
 
-        const styleLeft = logoLeft.getAttribute('style');
-        const styleRegional = logoRegional.getAttribute('style');
+        const next = item.nextElementSibling;
+        const parent = item.parentElement;
         
-        if (styleRegional !== null) {
-            logoLeft.setAttribute('style', styleRegional);
+        if (next && next.classList.contains('official-logo-item')) {
+            // Swap item with next element
+            parent.insertBefore(next, item);
         } else {
-            logoLeft.removeAttribute('style');
-        }
-        if (styleLeft !== null) {
-            logoRegional.setAttribute('style', styleLeft);
-        } else {
-            logoRegional.removeAttribute('style');
-        }
-        
-        logoLeft.style.transform = 'scale(1.15)';
-        logoRegional.style.transform = 'scale(1.15)';
-        setTimeout(() => {
-            logoLeft.style.transform = '';
-            logoRegional.style.transform = '';
-        }, 300);
-
-        if (AppState.activeLogoTarget) {
-            AppState.activeLogoTarget = AppState.activeLogoTarget === 'header-logo-left' ? 'header-logo-regional' : 'header-logo-left';
-            const newActiveLogo = document.getElementById(AppState.activeLogoTarget);
-            if (newActiveLogo) {
-                openLogoEditor(newActiveLogo);
+            // Cycle back to the start (before the first item)
+            const first = parent.querySelector('.official-logo-item');
+            if (first && first !== item) {
+                parent.insertBefore(item, first);
             }
         }
 
+        // Save state
         saveCurrentState();
-        Toast.success('Posición de logos intercambiada');
+
+        // Reposition popover and resize handle
+        setTimeout(() => {
+            openLogoEditor(target);
+        }, 100);
+        Toast.success('Posición de logo cambiada');
     }
 
     function getOrCreateResizeHandle() {
@@ -3223,12 +3344,10 @@
     function handleSelectModalLogo(url) {
         if (AppState.activeLogoTarget) {
             applyLogoToDocument(url, AppState.activeLogoTarget);
-            document.getElementById('logos-gallery-modal').classList.add('hidden');
         } else {
-            selectedGalleryLogoUrl = url;
-            const posSelector = document.getElementById('modal-logo-position-selector');
-            if (posSelector) posSelector.classList.remove('hidden');
+            addLogoToHeader(url);
         }
+        document.getElementById('logos-gallery-modal').classList.add('hidden');
     }
 
     async function handleModalLogoUpload(file) {
@@ -3397,29 +3516,11 @@
     }
 
     function initLogosGalleryModal() {
-        const btnApplyLeft = document.getElementById('btn-modal-apply-left');
-        const btnApplyRight = document.getElementById('btn-modal-apply-right');
         const btnCloseModal = document.getElementById('btn-close-gallery-modal');
         const btnCloseModal2 = document.getElementById('btn-modal-gallery-close');
         const modalDropzone = document.getElementById('modal-logo-dropzone');
         const modalFileInput = document.getElementById('input-modal-upload-logo');
 
-        if (btnApplyLeft) {
-            btnApplyLeft.addEventListener('click', () => {
-                if (selectedGalleryLogoUrl) {
-                    applyLogoToDocument(selectedGalleryLogoUrl, 'header-logo-left');
-                    document.getElementById('logos-gallery-modal').classList.add('hidden');
-                }
-            });
-        }
-        if (btnApplyRight) {
-            btnApplyRight.addEventListener('click', () => {
-                if (selectedGalleryLogoUrl) {
-                    applyLogoToDocument(selectedGalleryLogoUrl, 'header-logo-regional');
-                    document.getElementById('logos-gallery-modal').classList.add('hidden');
-                }
-            });
-        }
         [btnCloseModal, btnCloseModal2].forEach(btn => {
             if (btn) {
                 btn.addEventListener('click', () => {

@@ -2,6 +2,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -147,7 +157,7 @@ serve(async (req) => {
           from: smtpEmail,
           to: toEmail,
           subject: subject,
-          content: customHtml,
+          content: stripHtml(customHtml),
           html: customHtml,
         });
         sentCount++;

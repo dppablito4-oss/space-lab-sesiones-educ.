@@ -135,11 +135,19 @@ SI EL DOCENTE TE PIDE CAMBIOS DE DISEÑO, COLORES, TAMAÑO DE LETRA O ESPACIADOS
                 // Fallback local a OpenRouter
                 if (window.AiCopilot && window.AiCopilot.isConfigured()) {
                     console.log('[Chatbot] Fallback local a OpenRouter...');
-                    // Simulamos llamada a la API local de OpenRouter usando fetch
-                    // Esto evita duplicar todo el código de fetch
                     const config = localStorage.getItem('spacelab_ai_config');
+                    let keyConfigured = false;
+                    let c = null;
                     if (config) {
-                        const c = JSON.parse(config);
+                        try {
+                            c = JSON.parse(config);
+                            if (c.apiKey && c.apiKey.length > 10) {
+                                keyConfigured = true;
+                            }
+                        } catch { /* ignore */ }
+                    }
+
+                    if (keyConfigured) {
                         const response = await fetch(c.endpoint || 'https://openrouter.ai/api/v1/chat/completions', {
                             method: 'POST',
                             headers: {
@@ -159,7 +167,18 @@ SI EL DOCENTE TE PIDE CAMBIOS DE DISEÑO, COLORES, TAMAÑO DE LETRA O ESPACIADOS
                         const resJson = await response.json();
                         responseText = resJson.choices?.[0]?.message?.content || 'Error en formato de respuesta';
                     } else {
-                        throw new Error('Configuración de IA no encontrada');
+                        // Si no está configurada la API key local, mostramos un prompt para configurarla
+                        if (window.AiCopilot && typeof window.AiCopilot.showConfigPrompt === 'function') {
+                            Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenRouter.');
+                            const configured = window.AiCopilot.showConfigPrompt();
+                            if (configured) {
+                                // Reintentar tras configurar
+                                removeTypingIndicator(typingId);
+                                inputField.value = text; // restaurar texto del usuario
+                                return handleSendMessage();
+                            }
+                        }
+                        responseText = '⚠️ Para chatear con DeepSeek, por favor inicia sesión o configura una API Key de OpenRouter.';
                     }
                 } else {
                     // Si no está configurada la API key local, mostramos un prompt para configurarla

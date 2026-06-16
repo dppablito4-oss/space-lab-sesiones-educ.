@@ -33,7 +33,7 @@ BEGIN
         WHERE id = auth.uid() AND (role = 'superadmin' OR role = 'admin')
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Políticas de RLS para profiles
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
@@ -72,7 +72,7 @@ BEGIN
     );
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

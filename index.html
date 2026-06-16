@@ -641,17 +641,11 @@
                         <!-- Group 4: Insert / Logos -->
                         <div class="toolbar-group">
                             <div class="toolbar-item">
-                                <label class="toolbar-sublabel">Insertar Logo</label>
-                                <div class="btn-group" style="display: flex; gap: 4px;">
-                                    <button type="button" id="btn-ribbon-logo-left"
-                                        class="btn btn-ghost btn-sm toolbar-btn"
-                                        style="height: 28px; min-height: 28px; padding: 2px 8px !important;"
-                                        title="Cambiar Logo Izquierdo (Escudo)">👈 Izq</button>
-                                    <button type="button" id="btn-ribbon-logo-right"
-                                        class="btn btn-ghost btn-sm toolbar-btn"
-                                        style="height: 28px; min-height: 28px; padding: 2px 8px !important;"
-                                        title="Cambiar Logo Derecho (Regional)">Der 👉</button>
-                                </div>
+                                <label class="toolbar-sublabel">Insertar Logos</label>
+                                <button type="button" id="btn-ribbon-add-logo"
+                                    class="btn btn-ghost btn-sm toolbar-btn"
+                                    style="height: 28px; min-height: 28px; padding: 2px 8px !important; display: flex; align-items: center; gap: 4px;"
+                                    title="Añadir un nuevo logo al encabezado oficial">➕ Añadir Logo</button>
                             </div>
                         </div>
 
@@ -948,7 +942,7 @@
             <!-- Actions -->
             <div class="popover-action-row" style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button type="button" id="logo-editor-gallery-trigger" class="btn btn-ghost btn-sm" style="flex: 1.5; font-size: 0.75rem; padding: 4px 8px !important; min-width: 100px;">🖼️ Galería / Subir</button>
-                <button type="button" id="logo-editor-swap" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;" title="Intercambiar lado izquierdo y derecho">🔄 Lado</button>
+                <button type="button" id="logo-editor-swap" class="btn btn-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important;" title="Mover la posición del logo en la lista">🔄 Mover</button>
                 <button type="button" id="logo-editor-delete" class="btn btn-danger-ghost btn-sm" style="flex: 1; font-size: 0.75rem; padding: 4px 8px !important; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">🗑️ Quitar</button>
             </div>
             
@@ -1052,14 +1046,7 @@
                 <!-- Cargado dinámicamente -->
             </div>
 
-            <!-- Position prompt wrapper (if target not set) -->
-            <div id="modal-logo-position-selector" class="hidden" style="margin-bottom: 1.5rem; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 8px;">
-                <p style="font-size: 0.8rem; color: #a1a1aa; margin: 0 0 10px 0;">¿Dónde deseas aplicar el logo seleccionado?</p>
-                <div style="display: flex; gap: 8px; justify-content: center;">
-                    <button type="button" id="btn-modal-apply-left" class="btn btn-ghost btn-sm" style="font-size: 0.75rem; padding: 6px 12px;">👈 Izquierda (Escudo)</button>
-                    <button type="button" id="btn-modal-apply-right" class="btn btn-primary btn-sm" style="font-size: 0.75rem; padding: 6px 12px;">Derecha (Regional/I.E.) 👉</button>
-                </div>
-            </div>
+
 
             <div style="display: flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" id="btn-modal-gallery-close" class="btn btn-ghost btn-sm" style="font-size: 0.8rem; padding: 6px 16px;">Cerrar</button>

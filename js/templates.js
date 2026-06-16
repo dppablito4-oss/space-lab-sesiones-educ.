@@ -339,26 +339,10 @@ const Templates = (() => {
                             <!-- ════════ HEADER INSTITUCIONAL OFICIAL ════════ -->
                             <table class="official-header-table">
                                 <tr>
-                                    <td class="official-logo-cell logo-left">
-                                        <img id="header-logo-left" src="${m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png'}" alt="Escudo del Perú" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${m.logo_left_style || 'cursor: pointer;'}" title="Haz clic o arrastra un logo aquí para cambiarlo">
-                                    </td>
-                                    <td class="official-entity-cell cell-peru" ${ce}>
-                                        <strong>PERÚ</strong>
-                                    </td>
-                                    <td class="official-entity-cell cell-minedu" ${ce}>
-                                        Ministerio<br>de Educación
-                                    </td>
-                                    <td class="official-entity-cell cell-dre" ${ce}>
-                                        ${esc(m.dre || 'Dirección Regional de Educación de Ucayali')}
-                                    </td>
-                                    <td class="official-entity-cell cell-ugel" ${ce}>
-                                        ${esc(m.ugel || 'Unidad de Gestión Educativa Local de Padre Abad')}
-                                    </td>
-                                    <td class="official-entity-cell cell-agp" ${ce}>
-                                        Área de Gestión<br>Pedagógica
-                                    </td>
-                                    <td class="official-logo-cell logo-right">
-                                        <img id="header-logo-regional" src="${m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png'}" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${m.logo_regional_style || 'cursor: pointer;'}" title="Haz clic o arrastra un logo aquí para cambiarlo">
+                                    <td class="official-header-logos-cell">
+                                        <div class="official-header-logos-list" id="official-header-logos-list">
+                                            ${buildLogosListHtml(m, ce)}
+                                        </div>
                                     </td>
                                 </tr>
                             </table>
@@ -984,6 +968,46 @@ const Templates = (() => {
         `;
     }
 
+    // ─── HELPER: Render the dynamic logos list for the official header ───
+    function buildLogosListHtml(m, ce) {
+        let logos = m.logos;
+        if (!logos || !Array.isArray(logos) || logos.length === 0) {
+            // Fallback for backward compatibility
+            logos = [
+                {
+                    id: 'header-logo-left',
+                    url: m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png',
+                    style: m.logo_left_style || 'cursor: pointer;'
+                },
+                {
+                    id: 'header-logo-regional',
+                    url: m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png',
+                    style: m.logo_regional_style || 'cursor: pointer;'
+                }
+            ];
+        }
+
+        let html = '';
+        logos.forEach((logo, idx) => {
+            const style = logo.style || 'cursor: pointer;';
+            const id = logo.id || `header-logo-${Date.now()}-${idx}`;
+            html += `
+                <div class="official-logo-item" draggable="true">
+                    <img id="${id}" src="${logo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${style}" title="Haz clic para editar, arrastra para reordenar" draggable="false">
+                    <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+                </div>
+            `;
+        });
+
+        // Interactive "Add logo" placeholder button at the end
+        html += `
+            <div class="add-logo-placeholder no-print" id="btn-add-header-logo" title="Añadir logo">
+                <span>➕</span>
+            </div>
+        `;
+        return html;
+    }
+
     // ─── HELPER: Escape HTML + preserve newlines ───
     function esc(str) {
         if (!str) return '';
@@ -998,8 +1022,9 @@ const Templates = (() => {
     // ─── HELPER: Allow HTML through (for AI-generated rich content) ───
     function escHtml(str) {
         if (!str) return '';
-        // If the string already contains HTML tags, pass through
-        if (/<[a-z][\s\S]*>/i.test(str)) {
+        // Only allow rendering if it contains real HTML tag elements we use
+        const containsRealHtml = /<\/?(strong|b|em|i|u|ul|ol|li|p|br)\b/i.test(str);
+        if (containsRealHtml) {
             return str;
         }
         // Otherwise treat as plain text with newlines

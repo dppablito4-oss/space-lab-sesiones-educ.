@@ -4,8 +4,18 @@
    ═══════════════════════════════════════════════════ */
 
 const Toast = (() => {
-    const container = document.getElementById('toast-container');
+    let container = null;
     const DURATION = 3500;
+
+    function getContainer() {
+        if (!container) {
+            container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.body;
+            }
+        }
+        return container;
+    }
 
     /**
      * Show a toast notification
@@ -28,7 +38,7 @@ const Toast = (() => {
             <span class="toast-msg">${message}</span>
         `;
 
-        container.appendChild(toast);
+        getContainer().appendChild(toast);
 
         // Auto remove after duration
         const timer = setTimeout(() => remove(toast), duration);
