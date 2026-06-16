@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import nodemailer from "npm:nodemailer";
 
 function stripHtml(html: string): string {
   return html
@@ -125,39 +125,37 @@ serve(async (req) => {
       );
     }
 
-    // 4. Configurar cliente SMTP y enviar correos
-    const smtpClient = new SmtpClient();
-    
-    const hostname = smtpHost || "smtp.gmail.com";
-    const port = Number(smtpPort) || 465;
-    const secure = smtpSecure !== undefined ? smtpSecure : true;
+    // 4. Configurar Nodemailer y enviar correos
+    const isGmail = (smtpHost || "").toLowerCase().includes("gmail.com");
+    const transporterConfig: any = isGmail
+      ? {
+          service: "gmail",
+          auth: {
+            user: smtpEmail,
+            pass: smtpAppPassword,
+          },
+        }
+      : {
+          host: smtpHost || "smtp.gmail.com",
+          port: Number(smtpPort) || 465,
+          secure: smtpSecure !== undefined ? smtpSecure : true,
+          auth: {
+            user: smtpEmail,
+            pass: smtpAppPassword,
+          },
+        };
 
-    console.log(`[SMTP] Conectando a ${hostname}:${port} (secure: ${secure})...`);
-    if (secure) {
-      await smtpClient.connectTLS({
-        hostname,
-        port,
-        username: smtpEmail,
-        password: smtpAppPassword,
-      });
-    } else {
-      await smtpClient.connect({
-        hostname,
-        port,
-        username: smtpEmail,
-        password: smtpAppPassword,
-      });
-    }
+    const transporter = nodemailer.createTransport(transporterConfig);
 
-    console.log(`[SMTP] Enviando ${emails.length} correos...`);
+    console.log(`[Mailer] Enviando ${emails.length} correos...`);
     let sentCount = 0;
     for (const toEmail of emails) {
       try {
-        await smtpClient.send({
-          from: smtpEmail,
+        await transporter.sendMail({
+          from: `"Space Lab" <${smtpEmail}>`,
           to: toEmail,
           subject: subject,
-          content: stripHtml(customHtml),
+          text: stripHtml(customHtml),
           html: customHtml,
         });
         sentCount++;
@@ -165,8 +163,6 @@ serve(async (req) => {
         console.error(`Error enviando correo a ${toEmail}:`, sendErr);
       }
     }
-
-    await smtpClient.close();
 
     return new Response(
       JSON.stringify({ message: `¡Despacho completado! Se enviaron ${sentCount} de ${emails.length} correos con éxito.` }),
