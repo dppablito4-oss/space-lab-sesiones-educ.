@@ -77,9 +77,29 @@ const Templates = (() => {
             'Monitorea y ajusta su desempeño durante el proceso de aprendizaje'
         ];
 
-        // Build capacidades rows
-        const capacidades = Array.isArray(p.capacidades) ? p.capacidades : (p.capacidad ? [p.capacidad] : ['']);
-        const criterios = Array.isArray(p.criterios_evaluacion) ? p.criterios_evaluacion : (p.desempeno ? [p.desempeno] : ['']);
+        // Build capacities rows (split string by newline to render multiple <li> items)
+        let capacidades = [];
+        if (Array.isArray(p.capacidades)) {
+            capacidades = p.capacidades;
+        } else if (p.capacidad) {
+            capacidades = p.capacidad
+                .split('\n')
+                .map(line => line.replace(/^[•\s\-\*\d\.\)]+\s*/, '').trim())
+                .filter(line => line.length > 0);
+        }
+        if (capacidades.length === 0) capacidades = [''];
+
+        // Build criteria rows (split string by newline to render multiple <li> items)
+        let criterios = [];
+        if (Array.isArray(p.criterios_evaluacion)) {
+            criterios = p.criterios_evaluacion;
+        } else if (p.desempeno) {
+            criterios = p.desempeno
+                .split('\n')
+                .map(line => line.replace(/^[•\s\-\*\d\.\)]+\s*/, '').trim())
+                .filter(line => line.length > 0);
+        }
+        if (criterios.length === 0) criterios = [''];
 
         let capacidadesHtml = '';
         capacidades.forEach(cap => {

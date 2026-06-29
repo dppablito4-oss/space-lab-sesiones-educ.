@@ -79,6 +79,23 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Trigger de protección para evitar que un usuario se auto-asigne el rol de administrador o cambie su rol
+CREATE OR REPLACE FUNCTION public.check_profile_role_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.role IS DISTINCT FROM NEW.role AND NOT public.is_admin() THEN
+        RAISE EXCEPTION 'No tienes permisos para modificar el rol de usuario.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS before_profile_role_update ON public.profiles;
+CREATE TRIGGER before_profile_role_update
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.check_profile_role_update();
+
+
 
 -- 2. Tabla Principal de Sesiones
 CREATE TABLE IF NOT EXISTS public.sesiones (
@@ -169,7 +186,7 @@ CREATE POLICY "Admins can view logs" ON public.security_logs
 
 DROP POLICY IF EXISTS "Anyone can insert security logs" ON public.security_logs;
 CREATE POLICY "Anyone can insert security logs" ON public.security_logs
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- =======================================================
 -- 5. Configuración de Storage para Logos Públicos

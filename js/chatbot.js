@@ -265,12 +265,30 @@ SI EL DOCENTE TE PIDE CAMBIOS DE DISEÑO, COLORES, TAMAÑO DE LETRA O ESPACIADOS
         return text;
     }
 
+    function renderSafeHTML(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        let escaped = div.innerHTML;
+
+        return escaped
+            .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
+            .replace(/&lt;b&gt;/gi, '<b>').replace(/&lt;\/b&gt;/gi, '</b>')
+            .replace(/&lt;em&gt;/gi, '<em>').replace(/&lt;\/em&gt;/gi, '</em>')
+            .replace(/&lt;i&gt;/gi, '<i>').replace(/&lt;\/i&gt;/gi, '</i>')
+            .replace(/&lt;ul&gt;/gi, '<ul>').replace(/&lt;\/ul&gt;/gi, '</ul>')
+            .replace(/&lt;ol&gt;/gi, '<ol>').replace(/&lt;\/ol&gt;/gi, '</ol>')
+            .replace(/&lt;li&gt;/gi, '<li>').replace(/&lt;\/li&gt;/gi, '</li>')
+            .replace(/&lt;p&gt;/gi, '<p>').replace(/&lt;\/p&gt;/gi, '</p>')
+            .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+            .replace(/\n/g, '<br>');
+    }
+
     function appendMessage(sender, text) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `chat-message ${sender}`;
         
-        // Convertir saltos de línea a <br>
-        const cleanText = escHTML(text).replace(/\n/g, '<br>');
+        const cleanText = renderSafeHTML(text);
 
         msgDiv.innerHTML = `
             <div class="message-bubble">

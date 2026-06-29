@@ -79,6 +79,10 @@
                     <span class="icon">📄</span>
                     <span class="btn-label">Exportar PDF</span>
                 </button>
+                <button id="btn-export-word" class="btn btn-word" style="background: linear-gradient(135deg, #2b579a 0%, #1e3d6b 100%); color: #fff;" title="Exportar sesión a Word">
+                    <span class="icon">📝</span>
+                    <span class="btn-label">Exportar Word</span>
+                </button>
                 <button id="btn-print" class="btn btn-primary" title="Imprimir sesión">
                     <span class="icon">🖨️</span>
                     <span class="btn-label">Imprimir</span>
@@ -690,6 +694,9 @@
                         <div class="toolbar-group toolbar-group-actions"
                             style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
                             <span class="preview-badge" id="edit-mode-badge">✏️ Modo Edición</span>
+                            <button id="btn-export-word-preview" class="btn btn-ghost btn-sm toolbar-btn"
+                                style="width: 32px; height: 32px; padding: 0 !important;"
+                                title="Exportar sesión a Word">📝</button>
                             <button id="btn-clean-format" class="btn btn-ghost btn-sm toolbar-btn"
                                 style="width: 32px; height: 32px; padding: 0 !important;"
                                 title="Limpiar formato pegado">🧹</button>
@@ -1084,6 +1091,7 @@
     <script src="js/ai-copilot.js"></script>
     <script src="js/chatbot.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 
