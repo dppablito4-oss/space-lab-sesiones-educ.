@@ -347,6 +347,13 @@ FORMATO DE RESPUESTA (JSON):
         parts.push(`- Si el docente ha proporcionado una 'Capacidad sugerida' (${m.capacidad ? `"${m.capacidad}"` : 'NO PROVISTO'}), úsala. Si está vacía o NO PROVISTO, dedúcela del contexto del archivo.`);
         parts.push(`- Si el docente ha proporcionado un 'Desempeño sugerido' (${m.desempeno ? `"${m.desempeno}"` : 'NO PROVISTO'}), úsalo. Si está vacío o NO PROVISTO, dedúcelo del contexto del archivo.`);
 
+        // ─── Enfoque pedagógico específico del docente (del mini-chat) ───
+        // Solo se añade si el docente usó el panel de briefing. Es compacto (~80 palabras)
+        // y NO repite área/grado/título (ya están arriba). Instrucción de alta prioridad.
+        if (m.pedagogyBrief && m.pedagogyBrief.trim()) {
+            parts.push(`\n⚠️ ENFOQUE PEDAGÓGICO ESPECÍFICO DEL DOCENTE (INSTRUCCIÓN DE ALTA PRIORIDAD):\n${m.pedagogyBrief.trim()}\nAsegúrate de que los momentos, actividades y ejemplos de la sesión reflejen exactamente este enfoque.`);
+        }
+
         parts.push(`\nIMPORTANTE: Responde SOLO con el JSON, sin explicaciones.`);
 
         return parts.join('\n');

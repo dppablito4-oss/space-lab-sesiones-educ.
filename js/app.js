@@ -231,6 +231,30 @@
         DOM.btnGenerate.addEventListener('click', handleGenerate);
         DOM.btnGenerateAI.addEventListener('click', handleGenerateAI);
 
+        // Pedagogy Brief trigger button
+        const btnPedagogyBrief = document.getElementById('btn-pedagogy-brief');
+        if (btnPedagogyBrief) {
+            btnPedagogyBrief.addEventListener('click', handleOpenPedagogyBrief);
+        }
+
+        // When PedagogyBrief finishes, auto-trigger AI generation with the summary
+        document.addEventListener('pedagogy-brief-ready', (e) => {
+            const summary = e.detail?.summary || null;
+            // Update button visual state
+            const btn = document.getElementById('btn-pedagogy-brief');
+            if (btn) {
+                if (summary) {
+                    btn.classList.add('pb-has-brief');
+                    btn.textContent = '✅ Enfoque listo — Editar';
+                } else {
+                    btn.classList.remove('pb-has-brief');
+                    btn.textContent = '✨ Afinar enfoque pedagógico';
+                }
+            }
+            // Auto-launch AI generation
+            handleGenerateAI();
+        });
+
         // Action buttons
         DOM.btnToggleEdit.addEventListener('click', toggleEditMode);
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
@@ -730,6 +754,25 @@
         Toast.success('Sesión generada correctamente');
     }
 
+    // ─── PEDAGOGY BRIEF ───
+    function handleOpenPedagogyBrief() {
+        if (!window.PedagogyBrief) return;
+
+        const formData = getFormData();
+        if (!formData.metadata.area && !formData.metadata.titulo) {
+            Toast.warning('Llena al menos el Área Curricular y el Título de la sesión antes de afinar el enfoque.');
+            return;
+        }
+
+        PedagogyBrief.open({
+            area:        formData.metadata.area || '',
+            titulo:      formData.metadata.titulo || '',
+            grado:       formData.metadata.grado || '',
+            methodology: DOM.selectMethodology ? DOM.selectMethodology.value : '',
+            sourceFile:  AppState.sourceFileData || null
+        });
+    }
+
     async function handleGenerateAI() {
         // Intercept: Check user authentication
         const user = await SupabaseClient.getCurrentUser();
@@ -764,7 +807,8 @@
             const aiData = await AiCopilot.generateSession({
                 ...formData.metadata,
                 ...formData.proposito,
-                sourceFile: AppState.sourceFileData
+                sourceFile: AppState.sourceFileData,
+                pedagogyBrief: (window.PedagogyBrief ? PedagogyBrief.getSummary() : null)
             });
 
             // Merge AI data with form data
