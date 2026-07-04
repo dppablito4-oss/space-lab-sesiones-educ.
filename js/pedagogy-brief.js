@@ -342,9 +342,7 @@ REGLAS:
                     body: { prompt: userPrompt, systemPrompt, maxTokens: maxTokens || 380 }
                 });
                 if (!error && data) {
-                    const text = typeof data === 'object'
-                        ? (data.choices?.[0]?.message?.content || data.content || '')
-                        : data;
+                    const text = _extractText(data);
                     if (text && text.trim()) return text.trim();
                 }
             } catch {
@@ -378,8 +376,42 @@ REGLAS:
 
         if (!resp.ok) throw new Error(`API error ${resp.status}`);
         const json = await resp.json();
-        return (json.choices?.[0]?.message?.content || '').trim();
+        return _extractText(json);
     }
+
+    function _extractText(data) {
+        if (!data) return '';
+        if (typeof data === 'string') {
+            const trimmed = data.trim();
+            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    return _extractText(parsed);
+                } catch {
+                    return trimmed;
+                }
+            }
+            return trimmed;
+        }
+        if (typeof data === 'object') {
+            if (data.choices && data.choices[0]?.message?.content) {
+                return data.choices[0].message.content;
+            }
+            if (data.choices && data.choices[0]?.text) {
+                return data.choices[0].text;
+            }
+            if (data.messages && Array.isArray(data.messages) && data.messages[0]) {
+                const m = data.messages[0];
+                return m.content || m.text || JSON.stringify(m);
+            }
+            if (data.content) return data.content;
+            if (data.response) return data.response;
+            if (data.text) return data.text;
+            return JSON.stringify(data);
+        }
+        return String(data);
+    }
+
 
     // ─── EXPORTS ───
     return { open, getSummary, clear };
