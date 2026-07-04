@@ -146,8 +146,18 @@ SI EL DOCENTE TE PIDE CAMBIOS DE DISEÑO, COLORES, TAMAÑO DE LETRA O ESPACIADOS
                 } catch (e) { /* ignore */ }
 
                 if (hasLocalKey && c) {
-                    console.log('[Chatbot] Fallback local a OpenRouter...');
-                    const response = await fetch(c.endpoint || 'https://openrouter.ai/api/v1/chat/completions', {
+                    console.log('[Chatbot] Fallback local a DeepSeek...');
+                    
+                    let requestEndpoint = c.endpoint || 'https://openrouter.ai/api/v1/chat/completions';
+                    let requestModel = 'deepseek/deepseek-chat';
+                    
+                    // Si es una API Key de DeepSeek directo en lugar de OpenRouter
+                    if (c.apiKey.startsWith('sk-') && !c.endpoint && !c.apiKey.startsWith('sk-proj-')) {
+                        requestEndpoint = 'https://api.deepseek.com/chat/completions';
+                        requestModel = 'deepseek-chat';
+                    }
+
+                    const response = await fetch(requestEndpoint, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -155,7 +165,7 @@ SI EL DOCENTE TE PIDE CAMBIOS DE DISEÑO, COLORES, TAMAÑO DE LETRA O ESPACIADOS
                             'HTTP-Referer': window.location.origin
                         },
                         body: JSON.stringify({
-                            model: c.model || 'deepseek/deepseek-chat',
+                            model: requestModel,
                             messages: [
                                 { role: 'system', content: 'Eres un asistente pedagógico de MINEDU Perú.' },
                                 { role: 'user', content: promptText }

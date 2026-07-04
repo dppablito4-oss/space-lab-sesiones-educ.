@@ -29,10 +29,12 @@ const Storage = (() => {
 
     // ─── CRUD ───
 
-    function getAllSessions() {
+    function getAllSessions(includeDeleted = false) {
         try {
             const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : [];
+            const sessions = data ? JSON.parse(data) : [];
+            if (includeDeleted) return sessions;
+            return sessions.filter(s => !s.deleted_at);
         } catch (e) {
             console.error('[Storage] Error reading sessions:', e);
             return [];
@@ -82,21 +84,27 @@ const Storage = (() => {
 
     function deleteSession(id) {
         try {
-            const sessions = getAllSessions().filter(s => s.id !== id);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+            const sessions = getAllSessions(true);
+            const session = sessions.find(s => s.id === id);
+            
+            if (session) {
+                session.deleted_at = new Date().toISOString();
+                session.lastSaved = new Date().toISOString();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 
-            // Sincronización asíncrona con Supabase en background
-            if (window.SupabaseClient && typeof SupabaseClient.deleteSessionCloud === 'function') {
-                incrementSync();
-                SupabaseClient.getCurrentUser().then(user => {
-                    if (user) {
-                        return SupabaseClient.deleteSessionCloud(id)
-                            .then(() => console.log('[Storage] Eliminado de la nube:', id))
-                            .catch(err => console.warn('[Storage] Error al borrar de la nube:', err));
-                    }
-                }).finally(() => {
-                    decrementSync();
-                });
+                // Sincronización asíncrona con Supabase en background
+                if (window.SupabaseClient && typeof SupabaseClient.saveSessionCloud === 'function') {
+                    incrementSync();
+                    SupabaseClient.getCurrentUser().then(user => {
+                        if (user) {
+                            return SupabaseClient.saveSessionCloud(session)
+                                .then(() => console.log('[Storage] Soft-deleted en la nube:', id))
+                                .catch(err => console.warn('[Storage] Error al borrar de la nube (soft-delete):', err));
+                        }
+                    }).finally(() => {
+                        decrementSync();
+                    });
+                }
             }
 
             return true;
@@ -246,41 +254,85 @@ const Storage = (() => {
 
         incrementSync();
         try {
-            // 1. Obtener sesiones locales
-            const localSessions = getAllSessions();
+            // 1. Obtener todas las sesiones locales (incluidas las soft-deleted)
+            const localSessions = getAllSessions(true);
             
-            // 2. Obtener sesiones de la nube
+            // 2. Obtener sesiones de la nube (que incluyen deleted_at)
             const cloudSessions = await SupabaseClient.getSessionsCloud();
 
-            // 3. Fusionar sin duplicados. Si hay conflicto, prevalece la versión más reciente (lastSaved)
+            // 3. Fusionar local y nube
             const mergedMap = new Map();
 
             // Agregar primero locales
             localSessions.forEach(s => mergedMap.set(s.id, s));
 
             // Agregar/sobreescribir con las de la nube si son más recientes
-            cloudSessions.forEach(s => {
-                const existing = mergedMap.get(s.id);
-                if (!existing || new Date(s.lastSaved || 0) > new Date(existing.lastSaved || 0)) {
-                    mergedMap.set(s.id, s);
+            cloudSessions.forEach(cs => {
+                const local = mergedMap.get(cs.id);
+                if (!local) {
+                    mergedMap.set(cs.id, cs);
+                } else {
+                    const localTime = new Date(local.lastSaved || 0);
+                    const cloudTime = new Date(cs.lastSaved || cs.last_saved || 0);
+                    if (cloudTime > localTime) {
+                        mergedMap.set(cs.id, cs);
+                    }
                 }
             });
 
-            const mergedSessions = Array.from(mergedMap.values());
-            
-            // Ordenar por fecha
-            mergedSessions.sort((a, b) => new Date(b.lastSaved || 0) - new Date(a.lastSaved || 0));
-
-            // Guardar el resultado consolidado en LocalStorage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSessions));
-
-            // 4. Subir a la nube aquellas que falten o sean más recientes localmente
-            for (const session of mergedSessions) {
+            // Procesar la lista consolidada
+            const finalSessions = [];
+            for (const session of mergedMap.values()) {
                 const cloudVersion = cloudSessions.find(cs => cs.id === session.id);
-                if (!cloudVersion || new Date(session.lastSaved || 0) > new Date(cloudVersion.lastSaved || 0)) {
-                    await SupabaseClient.saveSessionCloud(session);
+
+                // Si está marcada como eliminada
+                if (session.deleted_at) {
+                    // Si no está en la nube, es porque el admin la purgó o borró físicamente. La purgamos local.
+                    if (!cloudVersion) {
+                        console.log('[Sync] Purgando sesión eliminada localmente (no existe en la nube):', session.id);
+                        continue;
+                    }
+                    // Si está en la nube pero no marcada como eliminada en la nube, actualizamos la nube
+                    if (!cloudVersion.deleted_at) {
+                        await SupabaseClient.saveSessionCloud(session);
+                    }
+                    session.synced = true;
+                    finalSessions.push(session);
+                } else {
+                    // Sesión activa
+                    if (!cloudVersion) {
+                        // No está en la nube
+                        // ¿Ya había sido sincronizada anteriormente? (Si tiene la marca synced)
+                        if (session.synced) {
+                            // Si ya fue sincronizada pero ya no está en la nube, fue borrada de la nube por el admin.
+                            // Por lo tanto, la borramos localmente para evitar resurrecciones.
+                            console.log('[Sync] Borrando sesión eliminada por administrador en nube:', session.id);
+                            continue;
+                        } else {
+                            // Nueva sesión local nunca subida. La subimos.
+                            session.synced = true;
+                            await SupabaseClient.saveSessionCloud(session);
+                            finalSessions.push(session);
+                        }
+                    } else {
+                        // Existe en ambos lados y está activa.
+                        // Si la versión local es más nueva, la subimos a la nube.
+                        const localTime = new Date(session.lastSaved || 0);
+                        const cloudTime = new Date(cloudVersion.lastSaved || 0);
+                        if (localTime > cloudTime) {
+                            await SupabaseClient.saveSessionCloud(session);
+                        }
+                        session.synced = true;
+                        finalSessions.push(session);
+                    }
                 }
             }
+
+            // Ordenar por fecha
+            finalSessions.sort((a, b) => new Date(b.lastSaved || 0) - new Date(a.lastSaved || 0));
+
+            // Guardar el resultado consolidado en LocalStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(finalSessions));
 
             console.log('🔄 Sesiones sincronizadas con Supabase con éxito');
         } catch (e) {

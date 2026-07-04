@@ -205,7 +205,8 @@ window.SupabaseClient = (() => {
         return data.map(row => ({
             ...row.session_data,
             id: row.id,
-            lastSaved: row.last_saved
+            lastSaved: row.last_saved,
+            deleted_at: row.deleted_at
         }));
     }
 
@@ -224,8 +225,12 @@ window.SupabaseClient = (() => {
                 user_id: user.id,
                 titulo: session.metadata?.titulo || 'Sin título',
                 template: session.template || 'estandar',
-                session_data: session,
-                last_saved: new Date().toISOString()
+                session_data: {
+                    ...session,
+                    deleted_at: session.deleted_at || null
+                },
+                last_saved: new Date().toISOString(),
+                deleted_at: session.deleted_at || null
             });
 
         if (error) {

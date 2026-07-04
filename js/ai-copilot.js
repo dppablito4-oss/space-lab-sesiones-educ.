@@ -8,10 +8,10 @@ const AiCopilot = (() => {
     // ─── CONFIGURACIÓN ───
     // El usuario debe configurar su propia API key y endpoint
     const CONFIG = {
-        // Para usar con OpenRouter (acceso a múltiples modelos)
-        endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        // Por defecto conectamos a la API de OpenAI
+        endpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: '', // Se configura desde la UI
-        model: 'deepseek/deepseek-chat', // DeepSeek V3 vía OpenRouter (barato y bueno)
+        model: 'gpt-5.4-mini', // OpenAI GPT-5.4 Mini por defecto
         maxTokens: 4000, // Ajuste clave para evitar JSONs rotos
         temperature: 0.5 // Bajarlo ayuda a que sea más estricto con el formato JSON
     };
@@ -224,15 +224,19 @@ CUÁNDO USAR LATEX:
         // 1. Intentar llamar a la Edge Function de Supabase si está disponible
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
-                const useGemini = metadata.ai_provider === 'gemini' || !metadata.ai_provider;
-                const functionName = useGemini ? 'gemini-router' : 'deepseek-router';
+                let functionName = 'openai-router';
+                if (metadata.ai_provider === 'gemini') {
+                    functionName = 'gemini-router';
+                } else if (metadata.ai_provider === 'deepseek') {
+                    functionName = 'deepseek-router';
+                }
                 
                 console.log(`[AI] Llamando a Edge Function ${functionName}...`);
                 const { data, error } = await SupabaseClient.client.functions.invoke(functionName, {
                     body: { 
                         prompt: userPrompt, 
                         systemPrompt: dynamicSystemPrompt,
-                        sourceFile: useGemini ? (metadata.sourceFile || null) : null
+                        sourceFile: metadata.ai_provider === 'gemini' ? (metadata.sourceFile || null) : null
                     }
                 });
 
@@ -254,31 +258,26 @@ CUÁNDO USAR LATEX:
                 console.error('[AI] Error en Edge Function:', err);
                 
                 // Differentiate error types
-                // Network errors, Function not found (404), or generic FunctionsFetchError
                 const isNetworkOrNotFound = !err.status || err.status === 404 || err.name === 'FunctionsFetchError';
                 
                 if (isNetworkOrNotFound) {
                     console.warn('[AI] Edge Function no disponible o fuera de línea, intentando fallback local...');
-                    // Si falla la llamada a la nube por red/404 y no tenemos API key local configurada
                     if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
-                        Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenRouter.');
+                        Toast.warning('El servidor de IA en la nube no responde. Por favor ingresa tu API Key local de OpenAI/OpenRouter.');
                         const configured = showConfigPrompt();
                         if (!configured) {
-                            throw new Error('Debes configurar una API Key de OpenRouter/OpenAI para poder generar sesiones con IA.');
+                            throw new Error('Debes configurar una API Key de OpenAI/OpenRouter para poder generar sesiones con IA.');
                         }
                     }
                 } else {
-                    // Es un error HTTP real del servidor (401, 403, 500, etc.)
-                    // Tratamos de extraer el mensaje descriptivo si el cuerpo es JSON
                     let serverMsg = err.message || `Error del servidor de IA (${err.status})`;
                     try {
-                        // Intentar parsear el mensaje en caso de que contenga el JSON de error
                         const parsedBody = JSON.parse(err.message);
                         if (parsedBody && parsedBody.error) {
                             serverMsg = `${parsedBody.error}${parsedBody.details ? ': ' + parsedBody.details : ''}`;
                         }
                     } catch {
-                        // Si no es un JSON, usar el mensaje de error directamente
+                        // ignore
                     }
                     throw new Error(serverMsg);
                 }
@@ -291,30 +290,93 @@ CUÁNDO USAR LATEX:
         }
 
         try {
-            console.log('[AI] Conectando a OpenRouter local...');
-            const response = await fetch(CONFIG.endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${CONFIG.apiKey}`,
-                    'HTTP-Referer': window.location.origin,
-                    'X-Title': 'Space Lab - Sesiones Educativas'
-                },
-                body: JSON.stringify({
-                    model: CONFIG.model,
-                    messages: [
-                        { role: 'system', content: dynamicSystemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ],
-                    max_tokens: CONFIG.maxTokens,
-                    temperature: CONFIG.temperature
-                })
-            });
+            let requestEndpoint = CONFIG.endpoint;
+            let requestModel = CONFIG.model;
+            const provider = metadata.ai_provider || 'openai';
+
+            if (provider === 'openai') {
+                if (CONFIG.apiKey.startsWith('sk-')) {
+                    requestEndpoint = 'https://api.openai.com/v1/chat/completions';
+                    requestModel = 'gpt-5.4-mini';
+                } else {
+                    requestEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
+                    requestModel = 'openai/gpt-5.4-mini';
+                }
+            } else if (provider === 'deepseek') {
+                if (CONFIG.apiKey.startsWith('sk-')) {
+                    requestEndpoint = 'https://api.deepseek.com/chat/completions';
+                    requestModel = 'deepseek-chat';
+                } else {
+                    requestEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
+                    requestModel = 'deepseek/deepseek-chat';
+                }
+            } else if (provider === 'gemini') {
+                if (CONFIG.apiKey.startsWith('sk-') || CONFIG.apiKey.startsWith('AIza')) {
+                    requestEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${CONFIG.apiKey}`;
+                } else {
+                    requestEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
+                    requestModel = 'google/gemini-2.5-flash';
+                }
+            }
+
+            console.log(`[AI] Conectando a local (${requestEndpoint}) con modelo ${requestModel}...`);
+            
+            let response;
+            if (provider === 'gemini' && requestEndpoint.includes('generativelanguage.googleapis.com')) {
+                response = await fetch(requestEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userPrompt }] }],
+                        generationConfig: { responseMimeType: "application/json" },
+                        systemInstruction: { parts: [{ text: dynamicSystemPrompt }] }
+                    })
+                });
+            } else {
+                response = await fetch(requestEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${CONFIG.apiKey}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Space Lab - Sesiones Educativas'
+                    },
+                    body: JSON.stringify({
+                        model: requestModel,
+                        messages: [
+                            { role: 'system', content: dynamicSystemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        max_tokens: CONFIG.maxTokens,
+                        temperature: CONFIG.temperature
+                    })
+                });
+            }
 
             if (!response.ok) {
                 const errBody = await response.text();
                 console.error('[AI] API Error:', response.status, errBody);
                 throw new Error(`Error del servidor: ${response.status}`);
+            }
+
+            const data = await response.json();
+            let content;
+            if (provider === 'gemini' && requestEndpoint.includes('generativelanguage.googleapis.com')) {
+                content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            } else {
+                content = data.choices?.[0]?.message?.content;
+            }
+
+            if (!content) {
+                throw new Error('La IA no devolvió contenido');
+            }
+
+            const parsed = parseAIResponse(content);
+            return parsed;
+        } catch (error) {
+            console.error('[AI] Generation error:', error);
+            throw error;
+        }idor: ${response.status}`);
             }
 
 
@@ -513,8 +575,12 @@ CUÁNDO USAR LATEX:
         // 1. Try to invoke Supabase Edge Function if available
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
-                const useGemini = CONFIG.model.includes('gemini') || !CONFIG.model.includes('deepseek');
-                const functionName = useGemini ? 'gemini-router' : 'deepseek-router';
+                let functionName = 'openai-router';
+                if (CONFIG.model.includes('gemini')) {
+                    functionName = 'gemini-router';
+                } else if (CONFIG.model.includes('deepseek')) {
+                    functionName = 'deepseek-router';
+                }
                 
                 console.log(`[AI Helper] Invoking edge function ${functionName} for generic prompt...`);
                 const { data, error } = await SupabaseClient.client.functions.invoke(functionName, {
@@ -532,16 +598,29 @@ CUÁNDO USAR LATEX:
                     if (text) return text;
                 }
             } catch (err) {
-                console.warn('[AI Helper] Edge function failed or returned error, using local OpenRouter fallback...', err);
+                console.warn('[AI Helper] Edge function failed or returned error, using local fallback...', err);
             }
         }
 
-        // 2. OpenRouter local fallback (using user's API key)
+        // 2. Local fallback (using user's API key)
         if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
             throw new Error('API_NOT_CONFIGURED');
         }
 
-        const response = await fetch(CONFIG.endpoint, {
+        let requestEndpoint = CONFIG.endpoint;
+        let requestModel = CONFIG.model;
+
+        if (CONFIG.apiKey.startsWith('sk-')) {
+            if (CONFIG.model.includes('deepseek')) {
+                requestEndpoint = 'https://api.deepseek.com/v1/chat/completions';
+                requestModel = 'deepseek-chat';
+            } else {
+                requestEndpoint = 'https://api.openai.com/v1/chat/completions';
+                requestModel = 'gpt-5.4-mini';
+            }
+        }
+
+        const response = await fetch(requestEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -550,7 +629,7 @@ CUÁNDO USAR LATEX:
                 'X-Title': 'Space Lab - Sesiones Educativas'
             },
             body: JSON.stringify({
-                model: CONFIG.model,
+                model: requestModel,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }

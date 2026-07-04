@@ -161,10 +161,18 @@
     // ─── SESSIONS MONITORING ───
     async function fetchServerSessions() {
         const tbody = document.getElementById('sessions-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Cargando sesiones...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Cargando sesiones...</td></tr>';
 
         try {
-            // Obtenemos sesiones
+            // 1. Limpieza automática en la base de datos de sesiones eliminadas hace más de 7 días
+            const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            await SupabaseClient.client
+                .from('sesiones')
+                .delete()
+                .not('deleted_at', 'is', null)
+                .lt('deleted_at', cutoffDate);
+
+            // 2. Obtenemos todas las sesiones
             const { data: sessions, error: sesError } = await SupabaseClient.client
                 .from('sesiones')
                 .select('*')
@@ -172,7 +180,7 @@
 
             if (sesError) throw sesError;
 
-            // Obtenemos perfiles de usuario para traducir user_id a email
+            // 3. Obtenemos perfiles de usuario para traducir user_id a email
             const { data: profiles, error: profError } = await SupabaseClient.client
                 .from('profiles')
                 .select('id, email');
@@ -183,7 +191,7 @@
             }
 
             if (!sessions || sessions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No hay sesiones guardadas en el servidor</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No hay sesiones guardadas en el servidor</td></tr>';
                 return;
             }
 
@@ -191,18 +199,44 @@
                 const email = profileMap.get(s.user_id) || s.user_id;
                 const metadata = s.session_data?.metadata || {};
                 
+                let statusHtml = '';
+                let actionsHtml = '';
+                
+                if (s.deleted_at) {
+                    const delDate = new Date(s.deleted_at);
+                    const expireDate = new Date(delDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    const msLeft = expireDate.getTime() - Date.now();
+                    const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+                    
+                    statusHtml = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">🗑️ Papelera (${daysLeft}d)</span>`;
+                    
+                    actionsHtml = `
+                        <button class="btn btn-ghost btn-sm btn-preview" data-id="${s.id}" title="Previsualizar Sesión">👁️ Ver</button>
+                        <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}" title="Ver JSON de la sesión">📦 JSON</button>
+                        <button class="btn btn-ghost btn-sm btn-restore-session" data-id="${s.id}" style="color: #10b981; border-color: rgba(16, 185, 129, 0.2);" title="Restaurar Sesión">🔄 Restaurar</button>
+                        <button class="btn btn-danger-ghost btn-sm btn-purge-session" data-id="${s.id}" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" title="Eliminar Permanentemente">🚨 Purgar</button>
+                    `;
+                } else {
+                    statusHtml = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">✅ Activa</span>`;
+                    
+                    actionsHtml = `
+                        <button class="btn btn-ghost btn-sm btn-preview" data-id="${s.id}" title="Previsualizar Sesión">👁️ Ver</button>
+                        <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}" title="Ver JSON de la sesión">📦 JSON</button>
+                        <button class="btn btn-danger-ghost btn-sm btn-delete-session" data-id="${s.id}" style="color: #f97316; border-color: rgba(249, 115, 22, 0.2);" title="Enviar a Papelera">🗑️ Eliminar</button>
+                    `;
+                }
+
                 return `
-                    <tr>
+                    <tr style="${s.deleted_at ? 'opacity: 0.65; background: rgba(255,255,255,0.01);' : ''}">
                         <td style="font-family: var(--font-mono); font-size: 0.75rem;">${s.id}</td>
                         <td title="${s.user_id}">${escHTML(email)}</td>
                         <td>${escHTML(metadata.area || 'Sin Área')} / ${escHTML(metadata.grado || 'Sin Grado')}</td>
                         <td><strong>${escHTML(s.titulo || 'Sin Título')}</strong></td>
                         <td>${formatDate(s.last_saved)}</td>
+                        <td style="text-align: center;">${statusHtml}</td>
                         <td>
                             <div style="display: flex; gap: 4px; justify-content: center;">
-                                <button class="btn btn-ghost btn-sm btn-preview" data-id="${s.id}" title="Previsualizar Sesión">👁️ Previsualizar</button>
-                                <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}" title="Ver JSON de la sesión">📦 JSON</button>
-                                <button class="btn btn-danger-ghost btn-sm btn-delete-session" data-id="${s.id}" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" title="Eliminar Sesión">🗑️ Eliminar</button>
+                                ${actionsHtml}
                             </div>
                         </td>
                     </tr>
@@ -231,11 +265,27 @@
                 });
             });
 
-            // Vincular evento de eliminación
+            // Vincular evento de eliminación (soft-delete)
             tbody.querySelectorAll('.btn-delete-session').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const id = btn.dataset.id;
-                    deleteServerSession(id);
+                    deleteServerSession(id, false);
+                });
+            });
+
+            // Vincular evento de restauración
+            tbody.querySelectorAll('.btn-restore-session').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    restoreServerSession(id);
+                });
+            });
+
+            // Vincular evento de purga permanente
+            tbody.querySelectorAll('.btn-purge-session').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    deleteServerSession(id, true);
                 });
             });
 
@@ -320,12 +370,57 @@
         });
     }
 
-    // Eliminar la sesión del servidor con diálogo de confirmación
-    async function deleteServerSession(id) {
+    // Eliminar la sesión del servidor (soft-delete o purga hard-delete)
+    async function deleteServerSession(id, forceHardDelete = false) {
+        const title = forceHardDelete ? '¿Purgar permanentemente?' : '¿Enviar a Papelera?';
+        const message = forceHardDelete 
+            ? `¿Estás seguro de que deseas eliminar permanentemente la sesión con ID: ${id}? Esta acción es irreversible.`
+            : `¿Deseas enviar la sesión ${id} a la papelera? El docente no la verá pero se guardará por 7 días.`;
+        const confirmText = forceHardDelete ? 'Purgar Todo' : 'Mandar a Papelera';
+
         const confirmed = await ConfirmDialog.show({
-            title: '¿Eliminar Sesión?',
-            message: `¿Estás seguro de que deseas eliminar permanentemente la sesión con ID: ${id}? Esta acción no se puede deshacer y afectará al docente creador.`,
-            confirmText: 'Eliminar',
+            title: title,
+            message: message,
+            confirmText: confirmText,
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            if (forceHardDelete) {
+                // Hard delete
+                const { error } = await SupabaseClient.client
+                    .from('sesiones')
+                    .delete()
+                    .eq('id', id);
+                if (error) throw error;
+                Toast.success('Sesión purgada permanentemente');
+            } else {
+                // Soft delete: actualizar deleted_at y last_saved en la DB
+                const { error } = await SupabaseClient.client
+                    .from('sesiones')
+                    .update({ 
+                        deleted_at: new Date().toISOString(),
+                        last_saved: new Date().toISOString()
+                    })
+                    .eq('id', id);
+                if (error) throw error;
+                Toast.success('Sesión enviada a la papelera');
+            }
+            fetchServerSessions(); // Recargar lista
+        } catch (e) {
+            console.error('[Admin] Error al procesar eliminación:', e);
+            Toast.error('Error al eliminar sesión: ' + e.message);
+        }
+    }
+
+    // Restaurar sesión desde la papelera
+    async function restoreServerSession(id) {
+        const confirmed = await ConfirmDialog.show({
+            title: '¿Restaurar Sesión?',
+            message: `¿Deseas restaurar la sesión con ID: ${id}? Volverá a aparecer en la cuenta del docente de inmediato.`,
+            confirmText: 'Restaurar',
             cancelText: 'Cancelar'
         });
 
@@ -334,16 +429,19 @@
         try {
             const { error } = await SupabaseClient.client
                 .from('sesiones')
-                .delete()
+                .update({ 
+                    deleted_at: null,
+                    last_saved: new Date().toISOString()
+                })
                 .eq('id', id);
 
             if (error) throw error;
 
-            Toast.success('Sesión eliminada correctamente');
+            Toast.success('Sesión restaurada con éxito');
             fetchServerSessions(); // Recargar lista
         } catch (e) {
-            console.error('[Admin] Error al eliminar sesión:', e);
-            Toast.error('Error al eliminar sesión: ' + e.message);
+            console.error('[Admin] Error al restaurar sesión:', e);
+            Toast.error('Error al restaurar sesión: ' + e.message);
         }
     }
 

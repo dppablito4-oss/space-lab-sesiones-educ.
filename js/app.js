@@ -1785,14 +1785,24 @@
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const confirmed = await ConfirmDialog.show({
-                    title: '¿Eliminar sesión?',
-                    message: 'Se borrará permanentemente.',
-                    confirmText: 'Eliminar'
+                    title: '¿Mandar a la Papelera?',
+                    message: 'La sesión se guardará por 7 días en la papelera para que puedas restaurarla si la borras por error.',
+                    confirmText: 'Mandar a Papelera'
                 });
                 if (confirmed) {
                     Storage.deleteSession(btn.dataset.id);
+                    
+                    // Si la sesión activa es la que se eliminó, limpiar lienzo
+                    if (AppState.currentSession && AppState.currentSession.id === btn.dataset.id) {
+                        Storage.clearCurrentSession();
+                        AppState.currentSession = null;
+                        DOM.sessionSheet.innerHTML = '';
+                        DOM.emptyState.classList.remove('hidden');
+                        DOM.printPreview.classList.add('hidden');
+                    }
+                    
                     renderSavedList();
-                    Toast.success('Sesión eliminada');
+                    Toast.success('Sesión enviada a la papelera');
                 }
             });
         });
@@ -2834,11 +2844,11 @@
         const provider = DOM.selectAiProvider.value;
         const fileGroup = $('.source-file-group');
         
-        if (provider === 'deepseek') {
+        if (provider === 'gemini') {
+            if (fileGroup) fileGroup.classList.remove('hidden');
+        } else {
             if (fileGroup) fileGroup.classList.add('hidden');
             clearSourceFile();
-        } else {
-            if (fileGroup) fileGroup.classList.remove('hidden');
         }
     }
 

@@ -106,8 +106,12 @@ CREATE TABLE IF NOT EXISTS public.sesiones (
     template TEXT,
     session_data JSONB DEFAULT '{}'::jsonB NOT NULL,
     last_saved TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
+
+-- Migración para añadir columna si la tabla ya existe
+ALTER TABLE public.sesiones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
 -- Habilitar RLS en sesiones
 ALTER TABLE public.sesiones ENABLE ROW LEVEL SECURITY;
@@ -136,6 +140,10 @@ CREATE POLICY "Admins can view all sessions" ON public.sesiones
 DROP POLICY IF EXISTS "Admins can delete all sessions" ON public.sesiones;
 CREATE POLICY "Admins can delete all sessions" ON public.sesiones
     FOR DELETE USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can update all sessions" ON public.sesiones;
+CREATE POLICY "Admins can update all sessions" ON public.sesiones
+    FOR UPDATE USING (public.is_admin());
 
 
 -- 3. Tabla de Configuración de Correo Corporativo (SMTP)
