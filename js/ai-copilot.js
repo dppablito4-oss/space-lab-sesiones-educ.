@@ -399,23 +399,6 @@ Asegúrate de que la estructura JSON contenga estos dos nuevos campos en su raí
         } catch (error) {
             console.error('[AI] Generation error:', error);
             throw error;
-        }idor: ${response.status}`);
-            }
-
-
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content;
-
-            if (!content) {
-                throw new Error('La IA no devolvió contenido');
-            }
-
-            const parsed = parseAIResponse(content);
-            return parsed;
-
-        } catch (error) {
-            console.error('[AI] Generation error:', error);
-            throw error;
         }
     }
 
