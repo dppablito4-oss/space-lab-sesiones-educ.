@@ -44,7 +44,7 @@ const AiCopilot = (() => {
                 CONFIG.apiKey = c.apiKey || CONFIG.apiKey;
                 CONFIG.model = c.model || CONFIG.model;
             }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
     }
 
     /**
@@ -256,7 +256,7 @@ FORMATO DE RESPUESTA (JSON):
                         if (parsedBody && parsedBody.error) {
                             serverMsg = `${parsedBody.error}${parsedBody.details ? ': ' + parsedBody.details : ''}`;
                         }
-                    } catch (e) {
+                    } catch {
                         // Si no es un JSON, usar el mensaje de error directamente
                     }
                     throw new Error(serverMsg);
@@ -375,7 +375,7 @@ FORMATO DE RESPUESTA (JSON):
             
             // Clean excessive newlines from all string values
             return normalizeSessionData(deepCleanStrings(parsed));
-        } catch (e) {
+        } catch {
             console.error('[AI] Failed to parse JSON:', cleaned);
             throw new Error('La IA devolvió una respuesta con formato incorrecto. Intenta de nuevo.');
         }
@@ -478,6 +478,106 @@ FORMATO DE RESPUESTA (JSON):
         return false;
     }
 
+    /**
+     * Run a generic prompt leveraging Supabase edge functions or local OpenRouter fallback.
+     */
+    async function runPrompt(systemPrompt, userPrompt) {
+        // 1. Try to invoke Supabase Edge Function if available
+        if (window.SupabaseClient && SupabaseClient.client) {
+            try {
+                const useGemini = CONFIG.model.includes('gemini') || !CONFIG.model.includes('deepseek');
+                const functionName = useGemini ? 'gemini-router' : 'deepseek-router';
+                
+                console.log(`[AI Helper] Invoking edge function ${functionName} for generic prompt...`);
+                const { data, error } = await SupabaseClient.client.functions.invoke(functionName, {
+                    body: { 
+                        prompt: userPrompt, 
+                        systemPrompt: systemPrompt
+                    }
+                });
+
+                if (!error) {
+                    let text = data;
+                    if (data && typeof data === 'object') {
+                        text = data.choices?.[0]?.message?.content || data.content || JSON.stringify(data);
+                    }
+                    if (text) return text;
+                }
+            } catch (err) {
+                console.warn('[AI Helper] Edge function failed or returned error, using local OpenRouter fallback...', err);
+            }
+        }
+
+        // 2. OpenRouter local fallback (using user's API key)
+        if (!CONFIG.apiKey || CONFIG.apiKey.length <= 10) {
+            throw new Error('API_NOT_CONFIGURED');
+        }
+
+        const response = await fetch(CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CONFIG.apiKey}`,
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Space Lab - Sesiones Educativas'
+            },
+            body: JSON.stringify({
+                model: CONFIG.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: 1500,
+                temperature: 0.5
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Error del servidor de IA: ${response.status}`);
+        }
+
+        const resData = await response.json();
+        return resData.choices?.[0]?.message?.content || '';
+    }
+
+    /**
+     * Generate evaluation criteria / rubric indicators based on session content.
+     */
+    async function generateCriterios(competencia, tema, grado, area) {
+        const systemPrompt = `Eres un asesor pedagógico experto en el Currículo Nacional de Educación Básica (CNEB) del Perú. 
+Tu tarea es generar exactamente entre 3 y 5 criterios de evaluación en formato de elementos de lista HTML básico (usando viñetas <li>...</li>).
+Cada criterio debe ser claro, preciso, medible y redactado en tercera persona (por ejemplo: "Identifica información explícita...", "Explica el propósito...", etc.), vinculando el área curricular, competencia y grado provistos.
+Devuelve ÚNICAMENTE los elementos <li> sin etiquetas de lista <ul> ni explicaciones adicionales, ni introducciones, ni marcas de código markdown de bloque como \`\`\`html. Devuelve código HTML plano listo para insertar en una lista.`;
+
+        const userPrompt = `Área Curricular: ${area || 'General'}
+Competencia: ${competencia || 'Competencia general'}
+Tema/Propósito: ${tema || 'Actividad de aprendizaje'}
+Grado: ${grado || 'General'}`;
+
+        const result = await runPrompt(systemPrompt, userPrompt);
+        return result.trim().replace(/^```html|```$/g, '');
+    }
+
+    async function improveText(text, instruction) {
+        const systemPrompt = `Eres un asesor pedagógico y experto redactor del Currículo Nacional del Perú. Tu tarea es reescribir y refinar el fragmento de texto de la sesión de aprendizaje proporcionado por el docente, basándote ESTRICTAMENTE en la instrucción de estilo indicada.
+        
+REGLAS CRÍTICAS:
+1. Aplica la instrucción de refinamiento al texto de forma precisa.
+2. Devuelve ÚNICAMENTE el texto procesado resultante.
+3. NO agregues introducciones, preámbulos, explicaciones, notas, comentarios de autor ni comillas de apertura/cierre.
+4. Respeta y conserva el marcado HTML básico si el texto original lo contiene (como <strong>, <br>, <li>, <ul>).`;
+
+        const userPrompt = `Texto original:
+"${text}"
+
+Instrucción de refinamiento:
+${instruction}`;
+
+        const result = await runPrompt(systemPrompt, userPrompt);
+        return result.trim();
+    }
+
     // Initialize
     loadConfig();
 
@@ -486,7 +586,9 @@ FORMATO DE RESPUESTA (JSON):
         isConfigured,
         configure,
         showConfigPrompt,
-        loadConfig
+        loadConfig,
+        generateCriterios,
+        improveText
     };
 })();
 

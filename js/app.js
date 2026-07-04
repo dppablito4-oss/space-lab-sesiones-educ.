@@ -12,7 +12,12 @@
         editMode: true,
         previewMode: false,
         sidebarOpen: false,
-        sourceFileData: null // Stores { name, type, base64, textContent }
+        sourceFileData: null, // Stores { name, type, base64, textContent }
+        activeLogoTarget: null, // Stores target logo id: 'header-logo-left' or 'header-logo-regional'
+        activeTableCell: null, // Stores currently active/focused table cell
+        zoomScale: 1.0, // Custom zoom level for the sheet (1.0 = 100%)
+        undoStack: [],
+        redoStack: []
     };
 
     // ─── DOM REFERENCES ───
@@ -79,6 +84,33 @@
         btnTriggerUploadLogo: $('#btn-trigger-upload-logo'),
         btnRefreshLogos: $('#btn-refresh-logos'),
         logosContainer: $('#logos-container'),
+        // Design customization controls
+        designColor: $('#input-design-theme-color'),
+        designColorHex: $('#input-design-theme-color-hex'),
+        designFontFamily: $('#select-design-font-family'),
+        designFontSize: $('#select-design-font-size'),
+        designPadding: $('#select-design-padding'),
+        designLineHeight: $('#select-design-line-height'),
+        designHeaderBg: $('#select-design-header-bg'),
+        // Ribbon customizer controls
+        ribbonColor: $('#ribbon-theme-color'),
+        ribbonFontFamily: $('#ribbon-font-family'),
+        ribbonFontSize: $('#ribbon-font-size'),
+        ribbonPadding: $('#ribbon-padding'),
+        ribbonLineHeight: $('#ribbon-line-height'),
+        ribbonHeaderBg: $('#ribbon-header-bg'),
+        btnRibbonAddLogo: $('#btn-ribbon-add-logo'),
+        // Ribbon Text formatting manual controls
+        btnFormatUndo: $('#btn-format-undo'),
+        btnFormatRedo: $('#btn-format-redo'),
+        btnFormatForeColor: $('#btn-format-forecolor'),
+        btnFormatBackColor: $('#btn-format-backcolor'),
+        btnFormatAlignLeft: $('#btn-format-align-left'),
+        btnFormatAlignCenter: $('#btn-format-align-center'),
+        btnFormatAlignRight: $('#btn-format-align-right'),
+        btnFormatAlignJustify: $('#btn-format-align-justify'),
+        btnTableRowInsert: $('#btn-table-row-insert'),
+        btnTableRowDelete: $('#btn-table-row-delete'),
         // Source File Upload
         inputSourceFile: $('#input-source-file'),
         sourceFileDropzone: $('#source-file-dropzone'),
@@ -131,7 +163,7 @@
 
         // Initialize Auth UI if available
         if (window.AuthUi) {
-            AuthUi.init();
+            window.AuthUi.init();
         }
 
         // Initialize Chatbot if available
@@ -203,6 +235,36 @@
         DOM.btnToggleEdit.addEventListener('click', toggleEditMode);
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
         DOM.btnExportPdf.addEventListener('click', handleExportPDF);
+        
+        // Word export listeners removed (can be restored if needed in the future)
+        /*
+        const btnExportWord = document.getElementById('btn-export-word');
+        if (btnExportWord) {
+            btnExportWord.addEventListener('click', handleExportWord);
+        }
+        const btnExportWordPreview = document.getElementById('btn-export-word-preview');
+        if (btnExportWordPreview) {
+            btnExportWordPreview.addEventListener('click', handleExportWord);
+        }
+        */
+        
+        const btnAiRubrica = document.getElementById('btn-ai-rubrica');
+        if (btnAiRubrica) {
+            btnAiRubrica.addEventListener('click', handleAiRubrica);
+        }
+        
+        const btnAiImproveText = document.getElementById('btn-ai-improve-text');
+        if (btnAiImproveText) {
+            btnAiImproveText.addEventListener('click', () => handleAiImproveText('improve'));
+        }
+
+        // Live Time Balance updates
+        DOM.sessionSheet.addEventListener('input', checkTimeBalance);
+        if (DOM.inputDuracion) {
+            DOM.inputDuracion.addEventListener('input', checkTimeBalance);
+            DOM.inputDuracion.addEventListener('change', checkTimeBalance);
+        }
+
         DOM.btnPrint.addEventListener('click', handlePrint);
         DOM.btnSave.addEventListener('click', handleSave);
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
@@ -239,9 +301,246 @@
         DOM.btnSaveDefaults.addEventListener('click', handleSaveDefaults);
 
         // Upload logo trigger and event
-        DOM.btnTriggerUploadLogo.addEventListener('click', () => DOM.inputUploadLogo.click());
+        DOM.btnTriggerUploadLogo.addEventListener('click', () => {
+            AppState.activeLogoTarget = null; // Reset target so it asks
+            DOM.inputUploadLogo.click();
+        });
         DOM.inputUploadLogo.addEventListener('change', handleUploadLogo);
         DOM.btnRefreshLogos.addEventListener('click', loadLogosGallery);
+
+        // Selection range holder for manual formatting (letter colors & highlight)
+        let lastSelectionRange = null;
+
+        function saveSelection() {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                if (DOM.sessionSheet.contains(range.commonAncestorContainer)) {
+                    lastSelectionRange = range;
+                }
+            }
+        }
+
+        function restoreSelection() {
+            if (lastSelectionRange) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(lastSelectionRange);
+            }
+        }
+
+        DOM.sessionSheet.addEventListener('mouseup', saveSelection);
+        DOM.sessionSheet.addEventListener('keyup', saveSelection);
+        DOM.sessionSheet.addEventListener('focusout', saveSelection);
+
+        // Keep track of active table cell for row insertions/deletions
+        DOM.sessionSheet.addEventListener('focusin', (e) => {
+            const cell = e.target.closest('td, th');
+            if (cell) {
+                AppState.activeTableCell = cell;
+            }
+        });
+        DOM.sessionSheet.addEventListener('click', (e) => {
+            const cell = e.target.closest('td, th');
+            if (cell) {
+                AppState.activeTableCell = cell;
+            }
+        });
+
+        // Helper to update session design styles from DOM inputs
+        function updateStylesFromSidebar() {
+            applyDesignStyles({
+                themeColor: DOM.designColor.value,
+                fontFamily: DOM.designFontFamily.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
+            });
+            saveCurrentState();
+        }
+
+        function updateStylesFromRibbon() {
+            applyDesignStyles({
+                themeColor: DOM.ribbonColor.value,
+                fontFamily: DOM.ribbonFontFamily.value,
+                fontSize: DOM.ribbonFontSize.value,
+                padding: DOM.ribbonPadding.value,
+                lineHeight: DOM.ribbonLineHeight.value,
+                headerBg: DOM.ribbonHeaderBg.value
+            });
+            saveCurrentState();
+        }
+
+        // Design customizer controls events (Sidebar)
+        DOM.designColor.addEventListener('input', updateStylesFromSidebar);
+        DOM.designColorHex.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                DOM.designColor.value = e.target.value;
+                updateStylesFromSidebar();
+            }
+        });
+        if (DOM.designFontFamily) DOM.designFontFamily.addEventListener('change', updateStylesFromSidebar);
+        DOM.designFontSize.addEventListener('change', updateStylesFromSidebar);
+        DOM.designPadding.addEventListener('change', updateStylesFromSidebar);
+        DOM.designLineHeight.addEventListener('change', updateStylesFromSidebar);
+        DOM.designHeaderBg.addEventListener('change', updateStylesFromSidebar);
+
+        // Design customizer controls events (Ribbon)
+        if (DOM.ribbonColor) DOM.ribbonColor.addEventListener('input', updateStylesFromRibbon);
+        if (DOM.ribbonFontFamily) DOM.ribbonFontFamily.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonFontSize) DOM.ribbonFontSize.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonPadding) DOM.ribbonPadding.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonLineHeight) DOM.ribbonLineHeight.addEventListener('change', updateStylesFromRibbon);
+        if (DOM.ribbonHeaderBg) DOM.ribbonHeaderBg.addEventListener('change', updateStylesFromRibbon);
+
+        // Text formatting command triggers (Word Style)
+        const formatBtnBold = document.getElementById('btn-format-bold');
+        if (formatBtnBold) {
+            formatBtnBold.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('bold', false, null);
+            });
+        }
+        const formatBtnItalic = document.getElementById('btn-format-italic');
+        if (formatBtnItalic) {
+            formatBtnItalic.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('italic', false, null);
+            });
+        }
+        const formatBtnUnderline = document.getElementById('btn-format-underline');
+        if (formatBtnUnderline) {
+            formatBtnUnderline.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('underline', false, null);
+            });
+        }
+        const formatBtnListBullet = document.getElementById('btn-format-list-bullet');
+        if (formatBtnListBullet) {
+            formatBtnListBullet.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('insertUnorderedList', false, null);
+            });
+        }
+        const formatBtnListNumber = document.getElementById('btn-format-list-number');
+        if (formatBtnListNumber) {
+            formatBtnListNumber.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('insertOrderedList', false, null);
+            });
+        }
+
+        // Alignments manual editing
+        const formatBtnAlignLeft = document.getElementById('btn-format-align-left');
+        if (formatBtnAlignLeft) {
+            formatBtnAlignLeft.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyLeft', false, null);
+            });
+        }
+        const formatBtnAlignCenter = document.getElementById('btn-format-align-center');
+        if (formatBtnAlignCenter) {
+            formatBtnAlignCenter.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyCenter', false, null);
+            });
+        }
+        const formatBtnAlignRight = document.getElementById('btn-format-align-right');
+        if (formatBtnAlignRight) {
+            formatBtnAlignRight.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyRight', false, null);
+            });
+        }
+        const formatBtnAlignJustify = document.getElementById('btn-format-align-justify');
+        if (formatBtnAlignJustify) {
+            formatBtnAlignJustify.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('justifyFull', false, null);
+            });
+        }
+
+        // Undo and Redo triggers
+        if (DOM.btnFormatUndo) {
+            DOM.btnFormatUndo.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('undo', false, null);
+                saveCurrentState();
+            });
+        }
+        if (DOM.btnFormatRedo) {
+            DOM.btnFormatRedo.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.execCommand('redo', false, null);
+                saveCurrentState();
+            });
+        }
+
+        // Table row management triggers
+        if (DOM.btnTableRowInsert) {
+            DOM.btnTableRowInsert.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleInsertRow();
+            });
+        }
+        if (DOM.btnTableRowDelete) {
+            DOM.btnTableRowDelete.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleDeleteRow();
+            });
+        }
+
+        // Color formatting using last saved selection
+        if (DOM.btnFormatForeColor) {
+            DOM.btnFormatForeColor.addEventListener('change', (e) => {
+                restoreSelection();
+                document.execCommand('foreColor', false, e.target.value);
+                saveCurrentState();
+            });
+        }
+        if (DOM.btnFormatBackColor) {
+            DOM.btnFormatBackColor.addEventListener('change', (e) => {
+                restoreSelection();
+                document.execCommand('hiliteColor', false, e.target.value);
+                saveCurrentState();
+            });
+        }
+
+        // Ribbon Add Logo trigger
+        if (DOM.btnRibbonAddLogo) {
+            DOM.btnRibbonAddLogo.addEventListener('click', (e) => {
+                e.preventDefault();
+                const logosList = document.getElementById('official-header-logos-list');
+                if (logosList) {
+                    AppState.activeLogoTarget = null; // Reset target so it appends
+                    openLogosGalleryModal();
+                } else {
+                    Toast.warning('Genera la sesión primero para poder añadir un logo');
+                }
+            });
+        }
+
+        // Click on logo images or add-logo placeholder inside document
+        DOM.sessionSheet.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target && target.classList.contains('official-logo-img')) {
+                e.stopPropagation();
+                openLogoEditor(target);
+            } else if (target && (target.id === 'btn-add-header-logo' || target.closest('#btn-add-header-logo'))) {
+                e.stopPropagation();
+                AppState.activeLogoTarget = null; // Reset target so it appends
+                openLogosGalleryModal();
+            }
+        });
+
+        // Listen for logo removal event to save state
+        window.addEventListener('logo-removed', () => {
+            saveCurrentState();
+        });
+
+        // Initialize Floating Logo Editor global listeners once
+        initLogoEditorListeners();
 
         // Source file upload drag & drop events
         DOM.sourceFileDropzone.addEventListener('click', () => DOM.inputSourceFile.click());
@@ -262,17 +561,54 @@
         });
         DOM.btnRemoveSourceFile.addEventListener('click', handleRemoveSourceFile);
 
+        // Ctrl + Scroll Zoom on sheet
+        DOM.previewArea.addEventListener('wheel', (e) => {
+            if (e.ctrlKey) {
+                e.preventDefault(); // Prevent standard browser zoom
+                
+                const delta = e.deltaY;
+                const scaleChange = 0.05;
+                if (delta < 0) {
+                    AppState.zoomScale = Math.min(AppState.zoomScale + scaleChange, 2.0); // max 200%
+                } else {
+                    AppState.zoomScale = Math.max(AppState.zoomScale - scaleChange, 0.5); // min 50%
+                }
+                
+                applyZoom();
+            }
+        }, { passive: false });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
+
+        // Word-like Right-Click Context Menu
+        initContextMenu();
+
+        // Logos Gallery Modal listeners
+        initLogosGalleryModal();
+
+        // Refine text modal listeners
+        initRefineTextModal();
     }
 
     // ═══════════════════════════════════════
     // FORM DATA COLLECTION
     // ═══════════════════════════════════════
 
+
     function getFormData() {
-        const logoImg = $('#header-logo-regional');
-        const logoUrl = logoImg ? logoImg.getAttribute('src') : '';
+        const logos = [];
+        const logoImgs = DOM.sessionSheet.querySelectorAll('.official-logo-img');
+        logoImgs.forEach((img, index) => {
+            logos.push({
+                id: img.id || `header-logo-${Date.now()}-${index}`,
+                url: img.getAttribute('src') || '',
+                style: img.getAttribute('style') || ''
+            });
+        });
+
+        const firstLogo = logos[0] || {};
+        const secondLogo = logos[1] || {};
 
         return {
             metadata: {
@@ -292,7 +628,11 @@
                 titulo: DOM.inputTitulo.value,
                 methodology: DOM.selectMethodology.value,
                 ai_provider: DOM.selectAiProvider.value,
-                logo_regional_url: logoUrl
+                logo_regional_url: secondLogo.url || '',
+                logo_left_url: firstLogo.url || '',
+                logo_left_style: firstLogo.style || '',
+                logo_regional_style: secondLogo.style || '',
+                logos: logos
             },
             proposito: {
                 competencia: DOM.inputCompetencia.value,
@@ -300,6 +640,14 @@
                 desempeno: DOM.inputDesempeno.value,
                 enfoque: DOM.inputEnfoque.value,
                 enfoque2: DOM.inputEnfoque2.value
+            },
+            design: {
+                themeColor: DOM.designColor.value,
+                fontFamily: DOM.designFontFamily.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
             },
             momentos: {},
             evaluacion: {}
@@ -310,6 +658,14 @@
         if (!session) return;
         const m = session.metadata || {};
         const p = session.proposito || {};
+        const d = session.design || {
+            themeColor: '#000000',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '10pt',
+            padding: '4px 6px',
+            lineHeight: '1.4',
+            headerBg: '#f1f5f9'
+        };
 
         DOM.inputInstitucion.value = m.institucion || '';
         DOM.inputDre.value = m.dre || '';
@@ -337,6 +693,15 @@
         DOM.selectMethodology.value = m.methodology || '';
         DOM.selectAiProvider.value = m.ai_provider || 'gemini';
         handleAiProviderChange();
+
+        // Design config inputs
+        DOM.designColor.value = d.themeColor || '#000000';
+        DOM.designColorHex.value = d.themeColor || '#000000';
+        if (DOM.designFontFamily) DOM.designFontFamily.value = d.fontFamily || 'Arial, sans-serif';
+        DOM.designFontSize.value = d.fontSize || '10pt';
+        DOM.designPadding.value = d.padding || '4px 6px';
+        DOM.designLineHeight.value = d.lineHeight || '1.4';
+        DOM.designHeaderBg.value = d.headerBg || '#f1f5f9';
 
         // Sync curriculum selectors with loaded area
         handleAreaChange();
@@ -366,6 +731,16 @@
     }
 
     async function handleGenerateAI() {
+        // Intercept: Check user authentication
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes crear una cuenta para generar sesiones con IA');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
         // Check if AI is configured
         if (!AiCopilot.isConfigured()) {
             const configured = AiCopilot.showConfigPrompt();
@@ -447,11 +822,20 @@
         DOM.emptyState.classList.add('hidden');
         DOM.printPreview.classList.remove('hidden');
 
+        // Apply design customizer variables
+        applyDesignStyles(session.design);
+
+        // Apply zoom scale
+        applyZoom();
+
         // Close sidebar on mobile
         closeSidebar();
 
         // Save current state
         Storage.setCurrentSession(session);
+
+        // Check time balance
+        checkTimeBalance();
     }
 
     // ═══════════════════════════════════════
@@ -548,6 +932,19 @@
                 enforceEditMode();
             }
 
+            // Temporarily reset zoom and transform to 1.0 to ensure correct PDF page rendering layout
+            const currentZoom = DOM.sessionSheet.style.zoom;
+            const currentTransform = DOM.sessionSheet.style.transform;
+            const currentTransformOrigin = DOM.sessionSheet.style.transformOrigin;
+            const currentParentHeight = DOM.sessionSheet.parentElement ? DOM.sessionSheet.parentElement.style.height : '';
+
+            DOM.sessionSheet.style.zoom = '1';
+            DOM.sessionSheet.style.transform = 'none';
+            DOM.sessionSheet.style.transformOrigin = '';
+            if (DOM.sessionSheet.parentElement) {
+                DOM.sessionSheet.parentElement.style.height = '';
+            }
+
             const opt = {
                 margin:       [12, 10, 12, 10], // top, left, bottom, right in mm
                 filename:     `Sesion_${AppState.currentSession.metadata?.titulo || 'aprendizaje'}.pdf`.replace(/[\s/]+/g, '_'),
@@ -563,12 +960,422 @@
             console.error('[PDF] Error exporting PDF:', error);
             Toast.error('Error al exportar a PDF: ' + error.message);
         } finally {
+            // Restore zoom and transform
+            DOM.sessionSheet.style.zoom = currentZoom;
+            DOM.sessionSheet.style.transform = currentTransform;
+            DOM.sessionSheet.style.transformOrigin = currentTransformOrigin;
+            if (DOM.sessionSheet.parentElement) {
+                DOM.sessionSheet.parentElement.style.height = currentParentHeight;
+            }
+
             // Restore edit mode if it was active originally
             if (wasEditMode) {
                 AppState.editMode = true;
                 enforceEditMode();
             }
             Loader.hide();
+        }
+    }
+
+    async function handleExportWord() {
+        if (!AppState.currentSession) {
+            Toast.warning('No hay ninguna sesión activa para exportar.');
+            return;
+        }
+
+        const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
+        const filename = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.docx`;
+
+        Loader.show('📝 Generando archivo de Word (.docx)...');
+
+        try {
+            // Save before exporting
+            saveCurrentState();
+
+            // Clone the session sheet to clean up
+            const clone = DOM.sessionSheet.cloneNode(true);
+            
+            // Remove no-print and resize handle elements
+            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
+            noPrintElements.forEach(el => el.remove());
+
+            // Convert images in the clone to base64 to ensure they embed in the docx
+            const images = clone.querySelectorAll('img');
+            
+            function urlToBase64(url) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    img.onload = function() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth || img.width;
+                            canvas.height = img.naturalHeight || img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                        } catch (e) {
+                            reject(e);
+                        }
+                    };
+                    img.onerror = function(err) {
+                        reject(err);
+                    };
+                    
+                    // Break cache for CORS if needed, but not for dataURIs
+                    if (url.startsWith('data:')) {
+                        resolve(url);
+                        return;
+                    }
+                    
+                    if (url.indexOf('?') === -1) {
+                        img.src = url + '?t=' + Date.now();
+                    } else {
+                        img.src = url + '&t=' + Date.now();
+                    }
+                });
+            }
+
+            for (let img of images) {
+                if (img.src) {
+                    try {
+                        const base64 = await urlToBase64(img.src);
+                        img.src = base64;
+                    } catch (e) {
+                        console.warn('Could not convert image to base64 for Word export:', img.src, e);
+                        // Fallback: keep original URL
+                    }
+                }
+            }
+
+            const cleanHtml = clone.innerHTML;
+            
+            // Get current styles from sheets to embed in docx
+            let styles = '';
+            const styleSheets = document.styleSheets;
+            for (let i = 0; i < styleSheets.length; i++) {
+                try {
+                    const rules = styleSheets[i].cssRules || styleSheets[i].rules;
+                    if (rules) {
+                        for (let j = 0; j < rules.length; j++) {
+                            styles += rules[j].cssText;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore cross-origin stylesheet errors
+                }
+            }
+
+            // Fallback design properties
+            const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
+            const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
+            const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
+            
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>${titulo}</title>
+                    <style>
+                        body {
+                            font-family: ${activeFont};
+                            font-size: ${activeSize};
+                            color: #000000;
+                            background-color: #ffffff;
+                            margin: 1in;
+                        }
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            margin-bottom: 15px;
+                        }
+                        th, td {
+                            border: 1px solid ${activeColor};
+                            padding: 6px;
+                            font-size: 9.5pt;
+                            vertical-align: top;
+                        }
+                        th {
+                            background-color: #f1f5f9;
+                            font-weight: bold;
+                        }
+                        .session-title-bar-official {
+                            text-align: center;
+                            font-size: 13pt;
+                            font-weight: bold;
+                            margin-top: 10px;
+                            margin-bottom: 10px;
+                            text-transform: uppercase;
+                        }
+                        .subsection-title-bar {
+                            background-color: #e2e8f0;
+                            font-weight: bold;
+                            font-size: 9.5pt;
+                            padding: 4px 6px;
+                            margin-top: 15px;
+                            margin-bottom: 6px;
+                            border-left: 4px solid #000000;
+                            text-transform: uppercase;
+                        }
+                        .subsection-content-box {
+                            border: 1px solid #000000;
+                            padding: 8px;
+                            margin-bottom: 10px;
+                            font-size: 9pt;
+                        }
+                        .official-logo-cell {
+                            border: none !important;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                        .cell-peru {
+                            background-color: #c0392b !important;
+                            color: #ffffff !important;
+                            text-align: center;
+                        }
+                        .cell-minedu {
+                            background-color: #2c3e50 !important;
+                            color: #ffffff !important;
+                            text-align: center;
+                        }
+                        .cell-dre, .cell-ugel, .cell-agp {
+                            background-color: #7f8c8d !important;
+                            color: #ffffff !important;
+                            text-align: center;
+                        }
+                        /* General application print styles */
+                        ${styles}
+                    </style>
+                </head>
+                <body>
+                    ${cleanHtml}
+                </body>
+                </html>
+            `;
+
+            if (typeof htmlDocx === 'undefined') {
+                throw new Error('La librería de conversión html-docx-js no se cargó correctamente.');
+            }
+
+            const blob = htmlDocx.asBlob(htmlContent, {
+                orientation: 'portrait',
+                margins: { top: 720, right: 720, bottom: 720, left: 720 }
+            });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Loader.hide();
+            Toast.success('¡Sesión exportada a Word (.docx) correctamente!');
+        } catch (error) {
+            console.error('[Word Export] Error:', error);
+            Loader.hide();
+            Toast.error('Error al exportar a Word: ' + error.message);
+        }
+    }
+
+    function parseMinutes(text) {
+        if (!text) return 0;
+        const clean = text.toLowerCase().trim();
+        
+        // Check for ranges or sum of numbers, e.g. "15 + 5" or "15-20"
+        // Let's first search for hours and multiply by 45 (or 60)
+        const hoursMatch = clean.match(/(\d+(?:\.\d+)?)\s*(?:hora|h)/);
+        if (hoursMatch) {
+            const hours = parseFloat(hoursMatch[1]);
+            const multiplier = clean.includes('pedag') ? 45 : 45;
+            return Math.round(hours * multiplier);
+        }
+        
+        const numbers = clean.match(/\d+/g);
+        if (numbers) {
+            let sum = 0;
+            numbers.forEach(n => {
+                sum += parseInt(n, 10);
+            });
+            return sum;
+        }
+        return 0;
+    }
+
+    function checkTimeBalance() {
+        if (!AppState.currentSession) return;
+        
+        // 1. Get planned duration
+        const totalDurationText = DOM.inputDuracion ? DOM.inputDuracion.value : '';
+        const plannedMinutes = parseMinutes(totalDurationText || AppState.currentSession.metadata?.duracion);
+        
+        if (plannedMinutes <= 0) {
+            hideTimeBalanceWarning();
+            return;
+        }
+        
+        // 2. Sum minutes of the moments in the sheet
+        let parsedSum = 0;
+        
+        // For Estandar template (.momento-time)
+        const timeElements = DOM.sessionSheet.querySelectorAll('.momento-time');
+        timeElements.forEach(el => {
+            const txt = el.textContent || '';
+            const cleaned = txt.replace(/TIEMPO\s*:\s*/i, '');
+            parsedSum += parseMinutes(cleaned);
+        });
+        
+        // For Laboratorio/Refuerzo templates (.time-cell)
+        const cellElements = DOM.sessionSheet.querySelectorAll('.time-cell');
+        cellElements.forEach(el => {
+            const txt = el.textContent || '';
+            parsedSum += parseMinutes(txt);
+        });
+        
+        if (parsedSum === 0) {
+            hideTimeBalanceWarning();
+            return;
+        }
+        
+        // 3. Compare
+        if (parsedSum !== plannedMinutes) {
+            showTimeBalanceWarning(`La suma de los momentos da ${parsedSum} min, pero tu sesión está planificada para ${plannedMinutes} min.`);
+        } else {
+            hideTimeBalanceWarning();
+        }
+    }
+
+    function showTimeBalanceWarning(message) {
+        const banner = document.getElementById('time-balance-warning');
+        const bannerText = document.getElementById('time-balance-warning-text');
+        if (banner && bannerText) {
+            bannerText.textContent = message;
+            banner.style.display = 'flex';
+            banner.classList.remove('hidden');
+        }
+    }
+
+    function hideTimeBalanceWarning() {
+        const banner = document.getElementById('time-balance-warning');
+        if (banner) {
+            banner.style.display = 'none';
+            banner.classList.add('hidden');
+        }
+    }
+
+    async function handleAiRubrica() {
+        // Intercept: Check user authentication
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes crear una cuenta para usar el asistente de evaluación con IA');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
+        if (!AiCopilot.isConfigured()) {
+            const configured = AiCopilot.showConfigPrompt();
+            if (!configured) {
+                Toast.warning('Necesitas configurar una API Key para usar el Asistente IA');
+                return;
+            }
+        }
+
+        // Search for target cell inside sheet
+        let criteriaTarget = DOM.sessionSheet.querySelector('.propositos-table td:nth-child(3)');
+        if (!criteriaTarget) {
+            const tables = DOM.sessionSheet.querySelectorAll('table');
+            for (const table of tables) {
+                const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.toLowerCase());
+                const criteriaColIndex = headers.findIndex(h => h.includes('criterios'));
+                if (criteriaColIndex !== -1) {
+                    criteriaTarget = table.querySelector(`tbody tr td:nth-child(${criteriaColIndex + 1})`);
+                    if (criteriaTarget) break;
+                }
+            }
+        }
+
+        if (!criteriaTarget) {
+            Toast.warning('No se pudo encontrar la columna "Criterios de Evaluación" en la hoja actual.');
+            return;
+        }
+
+        Loader.show('🤖 Generando criterios de evaluación con IA...');
+
+        try {
+            const formData = getFormData();
+            const competencia = formData.proposito?.competencia || DOM.inputCompetencia.value || '';
+            const tema = formData.metadata?.titulo || DOM.inputTitulo.value || '';
+            const grado = formData.metadata?.grado || DOM.inputGrado.value || '';
+            const area = formData.metadata?.area || DOM.inputArea.value || '';
+
+            const listItemsHtml = await AiCopilot.generateCriterios(competencia, tema, grado, area);
+            
+            // Wrap in ul.session-list
+            criteriaTarget.innerHTML = `<ul class="session-list">${listItemsHtml}</ul>`;
+
+            saveCurrentState();
+            checkTimeBalance();
+            Loader.hide();
+            Toast.success('🎯 Criterios de evaluación generados con éxito');
+        } catch (error) {
+            Loader.hide();
+            Toast.error('Error al generar criterios: ' + error.message);
+        }
+    }
+
+    async function handleAiImproveText() {
+        // Intercept: Check user authentication
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes crear una cuenta para refinar texto con IA');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
+        if (!AiCopilot.isConfigured()) {
+            const configured = AiCopilot.showConfigPrompt();
+            if (!configured) {
+                Toast.warning('Necesitas configurar una API Key para usar el Asistente IA');
+                return;
+            }
+        }
+
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+
+        if (!selectedText) {
+            Toast.warning('Selecciona primero un fragmento de texto en la hoja para mejorar su redacción.');
+            return;
+        }
+
+        // Store selection range and text globally in AppState
+        AppState.selectionRange = selection.getRangeAt(0).cloneRange();
+        AppState.selectedText = selectedText;
+
+        // Open Refine Text Modal
+        const modal = document.getElementById('refine-text-modal');
+        const preview = document.getElementById('refine-text-preview');
+        const customInput = document.getElementById('input-refine-custom');
+        const optBtns = document.querySelectorAll('.refine-opt-btn');
+
+        if (modal) {
+            if (preview) preview.textContent = selectedText;
+            if (customInput) customInput.value = '';
+            
+            // Set first option active by default
+            optBtns.forEach((btn, index) => {
+                if (index === 0) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            modal.classList.remove('hidden');
         }
     }
 
@@ -597,21 +1404,161 @@
             Toast.error('Error al guardar la sesión');
         }
     }
+    let isUndoingOrRedoing = false;
 
     function saveCurrentState() {
         if (!AppState.currentSession) return;
+        if (isUndoingOrRedoing) return;
 
-        // Capture current HTML content (with user edits)
-        AppState.currentSession.htmlContent = DOM.sessionSheet.innerHTML;
+        const currentHtml = DOM.sessionSheet.innerHTML;
+        const previousState = AppState.currentSession.htmlContent || '';
+
+        // If the HTML changed, push the previous state to the undo stack
+        if (currentHtml && currentHtml !== previousState) {
+            AppState.undoStack.push({
+                html: previousState,
+                metadata: JSON.parse(JSON.stringify(AppState.currentSession.metadata || {}))
+            });
+            if (AppState.undoStack.length > 50) {
+                AppState.undoStack.shift();
+            }
+            AppState.redoStack = []; // Clear redo stack on new action
+        }
+
+        AppState.currentSession.htmlContent = currentHtml;
         AppState.currentSession.lastSaved = new Date().toISOString();
 
         Storage.setCurrentSession(AppState.currentSession);
 
-        // If this session already exists in the saved list, auto-save it there too
         if (Storage.getSession(AppState.currentSession.id)) {
             Storage.saveSession(AppState.currentSession);
             renderSavedList();
         }
+    }
+
+    function undo() {
+        if (!AppState.undoStack || AppState.undoStack.length === 0) {
+            Toast.warning('No hay más acciones para deshacer.');
+            return;
+        }
+
+        isUndoingOrRedoing = true;
+        const currentHtml = DOM.sessionSheet.innerHTML;
+        AppState.redoStack.push({
+            html: currentHtml,
+            metadata: JSON.parse(JSON.stringify(AppState.currentSession.metadata || {}))
+        });
+        if (AppState.redoStack.length > 50) {
+            AppState.redoStack.shift();
+        }
+
+        const prevState = AppState.undoStack.pop();
+        DOM.sessionSheet.innerHTML = prevState.html;
+
+        AppState.currentSession.metadata = prevState.metadata;
+        populateForm(AppState.currentSession);
+
+        AppState.currentSession.htmlContent = prevState.html;
+        Storage.setCurrentSession(AppState.currentSession);
+        if (Storage.getSession(AppState.currentSession.id)) {
+            Storage.saveSession(AppState.currentSession);
+            renderSavedList();
+        }
+
+        // Hide resize handle if active logo target is modified
+        const resizeHandle = document.getElementById('logo-resize-handle');
+        if (resizeHandle) resizeHandle.style.display = 'none';
+
+        checkTimeBalance();
+        isUndoingOrRedoing = false;
+        Toast.success('Deshecho');
+    }
+
+    function redo() {
+        if (!AppState.redoStack || AppState.redoStack.length === 0) {
+            Toast.warning('No hay más acciones para rehacer.');
+            return;
+        }
+
+        isUndoingOrRedoing = true;
+        const currentHtml = DOM.sessionSheet.innerHTML;
+        AppState.undoStack.push({
+            html: currentHtml,
+            metadata: JSON.parse(JSON.stringify(AppState.currentSession.metadata || {}))
+        });
+        if (AppState.undoStack.length > 50) {
+            AppState.undoStack.shift();
+        }
+
+        const nextState = AppState.redoStack.pop();
+        DOM.sessionSheet.innerHTML = nextState.html;
+
+        AppState.currentSession.metadata = nextState.metadata;
+        populateForm(AppState.currentSession);
+
+        AppState.currentSession.htmlContent = nextState.html;
+        Storage.setCurrentSession(AppState.currentSession);
+        if (Storage.getSession(AppState.currentSession.id)) {
+            Storage.saveSession(AppState.currentSession);
+            renderSavedList();
+        }
+
+        const resizeHandle = document.getElementById('logo-resize-handle');
+        if (resizeHandle) resizeHandle.style.display = 'none';
+
+        checkTimeBalance();
+        isUndoingOrRedoing = false;
+        Toast.success('Rehecho');
+    }
+
+    function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onerror = () => reject(new Error('Error al leer el archivo de imagen.'));
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onerror = () => {
+                    reject(new Error('Formato de imagen inválido o archivo corrupto.'));
+                };
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        if (width > height) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        } else {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error('Canvas compression failed'));
+                            return;
+                        }
+                        const compressedFile = new File([blob], file.name, {
+                            type: file.type || 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    }, file.type || 'image/jpeg', quality);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
     }
 
     function loadLastSession() {
@@ -621,6 +1568,8 @@
             populateForm(current);
 
             DOM.sessionSheet.innerHTML = current.htmlContent;
+            applyDesignStyles(current.design);
+            applyZoom();
             enforceEditMode();
             DOM.emptyState.classList.add('hidden');
             DOM.printPreview.classList.remove('hidden');
@@ -630,6 +1579,9 @@
             }
 
             Toast.info('Última sesión restaurada');
+            
+            // Check time balance
+            checkTimeBalance();
         }
     }
 
@@ -702,6 +1654,8 @@
 
         if (session.htmlContent) {
             DOM.sessionSheet.innerHTML = session.htmlContent;
+            applyDesignStyles(session.design);
+            applyZoom();
             enforceEditMode();
         } else {
             renderSession(session);
@@ -736,6 +1690,10 @@
                 el.value = '';
             }
         });
+
+        // Reset zoom scale to 100%
+        AppState.zoomScale = 1.0;
+        applyZoom();
 
         DOM.sessionSheet.innerHTML = '';
         DOM.printPreview.classList.add('hidden');
@@ -893,25 +1851,63 @@
     // ═══════════════════════════════════════
 
     function handleKeyboard(e) {
+        const key = e.key.toLowerCase();
+        
         // Ctrl+S: Save
-        if (e.ctrlKey && e.key === 's') {
+        if (e.ctrlKey && key === 's') {
             e.preventDefault();
             handleSave();
         }
         // Ctrl+P: Print
-        if (e.ctrlKey && e.key === 'p') {
+        if (e.ctrlKey && key === 'p') {
             e.preventDefault();
             handlePrint();
         }
         // Ctrl+E: Toggle edit
-        if (e.ctrlKey && e.key === 'e') {
+        if (e.ctrlKey && key === 'e') {
             e.preventDefault();
             toggleEditMode();
+        }
+        // Ctrl+Z: Undo
+        if (e.ctrlKey && key === 'z') {
+            e.preventDefault();
+            undo();
+        }
+        // Ctrl+Y: Redo
+        if (e.ctrlKey && key === 'y') {
+            e.preventDefault();
+            redo();
+        }
+        // Ctrl+B or Ctrl+N: Bold (N is bold in Spanish MS Word)
+        if (e.ctrlKey && (key === 'b' || key === 'n')) {
+            e.preventDefault();
+            document.execCommand('bold', false, null);
+            saveCurrentState();
+        }
+        // Ctrl+I or Ctrl+K: Italic (K is italic in Spanish MS Word)
+        if (e.ctrlKey && (key === 'i' || key === 'k')) {
+            e.preventDefault();
+            document.execCommand('italic', false, null);
+            saveCurrentState();
+        }
+        // Ctrl+U: Underline
+        if (e.ctrlKey && key === 'u') {
+            e.preventDefault();
+            document.execCommand('underline', false, null);
+            saveCurrentState();
         }
         // Escape: Close modals/sidebar
         if (e.key === 'Escape') {
             closeSidebar();
             DOM.loadModal.classList.add('hidden');
+            const galleryModal = document.getElementById('logos-gallery-modal');
+            if (galleryModal) galleryModal.classList.add('hidden');
+            const menu = document.getElementById('editor-context-menu');
+            if (menu) {
+                menu.style.display = 'none';
+                menu.classList.add('hidden');
+            }
+            hideResizeHandle();
             if (AppState.previewMode) togglePreviewMode();
         }
     }
@@ -926,7 +1922,6 @@
  
         const ctx = canvas.getContext('2d');
         let stars = [];
-        let animFrame;
  
         function resize() {
             canvas.width = window.innerWidth;
@@ -1036,7 +2031,7 @@
                 }
             }
  
-            animFrame = requestAnimationFrame(draw);
+            requestAnimationFrame(draw);
         }
 
         window.addEventListener('resize', resize);
@@ -1115,6 +2110,7 @@
             comp.capacidades.map(c => `<option value="${escHTML(c)}">${escHTML(c)}</option>`).join('');
 
         DOM.selectCnebCapacidad.classList.remove('hidden');
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleCapacidadChange() {
@@ -1129,18 +2125,21 @@
         } else {
             DOM.inputCapacidad.value = '• ' + capValue;
         }
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleEnfoqueChange() {
         const enfoqueValue = DOM.selectCnebEnfoque.value;
         if (!enfoqueValue) return;
         DOM.inputEnfoque.value = enfoqueValue;
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleEnfoque2Change() {
         const enfoqueValue = DOM.selectCnebEnfoque2.value;
         if (!enfoqueValue) return;
         DOM.inputEnfoque2.value = enfoqueValue;
+        DOM.form.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function handleExportJson() {
@@ -1301,11 +2300,61 @@
         }
     }
 
-    function applyLogoToDocument(url) {
-        const logoImg = document.getElementById('header-logo-regional');
+    function applyDesignStyles(design) {
+        const sheet = DOM.sessionSheet;
+        if (!sheet) return;
+
+        // If no design object is provided, read current values from inputs
+        const d = design || {
+            themeColor: DOM.designColor.value,
+            fontFamily: DOM.designFontFamily.value,
+            fontSize: DOM.designFontSize.value,
+            padding: DOM.designPadding.value,
+            lineHeight: DOM.designLineHeight.value,
+            headerBg: DOM.designHeaderBg.value
+        };
+
+        // Sync Sidebar inputs
+        DOM.designColor.value = d.themeColor || '#000000';
+        DOM.designColorHex.value = d.themeColor || '#000000';
+        if (DOM.designFontFamily) DOM.designFontFamily.value = d.fontFamily || 'Arial, sans-serif';
+        DOM.designFontSize.value = d.fontSize || '10pt';
+        DOM.designPadding.value = d.padding || '4px 6px';
+        DOM.designLineHeight.value = d.lineHeight || '1.4';
+        DOM.designHeaderBg.value = d.headerBg || '#f1f5f9';
+
+        // Sync Ribbon inputs
+        if (DOM.ribbonColor) DOM.ribbonColor.value = d.themeColor || '#000000';
+        if (DOM.ribbonFontFamily) DOM.ribbonFontFamily.value = d.fontFamily || 'Arial, sans-serif';
+        if (DOM.ribbonFontSize) DOM.ribbonFontSize.value = d.fontSize || '10pt';
+        if (DOM.ribbonPadding) DOM.ribbonPadding.value = d.padding || '4px 6px';
+        if (DOM.ribbonLineHeight) DOM.ribbonLineHeight.value = d.lineHeight || '1.4';
+        if (DOM.ribbonHeaderBg) DOM.ribbonHeaderBg.value = d.headerBg || '#f1f5f9';
+
+        sheet.style.setProperty('--theme-border-color', d.themeColor || '#000000');
+        sheet.style.setProperty('--session-font-family', d.fontFamily || 'Arial, sans-serif');
+        sheet.style.setProperty('--session-font-size', d.fontSize || '10pt');
+        sheet.style.setProperty('--session-cell-padding', d.padding || '4px 6px');
+        sheet.style.setProperty('--session-line-height', d.lineHeight || '1.4');
+        sheet.style.setProperty('--theme-label-bg', d.headerBg || '#f1f5f9');
+
+        if (AppState.currentSession) {
+            AppState.currentSession.design = d;
+        }
+    }
+
+    async function applyLogoToDocument(url, targetId) {
+        let id = targetId || AppState.activeLogoTarget;
+        
+        if (!id) {
+            addLogoToHeader(url);
+            return;
+        }
+
+        const logoImg = document.getElementById(id);
         if (logoImg) {
             logoImg.src = url;
-            logoImg.style.display = 'block'; // Ensure it's shown if onerror hid it
+            logoImg.style.display = 'block';
             
             // Highlight effect
             logoImg.style.transform = 'scale(1.15)';
@@ -1313,43 +2362,425 @@
                 logoImg.style.transform = '';
             }, 300);
 
+            // Close popover if open
+            const popover = document.getElementById('logo-editor-popover');
+            if (popover) {
+                popover.classList.add('hidden');
+            }
+
             // Save state
             saveCurrentState();
-            Toast.success('Logo regional actualizado');
+            Toast.success('Logo actualizado');
         } else {
-            Toast.warning('Genera la sesión primero para poder aplicar el logo');
+            // Fallback to adding it
+            addLogoToHeader(url);
         }
+    }
+
+    function addLogoToHeader(url) {
+        const logosList = document.getElementById('official-header-logos-list');
+        if (!logosList) {
+            Toast.warning('Genera la sesión primero para poder añadir logos');
+            return;
+        }
+
+        const placeholder = document.getElementById('btn-add-header-logo');
+        const id = `header-logo-${Date.now()}`;
+        const newLogoHtml = `
+            <div class="official-logo-item" draggable="true">
+                <img id="${id}" src="${url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="width: 65px; height: auto; object-fit: contain; cursor: pointer;" title="Haz clic para editar, arrastra para reordenar" draggable="false">
+                <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+            </div>
+        `;
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newLogoHtml.trim();
+        const newLogoNode = tempDiv.firstChild;
+
+        if (placeholder) {
+            logosList.insertBefore(newLogoNode, placeholder);
+        } else {
+            logosList.appendChild(newLogoNode);
+        }
+
+        saveCurrentState();
+        Toast.success('Logo añadido al encabezado');
+        
+        // Open editor popover on the newly added logo immediately so they can adjust size
+        const img = newLogoNode.querySelector('img');
+        if (img) {
+            setTimeout(() => {
+                openLogoEditor(img);
+            }, 100);
+        }
+    }
+
+    function openLogoEditor(target) {
+        if (!target) return;
+        AppState.activeLogoTarget = target.id;
+        
+        const popover = document.getElementById('logo-editor-popover');
+        const widthSlider = document.getElementById('logo-editor-width-slider');
+        const widthVal = document.getElementById('logo-editor-width-val');
+        const heightSlider = document.getElementById('logo-editor-height-slider');
+        const heightVal = document.getElementById('logo-editor-height-val');
+        const heightContainer = document.getElementById('logo-editor-height-container');
+        const fitContainer = document.getElementById('logo-editor-fit-container');
+        const aspectRatioCheckbox = document.getElementById('logo-editor-aspect-ratio');
+        const fitBtns = popover.querySelectorAll('.btn-fit');
+
+        if (!popover) return;
+
+        // 1. Position the popover relative to the image
+        popover.style.display = 'block';
+        popover.classList.remove('hidden');
+
+        const rect = target.getBoundingClientRect();
+        let top = window.scrollY + rect.bottom + 10;
+        let left = window.scrollX + rect.left + (rect.width / 2) - (popover.offsetWidth / 2);
+
+        if (left < 10) left = 10;
+        if (left + popover.offsetWidth > window.innerWidth - 10) {
+            left = window.innerWidth - popover.offsetWidth - 10;
+        }
+
+        popover.style.top = `${top}px`;
+        popover.style.left = `${left}px`;
+
+        // 2. Load current values
+        let currentWidth = parseInt(target.style.width, 10);
+        if (isNaN(currentWidth)) {
+            currentWidth = target.offsetWidth || 65;
+        }
+        widthSlider.value = currentWidth;
+        widthVal.textContent = `${currentWidth}px`;
+
+        let currentHeight = target.style.height;
+        let isAutoHeight = !currentHeight || currentHeight === 'auto';
+        
+        aspectRatioCheckbox.checked = isAutoHeight;
+        
+        if (isAutoHeight) {
+            heightContainer.classList.add('hidden');
+            heightContainer.style.display = 'none';
+            fitContainer.classList.add('hidden');
+            fitContainer.style.display = 'none';
+        } else {
+            heightContainer.classList.remove('hidden');
+            heightContainer.style.display = 'flex';
+            fitContainer.classList.remove('hidden');
+            fitContainer.style.display = 'flex';
+            let numericHeight = parseInt(currentHeight, 10);
+            if (isNaN(numericHeight)) {
+                numericHeight = target.offsetHeight || 65;
+            }
+            heightSlider.value = numericHeight;
+            heightVal.textContent = `${numericHeight}px`;
+        }
+
+        const currentFit = target.style.objectFit || 'contain';
+        fitBtns.forEach(btn => {
+            if (btn.dataset.fit === currentFit) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // 3. Position the Resize Handle
+        const handle = getOrCreateResizeHandle();
+        handle.style.display = 'block';
+        handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+        handle.style.left = `${window.scrollX + rect.right - 5}px`;
+    }
+
+    function initLogoEditorListeners() {
+        const popover = document.getElementById('logo-editor-popover');
+        if (!popover) return;
+
+        const closeBtn = document.getElementById('logo-editor-close');
+        const galleryTrigger = document.getElementById('logo-editor-gallery-trigger');
+        const swapBtn = document.getElementById('logo-editor-swap');
+        const deleteBtn = document.getElementById('logo-editor-delete');
+        const widthSlider = document.getElementById('logo-editor-width-slider');
+        const widthVal = document.getElementById('logo-editor-width-val');
+        const heightSlider = document.getElementById('logo-editor-height-slider');
+        const heightVal = document.getElementById('logo-editor-height-val');
+        const heightContainer = document.getElementById('logo-editor-height-container');
+        const fitContainer = document.getElementById('logo-editor-fit-container');
+        const aspectRatioCheckbox = document.getElementById('logo-editor-aspect-ratio');
+        const fitBtns = popover.querySelectorAll('.btn-fit');
+        const resetBtn = document.getElementById('logo-editor-reset');
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                popover.style.display = 'none';
+                popover.classList.add('hidden');
+                hideResizeHandle();
+            });
+        }
+
+        if (galleryTrigger) {
+            galleryTrigger.addEventListener('click', () => {
+                openLogosGalleryModal();
+            });
+        }
+
+        if (swapBtn) {
+            swapBtn.addEventListener('click', () => {
+                swapLogos();
+            });
+        }
+
+        widthSlider.addEventListener('input', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            const w = widthSlider.value;
+            widthVal.textContent = `${w}px`;
+            target.style.width = `${w}px`;
+            target.style.maxWidth = 'none';
+            target.style.maxHeight = 'none';
+
+            if (aspectRatioCheckbox.checked) {
+                target.style.height = 'auto';
+            } else {
+                target.style.height = `${heightSlider.value}px`;
+            }
+
+            // Reposition handle dynamically when width changes
+            const rect = target.getBoundingClientRect();
+            const handle = document.getElementById('logo-resize-handle');
+            if (handle) {
+                handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+                handle.style.left = `${window.scrollX + rect.right - 5}px`;
+            }
+            saveCurrentState();
+        });
+
+        heightSlider.addEventListener('input', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            const h = heightSlider.value;
+            heightVal.textContent = `${h}px`;
+            target.style.height = `${h}px`;
+            target.style.maxWidth = 'none';
+            target.style.maxHeight = 'none';
+
+            // Reposition handle dynamically when height changes
+            const rect = target.getBoundingClientRect();
+            const handle = document.getElementById('logo-resize-handle');
+            if (handle) {
+                handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+                handle.style.left = `${window.scrollX + rect.right - 5}px`;
+            }
+            saveCurrentState();
+        });
+
+        aspectRatioCheckbox.addEventListener('change', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            if (aspectRatioCheckbox.checked) {
+                heightContainer.classList.add('hidden');
+                heightContainer.style.display = 'none';
+                fitContainer.classList.add('hidden');
+                fitContainer.style.display = 'none';
+                target.style.height = 'auto';
+                target.style.objectFit = 'contain';
+            } else {
+                heightContainer.classList.remove('hidden');
+                heightContainer.style.display = 'flex';
+                fitContainer.classList.remove('hidden');
+                fitContainer.style.display = 'flex';
+                const h = heightSlider.value;
+                heightVal.textContent = `${h}px`;
+                target.style.height = `${h}px`;
+
+                const activeBtn = popover.querySelector('.btn-fit.active');
+                target.style.objectFit = activeBtn ? activeBtn.dataset.fit : 'contain';
+            }
+
+            // Reposition handle dynamically
+            const rect = target.getBoundingClientRect();
+            const handle = document.getElementById('logo-resize-handle');
+            if (handle) {
+                handle.style.top = `${window.scrollY + rect.bottom - 5}px`;
+                handle.style.left = `${window.scrollX + rect.right - 5}px`;
+            }
+            saveCurrentState();
+        });
+
+        fitBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!AppState.activeLogoTarget) return;
+                const target = document.getElementById(AppState.activeLogoTarget);
+                if (!target) return;
+
+                fitBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                target.style.objectFit = btn.dataset.fit;
+                saveCurrentState();
+            });
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            const item = target.closest('.official-logo-item');
+            if (item) {
+                item.remove();
+            } else {
+                target.style.display = 'none';
+            }
+
+            popover.style.display = 'none';
+            popover.classList.add('hidden');
+            hideResizeHandle();
+            saveCurrentState();
+            Toast.success('Logo removido');
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (!AppState.activeLogoTarget) return;
+            const target = document.getElementById(AppState.activeLogoTarget);
+            if (!target) return;
+
+            if (AppState.activeLogoTarget === 'header-logo-left') {
+                target.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png';
+            } else {
+                target.src = 'https://sesiones.sypablitodp.site/assets/logo.png';
+            }
+
+            target.style.width = '65px';
+            target.style.height = 'auto';
+            target.style.objectFit = 'contain';
+            target.style.display = 'block';
+            target.removeAttribute('style');
+            target.style.cursor = 'pointer';
+
+            popover.style.display = 'none';
+            popover.classList.add('hidden');
+            hideResizeHandle();
+            saveCurrentState();
+            Toast.success('Valores restablecidos');
+        });
+
+        window.addEventListener('click', (e) => {
+            if (!popover.classList.contains('hidden') && !popover.contains(e.target)) {
+                const clickedLogo = e.target.classList.contains('official-logo-img');
+                const clickedRibbonLeft = e.target.id === 'btn-ribbon-logo-left';
+                const clickedRibbonRight = e.target.id === 'btn-ribbon-logo-right';
+                const clickedResizeHandle = e.target.id === 'logo-resize-handle' || e.target.classList.contains('logo-resize-handle');
+                const clickedContextMenu = e.target.closest('#editor-context-menu');
+                const clickedModal = e.target.closest('#logos-gallery-modal');
+                if (!clickedLogo && !clickedRibbonLeft && !clickedRibbonRight && !clickedResizeHandle && !clickedContextMenu && !clickedModal) {
+                    popover.style.display = 'none';
+                    popover.classList.add('hidden');
+                    hideResizeHandle();
+                }
+            }
+        });
     }
 
     function setupDragAndDrop() {
         const sheet = DOM.sessionSheet;
         if (!sheet) return;
 
-        sheet.addEventListener('dragover', (e) => {
-            const target = e.target;
-            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
-                e.preventDefault();
-                target.style.outline = '2px dashed var(--accent)';
-            }
-        });
-
-        sheet.addEventListener('dragleave', (e) => {
-            const target = e.target;
-            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
-                target.style.outline = '';
-            }
-        });
-
-        sheet.addEventListener('drop', (e) => {
-            const target = e.target;
-            if (target && (target.id === 'header-logo-regional' || target.closest('.official-logo-cell'))) {
-                e.preventDefault();
-                target.style.outline = '';
-                
-                const url = e.dataTransfer.getData('text/plain');
-                if (url) {
-                    applyLogoToDocument(url);
+        // Helper to find closest element during drag reordering
+        function getDragAfterElement(container, x) {
+            const draggableElements = [...container.querySelectorAll('.official-logo-item:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = x - box.left - box.width / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
                 }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // Drag start delegation
+        sheet.addEventListener('dragstart', (e) => {
+            const logoItem = e.target.closest('.official-logo-item');
+            if (logoItem) {
+                logoItem.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', logoItem.querySelector('img').id);
+            }
+        });
+
+        // Drag over delegation
+        sheet.addEventListener('dragover', (e) => {
+            const logosList = e.target.closest('#official-header-logos-list');
+            if (logosList) {
+                const dragging = sheet.querySelector('.official-logo-item.dragging');
+                if (dragging) {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(logosList, e.clientX);
+                    const placeholder = document.getElementById('btn-add-header-logo');
+                    if (afterElement == null) {
+                        if (placeholder) {
+                            logosList.insertBefore(dragging, placeholder);
+                        } else {
+                            logosList.appendChild(dragging);
+                        }
+                    } else {
+                        logosList.insertBefore(dragging, afterElement);
+                    }
+                } else {
+                    // Check if dragging gallery logo
+                    const isUrl = e.dataTransfer.types.includes('text/uri-list') || e.dataTransfer.types.includes('text/plain');
+                    if (isUrl) {
+                        e.preventDefault();
+                        logosList.style.outline = '2px dashed var(--accent)';
+                    }
+                }
+            }
+        });
+
+        // Drag leave delegation
+        sheet.addEventListener('dragleave', (e) => {
+            const logosList = e.target.closest('#official-header-logos-list');
+            if (logosList && !logosList.contains(e.relatedTarget)) {
+                logosList.style.outline = '';
+            }
+        });
+
+        // Drop delegation
+        sheet.addEventListener('drop', (e) => {
+            const logosList = e.target.closest('#official-header-logos-list');
+            if (logosList) {
+                logosList.style.outline = '';
+                const dragging = sheet.querySelector('.official-logo-item.dragging');
+                if (dragging) {
+                    e.preventDefault();
+                    dragging.classList.remove('dragging');
+                    saveCurrentState();
+                } else {
+                    // Drop gallery URL
+                    const url = e.dataTransfer.getData('text/plain');
+                    if (url) {
+                        e.preventDefault();
+                        addLogoToHeader(url);
+                    }
+                }
+            }
+        });
+
+        // Drag end delegation
+        sheet.addEventListener('dragend', (e) => {
+            const dragging = sheet.querySelector('.official-logo-item.dragging');
+            if (dragging) {
+                dragging.classList.remove('dragging');
             }
         });
     }
@@ -1379,10 +2810,10 @@
     function processSourceFile(file) {
         if (!file) return;
 
-        // Check file size (max 10MB)
-        const maxSizeBytes = 10 * 1024 * 1024;
+        // Check file size (max 8MB)
+        const maxSizeBytes = 8 * 1024 * 1024;
         if (file.size > maxSizeBytes) {
-            Toast.error('El archivo excede el tamaño límite de 10 MB.');
+            Toast.warning('El archivo excede el tamaño límite de 8 MB.');
             DOM.inputSourceFile.value = '';
             return;
         }
@@ -1497,10 +2928,763 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        } catch (e) {
+        } catch {
             return isoString;
         }
     }
+
+    function handleInsertRow() {
+        let cell = AppState.activeTableCell;
+        if (!cell) {
+            const activeEl = document.activeElement;
+            if (activeEl && DOM.sessionSheet.contains(activeEl)) {
+                cell = activeEl.closest('td, th');
+            }
+        }
+
+        if (!cell) {
+            Toast.warning("Por favor, selecciona una celda en una tabla editable.");
+            return;
+        }
+
+        const table = cell.closest('table');
+        if (!table) {
+            Toast.warning("Esta celda no pertenece a ninguna tabla.");
+            return;
+        }
+
+        // Only allow dynamic rows in .content-table, .eval-table, and .momentos-table
+        const allowedClasses = ['content-table', 'eval-table', 'momentos-table'];
+        const isAllowed = allowedClasses.some(cls => table.classList.contains(cls));
+        if (!isAllowed) {
+            Toast.warning("Esta acción está deshabilitada en tablas de encabezados.");
+            return;
+        }
+
+        const activeRow = cell.closest('tr');
+        if (!activeRow) {
+            Toast.warning("No se pudo identificar la fila.");
+            return;
+        }
+
+        // Avoid modifying headers
+        if (activeRow.closest('thead') || (activeRow.querySelectorAll('th').length > 0 && !activeRow.querySelectorAll('td').length)) {
+            Toast.warning("No se pueden modificar las filas de cabecera.");
+            return;
+        }
+
+        // Clone active row
+        const clone = activeRow.cloneNode(true);
+
+        // Reset text content of cells & ensure they are contenteditable
+        clone.querySelectorAll('td, th').forEach(el => {
+            el.innerHTML = '';
+            el.setAttribute('contenteditable', 'true');
+        });
+
+        // Insert clone after active row
+        activeRow.after(clone);
+
+        // Ensure newly created cells are active and editable
+        enforceEditMode();
+
+        // Focus the first cell of the inserted row
+        const nextCell = clone.querySelector('[contenteditable="true"]') || clone.querySelector('td');
+        if (nextCell) {
+            nextCell.focus();
+            AppState.activeTableCell = nextCell;
+        }
+
+        saveCurrentState();
+        Toast.success("Fila insertada correctamente");
+    }
+
+    function handleDeleteRow() {
+        let cell = AppState.activeTableCell;
+        if (!cell) {
+            const activeEl = document.activeElement;
+            if (activeEl && DOM.sessionSheet.contains(activeEl)) {
+                cell = activeEl.closest('td, th');
+            }
+        }
+
+        if (!cell) {
+            Toast.warning("Por favor, selecciona una celda en la fila que deseas eliminar.");
+            return;
+        }
+
+        const table = cell.closest('table');
+        if (!table) {
+            Toast.warning("Esta celda no pertenece a ninguna tabla.");
+            return;
+        }
+
+        const allowedClasses = ['content-table', 'eval-table', 'momentos-table'];
+        const isAllowed = allowedClasses.some(cls => table.classList.contains(cls));
+        if (!isAllowed) {
+            Toast.warning("Esta acción está deshabilitada en tablas de encabezados.");
+            return;
+        }
+
+        const activeRow = cell.closest('tr');
+        if (!activeRow) {
+            Toast.warning("No se pudo identificar la fila.");
+            return;
+        }
+
+        // Avoid modifying headers
+        if (activeRow.closest('thead') || (activeRow.querySelectorAll('th').length > 0 && !activeRow.querySelectorAll('td').length)) {
+            Toast.warning("No se pueden eliminar las filas de cabecera.");
+            return;
+        }
+
+        const tbody = activeRow.parentNode;
+        if (!tbody) return;
+
+        // Find all non-header rows in the same tbody
+        const allBodyRows = Array.from(tbody.querySelectorAll('tr')).filter(r => {
+            return !r.closest('thead') && !(r.querySelectorAll('th').length > 0 && !r.querySelectorAll('td').length);
+        });
+
+        if (allBodyRows.length <= 1) {
+            Toast.warning("No se puede eliminar la única fila restante de la tabla.");
+            return;
+        }
+
+        // Determine next cell focus
+        const activeIdx = allBodyRows.indexOf(activeRow);
+        let siblingToFocus = null;
+        if (activeIdx > 0) {
+            siblingToFocus = allBodyRows[activeIdx - 1];
+        } else if (activeIdx < allBodyRows.length - 1) {
+            siblingToFocus = allBodyRows[activeIdx + 1];
+        }
+
+        activeRow.remove();
+
+        if (siblingToFocus) {
+            const nextCell = siblingToFocus.querySelector('[contenteditable="true"]') || siblingToFocus.querySelector('td');
+            if (nextCell) {
+                nextCell.focus();
+                AppState.activeTableCell = nextCell;
+            }
+        } else {
+            AppState.activeTableCell = null;
+        }
+
+        saveCurrentState();
+        Toast.success("Fila eliminada correctamente");
+    }
+
+    function applyZoom() {
+        const sheet = DOM.sessionSheet;
+        if (!sheet) return;
+        
+        // Firefox compatibility fallback:
+        // Firefox does not support css zoom. We check if zoom is supported in style.
+        if ('zoom' in sheet.style) {
+            sheet.style.zoom = AppState.zoomScale;
+            sheet.style.transform = '';
+            sheet.style.transformOrigin = '';
+            const parent = sheet.parentElement;
+            if (parent) parent.style.height = '';
+        } else {
+            // Firefox and others without zoom support
+            sheet.style.transform = `scale(${AppState.zoomScale})`;
+            sheet.style.transformOrigin = 'top center';
+            const parent = sheet.parentElement;
+            if (parent) {
+                // Adjust height of the parent container so scrollbar and footer elements render properly
+                parent.style.height = `${sheet.scrollHeight * AppState.zoomScale + 40}px`;
+            }
+        }
+        
+        // Show temporary zoom floating percentage indicator
+        showZoomIndicator();
+    }
+
+    let zoomIndicatorTimeout = null;
+    function showZoomIndicator() {
+        let indicator = document.getElementById('zoom-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'zoom-indicator';
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '20px';
+            indicator.style.right = '20px';
+            indicator.style.background = 'rgba(12, 12, 29, 0.85)';
+            indicator.style.backdropFilter = 'blur(8px)';
+            indicator.style.border = '1px solid var(--border-accent)';
+            indicator.style.borderRadius = 'var(--radius-sm)';
+            indicator.style.padding = '8px 12px';
+            indicator.style.color = 'var(--text-accent)';
+            indicator.style.fontFamily = 'var(--font-mono)';
+            indicator.style.fontSize = '0.8rem';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.zIndex = '9999';
+            indicator.style.pointerEvents = 'none';
+            indicator.style.boxShadow = 'var(--shadow-md)';
+            indicator.style.transition = 'opacity 0.2s ease';
+            document.body.appendChild(indicator);
+        }
+        
+        indicator.textContent = `🔍 Zoom: ${Math.round(AppState.zoomScale * 100)}%`;
+        indicator.style.opacity = '1';
+        
+        clearTimeout(zoomIndicatorTimeout);
+        zoomIndicatorTimeout = setTimeout(() => {
+            indicator.style.opacity = '0';
+        }, 1200);
+    }
+
+    // ═══════════════════════════════════════
+    // WORD-STYLE EDITING & LOGO GALERIA FEATURES
+    // ═══════════════════════════════════════
+
+    let selectedGalleryLogoUrl = null;
+
+    function swapLogos() {
+        if (!AppState.activeLogoTarget) return;
+        const target = document.getElementById(AppState.activeLogoTarget);
+        if (!target) return;
+
+        const item = target.closest('.official-logo-item');
+        if (!item) return;
+
+        const next = item.nextElementSibling;
+        const parent = item.parentElement;
+        
+        if (next && next.classList.contains('official-logo-item')) {
+            // Swap item with next element
+            parent.insertBefore(next, item);
+        } else {
+            // Cycle back to the start (before the first item)
+            const first = parent.querySelector('.official-logo-item');
+            if (first && first !== item) {
+                parent.insertBefore(item, first);
+            }
+        }
+
+        // Save state
+        saveCurrentState();
+
+        // Reposition popover and resize handle
+        setTimeout(() => {
+            openLogoEditor(target);
+        }, 100);
+        Toast.success('Posición de logo cambiada');
+    }
+
+    function getOrCreateResizeHandle() {
+        let handle = document.getElementById('logo-resize-handle');
+        if (!handle) {
+            handle = document.createElement('div');
+            handle.id = 'logo-resize-handle';
+            handle.className = 'logo-resize-handle no-print';
+            document.body.appendChild(handle);
+            handle.addEventListener('mousedown', initResizeDrag);
+        }
+        return handle;
+    }
+
+    function hideResizeHandle() {
+        const handle = document.getElementById('logo-resize-handle');
+        if (handle) {
+            handle.style.display = 'none';
+        }
+    }
+
+    function initResizeDrag(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!AppState.activeLogoTarget) return;
+        const target = document.getElementById(AppState.activeLogoTarget);
+        if (!target) return;
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const rect = target.getBoundingClientRect();
+        const startWidth = rect.width;
+        const startHeight = rect.height;
+        const aspectRatio = startWidth / startHeight;
+
+        const handle = document.getElementById('logo-resize-handle');
+        const popover = document.getElementById('logo-editor-popover');
+        const widthSlider = document.getElementById('logo-editor-width-slider');
+        const widthVal = document.getElementById('logo-editor-width-val');
+        const heightSlider = document.getElementById('logo-editor-height-slider');
+        const heightVal = document.getElementById('logo-editor-height-val');
+        const heightContainer = document.getElementById('logo-editor-height-container');
+        const fitContainer = document.getElementById('logo-editor-fit-container');
+        const aspectRatioCheckbox = document.getElementById('logo-editor-aspect-ratio');
+
+        document.body.style.cursor = 'se-resize';
+        document.body.style.userSelect = 'none';
+
+        function onMouseMove(moveEvt) {
+            const zoom = AppState.zoomScale || 1.0;
+            const deltaX = (moveEvt.clientX - startX) / zoom;
+            const deltaY = (moveEvt.clientY - startY) / zoom;
+
+            let newWidth = Math.max(30, Math.min(300, startWidth + deltaX));
+            let newHeight;
+
+            const keepAspect = !moveEvt.ctrlKey;
+            
+            if (keepAspect) {
+                newHeight = newWidth / aspectRatio;
+                target.style.height = 'auto';
+                target.style.width = `${newWidth}px`;
+                target.style.maxWidth = 'none';
+                target.style.maxHeight = 'none';
+                
+                aspectRatioCheckbox.checked = true;
+                heightContainer.classList.add('hidden');
+                heightContainer.style.display = 'none';
+                fitContainer.classList.add('hidden');
+                fitContainer.style.display = 'none';
+            } else {
+                newHeight = Math.max(30, Math.min(300, startHeight + deltaY));
+                target.style.width = `${newWidth}px`;
+                target.style.height = `${newHeight}px`;
+                target.style.maxWidth = 'none';
+                target.style.maxHeight = 'none';
+                
+                aspectRatioCheckbox.checked = false;
+                heightContainer.classList.remove('hidden');
+                heightContainer.style.display = 'flex';
+                fitContainer.classList.remove('hidden');
+                fitContainer.style.display = 'flex';
+                
+                heightSlider.value = Math.round(newHeight);
+                heightVal.textContent = `${Math.round(newHeight)}px`;
+            }
+
+            widthSlider.value = Math.round(newWidth);
+            widthVal.textContent = `${Math.round(newWidth)}px`;
+
+            const newRect = target.getBoundingClientRect();
+            handle.style.top = `${window.scrollY + newRect.bottom - 5}px`;
+            handle.style.left = `${window.scrollX + newRect.right - 5}px`;
+
+            if (popover && !popover.classList.contains('hidden')) {
+                let popTop = window.scrollY + newRect.bottom + 10;
+                let popLeft = window.scrollX + newRect.left + (newRect.width / 2) - (popover.offsetWidth / 2);
+                if (popLeft < 10) popLeft = 10;
+                if (popLeft + popover.offsetWidth > window.innerWidth - 10) {
+                    popLeft = window.innerWidth - popover.offsetWidth - 10;
+                }
+                popover.style.top = `${popTop}px`;
+                popover.style.left = `${popLeft}px`;
+            }
+        }
+
+        function onMouseUp() {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            saveCurrentState();
+        }
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }
+
+    async function openLogosGalleryModal() {
+        const modal = document.getElementById('logos-gallery-modal');
+        if (!modal) return;
+
+        const posSelector = document.getElementById('modal-logo-position-selector');
+        if (posSelector) posSelector.classList.add('hidden');
+        selectedGalleryLogoUrl = null;
+
+        modal.classList.remove('hidden');
+        await refreshModalLogosList();
+    }
+
+    async function refreshModalLogosList() {
+        const container = document.getElementById('modal-logos-container');
+        if (!container) return;
+
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: #a1a1aa; padding: 10px;">Inicia sesión para ver tus logos subidos</span>`;
+            return;
+        }
+
+        container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: #a1a1aa; padding: 10px;">Cargando logos de Supabase...</span>`;
+        try {
+            const logos = await SupabaseClient.listLogos();
+            if (logos.length === 0) {
+                container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: #a1a1aa; padding: 10px;">No tienes logos subidos previamente</span>`;
+                return;
+            }
+
+            container.innerHTML = logos.map(logo => `
+                <div class="modal-logo-item" data-url="${logo.url}" style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px; cursor: pointer; transition: all 0.2s;" title="Clic para seleccionar">
+                    <img src="${logo.url}" alt="${logo.name}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.modal-logo-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const url = item.dataset.url;
+                    handleSelectModalLogo(url);
+                });
+            });
+        } catch (e) {
+            console.error('[Modal Gallery] Error loading logos:', e);
+            container.innerHTML = `<span style="grid-column: span 4; font-size: 0.8rem; text-align: center; color: var(--danger); padding: 10px;">Error al cargar logos</span>`;
+        }
+    }
+
+    function handleSelectModalLogo(url) {
+        if (AppState.activeLogoTarget) {
+            applyLogoToDocument(url, AppState.activeLogoTarget);
+        } else {
+            addLogoToHeader(url);
+        }
+        document.getElementById('logos-gallery-modal').classList.add('hidden');
+    }
+
+    async function handleModalLogoUpload(file) {
+        const user = await SupabaseClient.getCurrentUser();
+        if (!user) {
+            Toast.warning('Debes iniciar sesión para subir logos a la galería.');
+            if (window.AuthUi && typeof window.AuthUi.openRegister === 'function') {
+                window.AuthUi.openRegister();
+            }
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            Toast.warning('Por favor selecciona una imagen válida (PNG, JPG)');
+            return;
+        }
+
+        Loader.show('Comprimiendo y subiendo logo...');
+        try {
+            const compressedFile = await compressImage(file, 800, 800, 0.8);
+            const publicUrl = await SupabaseClient.uploadLogo(compressedFile);
+            Toast.success('Logo subido correctamente');
+            
+            await refreshModalLogosList();
+            await loadLogosGallery();
+            
+            handleSelectModalLogo(publicUrl);
+        } catch (err) {
+            Toast.error('Error al subir logo: ' + err.message);
+        } finally {
+            Loader.hide();
+            const modalFileInput = document.getElementById('input-modal-upload-logo');
+            if (modalFileInput) modalFileInput.value = '';
+        }
+    }
+
+    function initContextMenu() {
+        const menu = document.getElementById('editor-context-menu');
+        if (!menu) return;
+
+        // Prevent selection from being lost when clicking inside the context menu
+        menu.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+        });
+
+        DOM.sessionSheet.addEventListener('contextmenu', (e) => {
+            if (AppState.previewMode) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const isLogo = e.target.classList.contains('official-logo-img');
+            const itemEditLogo = document.getElementById('menu-item-edit-logo');
+            const itemSwapLogos = document.getElementById('menu-item-swap-logos');
+
+            if (isLogo) {
+                AppState.activeLogoTarget = e.target.id;
+                if (itemEditLogo) itemEditLogo.classList.remove('hidden');
+                if (itemSwapLogos) itemSwapLogos.classList.remove('hidden');
+            } else {
+                if (itemEditLogo) itemEditLogo.classList.add('hidden');
+                if (itemSwapLogos) itemSwapLogos.classList.add('hidden');
+            }
+
+            menu.style.display = 'block';
+            menu.classList.remove('hidden');
+
+            let top = window.scrollY + e.clientY;
+            let left = window.scrollX + e.clientX;
+
+            if (left + menu.offsetWidth > window.innerWidth - 10) {
+                left = window.innerWidth - menu.offsetWidth - 10;
+            }
+            if (e.clientY + menu.offsetHeight > window.innerHeight - 10) {
+                top = window.scrollY + e.clientY - menu.offsetHeight;
+            }
+
+            menu.style.top = `${top}px`;
+            menu.style.left = `${left}px`;
+        });
+
+        window.addEventListener('click', (e) => {
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+                menu.style.display = 'none';
+                menu.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('menu-item-bold').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('bold', false, null);
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-italic').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('italic', false, null);
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-underline').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('underline', false, null);
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-cut').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('cut');
+            saveCurrentState();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-copy').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.execCommand('copy');
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-paste').addEventListener('click', async (e) => {
+            e.preventDefault();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+            try {
+                const text = await navigator.clipboard.readText();
+                document.execCommand('insertText', false, text);
+                saveCurrentState();
+            } catch (err) {
+                Toast.info('Usa Ctrl+V para pegar contenido');
+            }
+        });
+
+        document.getElementById('menu-item-ai-improve').addEventListener('click', (e) => {
+            e.preventDefault();
+            handleAiImproveText('improve');
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-ai-rubrica').addEventListener('click', (e) => {
+            e.preventDefault();
+            handleAiRubrica();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-edit-logo').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (AppState.activeLogoTarget) {
+                const logo = document.getElementById(AppState.activeLogoTarget);
+                if (logo) openLogoEditor(logo);
+            }
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('menu-item-swap-logos').addEventListener('click', (e) => {
+            e.preventDefault();
+            swapLogos();
+            menu.style.display = 'none';
+            menu.classList.add('hidden');
+        });
+    }
+
+    function initLogosGalleryModal() {
+        const btnCloseModal = document.getElementById('btn-close-gallery-modal');
+        const btnCloseModal2 = document.getElementById('btn-modal-gallery-close');
+        const modalDropzone = document.getElementById('modal-logo-dropzone');
+        const modalFileInput = document.getElementById('input-modal-upload-logo');
+
+        [btnCloseModal, btnCloseModal2].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    document.getElementById('logos-gallery-modal').classList.add('hidden');
+                });
+            }
+        });
+
+        if (modalDropzone) {
+            modalDropzone.addEventListener('click', () => {
+                modalFileInput.click();
+            });
+            modalDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                modalDropzone.style.borderColor = '#00d2ff';
+                modalDropzone.style.background = 'rgba(0, 210, 255, 0.05)';
+            });
+            modalDropzone.addEventListener('dragleave', () => {
+                modalDropzone.style.borderColor = 'rgba(0, 210, 255, 0.2)';
+                modalDropzone.style.background = 'rgba(0, 210, 255, 0.02)';
+            });
+            modalDropzone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                modalDropzone.style.borderColor = 'rgba(0, 210, 255, 0.2)';
+                modalDropzone.style.background = 'rgba(0, 210, 255, 0.02)';
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    await handleModalLogoUpload(e.dataTransfer.files[0]);
+                }
+            });
+        }
+        if (modalFileInput) {
+            modalFileInput.addEventListener('change', async (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    await handleModalLogoUpload(e.target.files[0]);
+                }
+            });
+        }
+    }
+
+    function initRefineTextModal() {
+        const modal = document.getElementById('refine-text-modal');
+        if (!modal) return;
+
+        const closeBtn = document.getElementById('btn-close-refine-modal');
+        const cancelBtn = document.getElementById('btn-refine-cancel');
+        const submitBtn = document.getElementById('btn-refine-submit');
+        const customInput = document.getElementById('input-refine-custom');
+        const optBtns = document.querySelectorAll('.refine-opt-btn');
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            AppState.selectionRange = null;
+            AppState.selectedText = '';
+        };
+
+        [closeBtn, cancelBtn].forEach(btn => {
+            if (btn) btn.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        optBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                optBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (customInput) customInput.value = '';
+            });
+        });
+
+        if (customInput) {
+            customInput.addEventListener('focus', () => {
+                optBtns.forEach(b => b.classList.remove('active'));
+            });
+        }
+
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async () => {
+                const range = AppState.selectionRange;
+                const text = AppState.selectedText;
+
+                if (!text || !range) {
+                    Toast.warning('Se perdió la selección del texto original.');
+                    closeModal();
+                    return;
+                }
+
+                let instruction = '';
+                const customText = customInput ? customInput.value.trim() : '';
+                if (customText) {
+                    instruction = customText;
+                } else {
+                    const activeOpt = document.querySelector('.refine-opt-btn.active');
+                    if (activeOpt) {
+                        instruction = activeOpt.dataset.instruction;
+                    } else {
+                        Toast.warning('Por favor selecciona una opción o escribe una instrucción.');
+                        return;
+                    }
+                }
+
+                closeModal();
+                Loader.show('🤖 Refinando redacción con IA...');
+
+                try {
+                    const resultText = await AiCopilot.improveText(text, instruction);
+                    
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    
+                    range.deleteContents();
+                    
+                    const container = document.createElement('span');
+                    container.innerHTML = resultText;
+                    range.insertNode(container);
+                    
+                    sel.removeAllRanges();
+                    const newRange = document.createRange();
+                    newRange.selectNode(container);
+                    sel.addRange(newRange);
+
+                    saveCurrentState();
+                    checkTimeBalance();
+                    Loader.hide();
+                    Toast.success('✨ Texto refinado correctamente por la IA');
+                } catch (error) {
+                    Loader.hide();
+                    console.error('[AI Refinement] Error:', error);
+                    Toast.error('Error al refinar texto: ' + error.message);
+                }
+            });
+        }
+    }
+
+    // Expose styling API globally for agentic chatbot features
+    window.AppDesign = {
+        apply: (design) => {
+            if (typeof applyDesignStyles === 'function') {
+                applyDesignStyles(design);
+            }
+        },
+        save: () => {
+            if (typeof saveCurrentState === 'function') {
+                saveCurrentState();
+            }
+        },
+        getCurrent: () => {
+            if (!DOM.designColor) return null;
+            return {
+                themeColor: DOM.designColor.value,
+                fontSize: DOM.designFontSize.value,
+                padding: DOM.designPadding.value,
+                lineHeight: DOM.designLineHeight.value,
+                headerBg: DOM.designHeaderBg.value
+            };
+        }
+    };
 
     // ═══════════════════════════════════════
     // BOOT

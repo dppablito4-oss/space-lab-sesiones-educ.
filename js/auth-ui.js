@@ -18,6 +18,12 @@ window.AuthUi = (() => {
     let btnClose = null;
     let authHeaderContainer = null;
     
+    // T&C DOM references
+    let termsModal = null;
+    let btnCloseTerms = null;
+    let btnAcceptTermsModal = null;
+    let linkTermsTrigger = null;
+    
     let authTitle = null;
     let authSubtitle = null;
     let groupUsername = null;
@@ -47,6 +53,12 @@ window.AuthUi = (() => {
         groupTerms = document.getElementById('auth-group-terms');
         toggleText = document.getElementById('auth-toggle-text');
 
+        // T&C DOM bindings
+        termsModal = document.getElementById('terms-modal');
+        btnCloseTerms = document.getElementById('btn-close-terms');
+        btnAcceptTermsModal = document.getElementById('btn-accept-terms-modal');
+        linkTermsTrigger = document.querySelector('#auth-group-terms a');
+
         if (!authHeaderContainer) {
             console.warn('[AuthUi] #auth-header-container no encontrado en el DOM');
             return;
@@ -57,11 +69,28 @@ window.AuthUi = (() => {
     }
 
     function bindEvents() {
-        // Alternar modo
-        btnToggle.addEventListener('click', (e) => {
-            e.preventDefault();
-            setMode(!isLoginMode);
-        });
+        // Alternar modo (si existe el disparador antiguo)
+        if (btnToggle) {
+            btnToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                setMode(!isLoginMode);
+            });
+        }
+
+        // Pestañas de Autenticación Premium
+        const tabLogin = document.getElementById('auth-tab-login');
+        const tabRegister = document.getElementById('auth-tab-register');
+        const btnCancel = document.getElementById('btn-cancel-auth');
+
+        if (tabLogin) {
+            tabLogin.addEventListener('click', () => setMode(true));
+        }
+        if (tabRegister) {
+            tabRegister.addEventListener('click', () => setMode(false));
+        }
+        if (btnCancel) {
+            btnCancel.addEventListener('click', closeModal);
+        }
 
         // Enviar formulario
         authForm.addEventListener('submit', handleAuthSubmit);
@@ -71,6 +100,30 @@ window.AuthUi = (() => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) closeModal();
         });
+
+        // Términos y Condiciones modal events
+        if (linkTermsTrigger) {
+            linkTermsTrigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (termsModal) termsModal.classList.remove('hidden');
+            });
+        }
+        if (btnCloseTerms) {
+            btnCloseTerms.addEventListener('click', () => {
+                if (termsModal) termsModal.classList.add('hidden');
+            });
+        }
+        if (btnAcceptTermsModal) {
+            btnAcceptTermsModal.addEventListener('click', () => {
+                if (termsModal) termsModal.classList.add('hidden');
+                if (checkboxTerms) checkboxTerms.checked = true;
+            });
+        }
+        if (termsModal) {
+            termsModal.addEventListener('click', (e) => {
+                if (e.target === termsModal) termsModal.classList.add('hidden');
+            });
+        }
     }
 
     function setMode(isLogin) {
@@ -83,12 +136,18 @@ window.AuthUi = (() => {
         inputUsername.value = '';
         checkboxTerms.checked = false;
 
+        const tabLogin = document.getElementById('auth-tab-login');
+        const tabRegister = document.getElementById('auth-tab-register');
+
         if (isLogin) {
-            authTitle.textContent = 'Iniciar Sesión 🌌';
-            authSubtitle.textContent = 'Ingresa con tu correo y contraseña para sincronizar tus sesiones en la nube.';
-            btnSubmit.textContent = 'Iniciar Sesión 🚪';
-            toggleText.textContent = '¿No tienes una cuenta?';
-            btnToggle.textContent = 'Créala aquí';
+            if (tabLogin) tabLogin.classList.add('active');
+            if (tabRegister) tabRegister.classList.remove('active');
+
+            if (authTitle) authTitle.textContent = 'Iniciar Sesión 🌌';
+            if (authSubtitle) authSubtitle.textContent = 'Ingresa a tu cuenta Space Lab para gestionar tus créditos de IA y sincronizar tus sesiones.';
+            btnSubmit.textContent = 'INICIAR SESIÓN';
+            if (toggleText) toggleText.textContent = '¿No tienes una cuenta?';
+            if (btnToggle) btnToggle.textContent = 'Créala aquí';
 
             groupUsername.classList.add('hidden');
             groupConfirmPassword.classList.add('hidden');
@@ -97,11 +156,14 @@ window.AuthUi = (() => {
             inputUsername.removeAttribute('required');
             inputConfirmPassword.removeAttribute('required');
         } else {
-            authTitle.textContent = 'Crear Cuenta 🚀';
-            authSubtitle.textContent = 'Regístrate gratis para guardar y respaldar tus sesiones en la nube.';
-            btnSubmit.textContent = 'Crear Cuenta 🔑';
-            toggleText.textContent = '¿Ya tienes una cuenta?';
-            btnToggle.textContent = 'Inicia sesión aquí';
+            if (tabLogin) tabLogin.classList.remove('active');
+            if (tabRegister) tabRegister.classList.add('active');
+
+            if (authTitle) authTitle.textContent = 'Crear Cuenta 🚀';
+            if (authSubtitle) authSubtitle.textContent = 'Crea tu cuenta para acceder a la generación de sesiones con IA (incluye créditos iniciales y planes de suscripción).';
+            btnSubmit.textContent = 'CREAR CUENTA GRATIS';
+            if (toggleText) toggleText.textContent = '¿Ya tienes una cuenta?';
+            if (btnToggle) btnToggle.textContent = 'Inicia sesión aquí';
 
             groupUsername.classList.remove('hidden');
             groupConfirmPassword.classList.remove('hidden');
@@ -116,6 +178,11 @@ window.AuthUi = (() => {
 
     function openModal() {
         setMode(true); // Empezar por defecto en Login
+        modal.classList.remove('hidden');
+    }
+
+    function openRegister() {
+        setMode(false); // Empezar por defecto en Registro
         modal.classList.remove('hidden');
     }
 
@@ -311,6 +378,7 @@ window.AuthUi = (() => {
     return {
         init,
         openModal,
+        openRegister,
         checkSessionState
     };
 })();

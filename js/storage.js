@@ -8,6 +8,25 @@ const Storage = (() => {
     const CURRENT_KEY = 'spacelab_current';
     const SETTINGS_KEY = 'spacelab_settings';
 
+    // ─── ACTIVE SYNC TRACKING ───
+    let activeSyncsCount = 0;
+
+    function incrementSync() {
+        activeSyncsCount++;
+    }
+
+    function decrementSync() {
+        activeSyncsCount = Math.max(0, activeSyncsCount - 1);
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (activeSyncsCount > 0) {
+            e.preventDefault();
+            e.returnValue = 'Hay sincronizaciones de base de datos activas en segundo plano. ¿Estás seguro de que quieres salir?';
+            return e.returnValue;
+        }
+    });
+
     // ─── CRUD ───
 
     function getAllSessions() {
@@ -42,12 +61,15 @@ const Storage = (() => {
 
             // Sincronización asíncrona con Supabase en background si está logueado
             if (window.SupabaseClient && typeof SupabaseClient.saveSessionCloud === 'function') {
+                incrementSync();
                 SupabaseClient.getCurrentUser().then(user => {
                     if (user) {
-                        SupabaseClient.saveSessionCloud(session)
+                        return SupabaseClient.saveSessionCloud(session)
                             .then(() => console.log('[Storage] Sincronizado en la nube:', session.id))
                             .catch(err => console.warn('[Storage] Error al subir a la nube:', err));
                     }
+                }).finally(() => {
+                    decrementSync();
                 });
             }
 
@@ -65,12 +87,15 @@ const Storage = (() => {
 
             // Sincronización asíncrona con Supabase en background
             if (window.SupabaseClient && typeof SupabaseClient.deleteSessionCloud === 'function') {
+                incrementSync();
                 SupabaseClient.getCurrentUser().then(user => {
                     if (user) {
-                        SupabaseClient.deleteSessionCloud(id)
+                        return SupabaseClient.deleteSessionCloud(id)
                             .then(() => console.log('[Storage] Eliminado de la nube:', id))
                             .catch(err => console.warn('[Storage] Error al borrar de la nube:', err));
                     }
+                }).finally(() => {
+                    decrementSync();
                 });
             }
 
@@ -87,7 +112,7 @@ const Storage = (() => {
         try {
             const data = localStorage.getItem(CURRENT_KEY);
             return data ? JSON.parse(data) : null;
-        } catch (e) {
+        } catch {
             return null;
         }
     }
@@ -114,7 +139,7 @@ const Storage = (() => {
                 autoSave: true,
                 lastTemplate: 'estandar'
             };
-        } catch (e) {
+        } catch {
             return { editMode: true, autoSave: true, lastTemplate: 'estandar' };
         }
     }
@@ -205,7 +230,7 @@ const Storage = (() => {
                 try {
                     const data = JSON.parse(e.target.result);
                     resolve(data);
-                } catch (err) {
+                } catch {
                     reject(new Error('Archivo JSON inválido'));
                 }
             };
@@ -219,6 +244,7 @@ const Storage = (() => {
         const user = await SupabaseClient.getCurrentUser();
         if (!user) return;
 
+        incrementSync();
         try {
             // 1. Obtener sesiones locales
             const localSessions = getAllSessions();
@@ -259,6 +285,8 @@ const Storage = (() => {
             console.log('🔄 Sesiones sincronizadas con Supabase con éxito');
         } catch (e) {
             console.error('[Storage] Error al sincronizar sesiones:', e);
+        } finally {
+            decrementSync();
         }
     }
 

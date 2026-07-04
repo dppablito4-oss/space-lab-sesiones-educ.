@@ -4,13 +4,42 @@
    ═══════════════════════════════════════════════════ */
 
 const ConfirmDialog = (() => {
-    const overlay = document.getElementById('confirm-dialog');
-    const titleEl = document.getElementById('confirm-title');
-    const messageEl = document.getElementById('confirm-message');
-    const cancelBtn = document.getElementById('confirm-cancel');
-    const acceptBtn = document.getElementById('confirm-accept');
-
+    let overlay = null;
+    let titleEl = null;
+    let messageEl = null;
+    let cancelBtn = null;
+    let acceptBtn = null;
+    let initialized = false;
     let _resolve = null;
+
+    function init() {
+        if (initialized) return;
+        overlay = document.getElementById('confirm-dialog');
+        if (!overlay) return;
+
+        titleEl = document.getElementById('confirm-title');
+        messageEl = document.getElementById('confirm-message');
+        cancelBtn = document.getElementById('confirm-cancel');
+        acceptBtn = document.getElementById('confirm-accept');
+
+        // Event listeners
+        if (cancelBtn) cancelBtn.addEventListener('click', () => close(false));
+        if (acceptBtn) acceptBtn.addEventListener('click', () => close(true));
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close(false);
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) {
+                close(false);
+            }
+        });
+
+        initialized = true;
+    }
 
     /**
      * Show a confirmation dialog
@@ -22,6 +51,13 @@ const ConfirmDialog = (() => {
      * @returns {Promise<boolean>} - True if confirmed, false otherwise
      */
     function show({ title = '¿Estás seguro?', message = 'Esta acción no se puede deshacer.', confirmText = 'Confirmar', cancelText = 'Cancelar' } = {}) {
+        init();
+        if (!initialized) {
+            // Fallback for pages without the dialog markup
+            const confirmed = window.confirm(`${title}\n\n${message}`);
+            return Promise.resolve(confirmed);
+        }
+
         titleEl.textContent = title;
         messageEl.textContent = message;
         acceptBtn.textContent = confirmText;
@@ -35,28 +71,12 @@ const ConfirmDialog = (() => {
     }
 
     function close(result) {
-        overlay.classList.add('hidden');
+        if (overlay) overlay.classList.add('hidden');
         if (_resolve) {
             _resolve(result);
             _resolve = null;
         }
     }
-
-    // Event listeners
-    cancelBtn.addEventListener('click', () => close(false));
-    acceptBtn.addEventListener('click', () => close(true));
-
-    // Close on overlay click
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) close(false);
-    });
-
-    // Close on Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
-            close(false);
-        }
-    });
 
     return { show };
 })();

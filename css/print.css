@@ -80,8 +80,23 @@
         box-shadow: none !important;
         border-radius: 0 !important;
         min-height: auto !important;
+        font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
         font-size: 10pt;
         line-height: 1.4;
+        zoom: 1 !important;
+        transform: none !important;
+    }
+
+    /* Ensure font family is inherited by all children elements during print */
+    .session-sheet,
+    .session-sheet table,
+    .session-sheet td,
+    .session-sheet th,
+    .session-sheet p,
+    .session-sheet span,
+    .session-sheet li,
+    .session-sheet div {
+        font-family: var(--session-font-family, 'Inter', Arial, sans-serif) !important;
     }
 
     /* ─── Tables ─── */
@@ -124,12 +139,11 @@
     .session-sheet .content-table td,
     .session-sheet .eval-table th,
     .session-sheet .eval-table td,
-    .session-sheet .official-header-table td,
     .session-sheet .momentos-table th,
     .session-sheet .momentos-table td {
-        border: 1px solid #000 !important;
-        padding: 4px 6px;
-        font-size: 8.5pt;
+        border: 1px solid var(--theme-border-color, #000) !important;
+        padding: var(--session-cell-padding, 4px 6px) !important;
+        font-size: var(--session-font-size, 8.5pt) !important;
         color: #000 !important;
         background: transparent !important;
     }
@@ -141,14 +155,62 @@
         page-break-inside: avoid;
     }
 
-    /* Keep momentos table rows together on a single page to prevent text slicing and keep borders closed */
+    /* Official Header Table Print Overrides */
+    .session-sheet .official-header-table td {
+        padding: 0;
+        border: none !important;
+        background: transparent !important;
+    }
+    .session-sheet .official-header-table .official-header-logos-cell {
+        border: none !important;
+        background-color: #ffffff !important;
+        padding: 0 !important;
+    }
+    .session-sheet .official-header-logos-container {
+        width: 100%;
+        margin-bottom: 15px;
+        border-bottom: 2px solid var(--theme-border-color, #000) !important;
+        padding-bottom: 8px;
+    }
+    .session-sheet .official-header-logos-list {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 15px !important;
+        flex-wrap: wrap !important;
+    }
+    .session-sheet .official-logo-item {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 2px !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    .session-sheet .official-logo-img {
+        max-height: 48px !important;
+        object-fit: contain !important;
+        display: block !important;
+        margin: 0 auto !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    /* Avoid splitting a single moment row across pages */
     .session-sheet .momentos-table tr {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
     }
 
     /* Keep individual subsections together in case a very long row is forced to split */
-    .session-sheet .momento-subsection {
+    /* Prevent text splitting inside paragraph/list elements of moments */
+    .session-sheet .momento-subsection,
+    .session-sheet .momento-subsection p,
+    .session-sheet .momento-subsection li,
+    .session-sheet .momento-subsection div,
+    .session-sheet .momento-section p,
+    .session-sheet .momento-section li,
+    .session-sheet .momento-section div {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
     }

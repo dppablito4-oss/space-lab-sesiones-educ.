@@ -127,9 +127,29 @@ const Templates = (() => {
             'Monitorea y ajusta su desempeño durante el proceso de aprendizaje'
         ];
 
-        // Build capacidades rows
-        const capacidades = Array.isArray(p.capacidades) ? p.capacidades : (p.capacidad ? [p.capacidad] : ['']);
-        const criterios = Array.isArray(p.criterios_evaluacion) ? p.criterios_evaluacion : (p.desempeno ? [p.desempeno] : ['']);
+        // Build capacities rows (split string by newline to render multiple <li> items)
+        let capacidades = [];
+        if (Array.isArray(p.capacidades)) {
+            capacidades = p.capacidades;
+        } else if (p.capacidad) {
+            capacidades = p.capacidad
+                .split('\n')
+                .map(line => line.replace(/^[•\s\-\*\d\.\)]+\s*/, '').trim())
+                .filter(line => line.length > 0);
+        }
+        if (capacidades.length === 0) capacidades = [''];
+
+        // Build criteria rows (split string by newline to render multiple <li> items)
+        let criterios = [];
+        if (Array.isArray(p.criterios_evaluacion)) {
+            criterios = p.criterios_evaluacion;
+        } else if (p.desempeno) {
+            criterios = p.desempeno
+                .split('\n')
+                .map(line => line.replace(/^[•\s\-\*\d\.\)]+\s*/, '').trim())
+                .filter(line => line.length > 0);
+        }
+        if (criterios.length === 0) criterios = [''];
 
         let capacidadesHtml = '';
         capacidades.forEach(cap => {
@@ -141,10 +161,245 @@ const Templates = (() => {
             criteriosHtml += `<li ${ce}>${esc(crit)}</li>`;
         });
 
-        // ── MOMENTOS: Build rich HTML content ──
-        const inicioContent = buildMomentoInicio(momentos.inicio || {}, ce);
-        const desarrolloContent = buildMomentoDesarrollo(momentos.desarrollo || {}, ce);
-        const cierreContent = buildMomentoCierre(momentos.cierre || {}, ce);
+        // ── MOMENTOS: Build dynamic rows for PDF paging ──
+        let inicioRowsHtml = '';
+        const inicio = momentos.inicio || {};
+        const subMomentsInicio = [];
+
+        if (inicio.motivacion) {
+            subMomentsInicio.push({
+                title: 'Motivación (5 min)',
+                content: inicio.motivacion
+            });
+        }
+        if (inicio.saberes_previos) {
+            subMomentsInicio.push({
+                title: `Saberes previos (${inicio.saberes_tiempo || '8 min'})`,
+                content: inicio.saberes_previos
+            });
+        }
+        if (inicio.problematizacion) {
+            subMomentsInicio.push({
+                title: `Problematización (${inicio.problematizacion_tiempo || '5 min'})`,
+                content: inicio.problematizacion
+            });
+        }
+        if (inicio.proposito_organizacion) {
+            subMomentsInicio.push({
+                title: `Propósito y organización (${inicio.proposito_tiempo || '5 min'})`,
+                content: inicio.proposito_organizacion
+            });
+        }
+
+        if (subMomentsInicio.length > 0) {
+            subMomentsInicio.forEach((sm, index) => {
+                if (index === 0) {
+                    inicioRowsHtml += `
+                        <tr>
+                            <td class="momento-label-cell">
+                                <div class="momento-name">INICIO:</div>
+                                <div class="momento-sublabels">
+                                    <span>• Saberes Previos</span>
+                                    <span>• Problematización</span>
+                                    <span>• Propósito y organización</span>
+                                </div>
+                                <div class="momento-time">TIEMPO: ${esc(inicio.tiempo_total || '')}</div>
+                            </td>
+                            <td class="momento-content-cell" ${ce}>
+                                <div class="momento-section">
+                                    <div class="momento-subsection">
+                                        <div class="momento-subsection-title">${esc(sm.title)}</div>
+                                        <div>${escHtml(sm.content)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="eval-column-cell">
+                                <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                            </td>
+                        </tr>`;
+                } else {
+                    inicioRowsHtml += `
+                        <tr>
+                            <td class="momento-label-cell empty-label"></td>
+                            <td class="momento-content-cell" ${ce}>
+                                <div class="momento-section">
+                                    <div class="momento-subsection">
+                                        <div class="momento-subsection-title">${esc(sm.title)}</div>
+                                        <div>${escHtml(sm.content)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="eval-column-cell">
+                                <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                            </td>
+                        </tr>`;
+                }
+            });
+        } else {
+            const defaultText = inicio.actividades || '• El docente empieza la sesión saludando muy cordialmente a los estudiantes...\n• Se consensuan los acuerdos de convivencia para la interacción en clases.\n• Motivación: activity inicial.\n• Saberes previos: preguntas exploratorias.\n• Problematización: situación significativa.\n• Propósito y organización: comunicar el propósito de la sesión y los criterios de evaluación.';
+            inicioRowsHtml = `
+                <tr>
+                    <td class="momento-label-cell">
+                        <div class="momento-name">INICIO:</div>
+                        <div class="momento-sublabels">
+                            <span>• Saberes Previos</span>
+                            <span>• Problematización</span>
+                            <span>• Propósito y organización</span>
+                        </div>
+                        <div class="momento-time">TIEMPO: ${esc(inicio.tiempo_total || '')}</div>
+                    </td>
+                    <td class="momento-content-cell" ${ce}>
+                        <div class="momento-section">${escHtml(defaultText)}</div>
+                    </td>
+                    <td class="eval-column-cell">
+                        <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                    </td>
+                </tr>`;
+        }
+
+        let desarrolloRowsHtml = '';
+        const desarrollo = momentos.desarrollo || {};
+        const desarrolloKeys = Object.keys(desarrollo)
+            .filter(k => k.startsWith('proceso_') || k.startsWith('paso_'))
+            .sort((a, b) => {
+                const numA = parseInt(a.replace(/^\D+/g, ''), 10) || 0;
+                const numB = parseInt(b.replace(/^\D+/g, ''), 10) || 0;
+                return numA - numB;
+            });
+
+        const mappings = {
+            'familiarizacion': 'Familiarización con el problema',
+            'busqueda_estrategias': 'Búsqueda y ejecución de estrategias',
+            'socializacion': 'Socialización de representaciones',
+            'formalizacion_reflexion': 'Reflexión y Formalización',
+            'experiencia': 'Experiencia',
+            'reflexion': 'Reflexión',
+            'conceptualizacion': 'Conceptualización',
+            'aplicacion': 'Aplicación',
+            'lanzamiento': 'Lanzamiento / Desafío',
+            'indagacion': 'Indagación / Investigación',
+            'desarrollo_producto': 'Desarrollo del Producto',
+            'difusion_evaluacion': 'Difusión y Evaluación',
+            'conexion_externa': 'Conexión de saberes externos',
+            'aplicacion_guiada': 'Aplicación guiada / Taller activo',
+            'consolidacion_retroalimentacion': 'Consolidación y retroalimentación interactiva',
+            'problematizacion': 'Problematización de situaciones',
+            'diseno_estrategias': 'Diseño de estrategias para hacer indagación',
+            'generacion_analisis_datos': 'Generación, registro y análisis de datos',
+            'estructuracion_comunicacion': 'Estructuración del saber construido y comunicación',
+            'organizacion_roles': 'Organización de equipos y roles',
+            'interdependencia_positiva': 'Interdependencia positiva',
+            'interaccion_promotora': 'Interacción promotora',
+            'autoevaluacion_grupal': 'Autoevaluación grupal'
+        };
+
+        if (desarrolloKeys.length > 0) {
+            desarrolloKeys.forEach((key, index) => {
+                const value = desarrollo[key];
+                if (!value) return;
+
+                const cleanKey = key.replace(/^(proceso|paso)_\d+_/, '');
+                let title = mappings[cleanKey] || cleanKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+                if (index === 0) {
+                    desarrolloRowsHtml += `
+                        <tr>
+                            <td class="momento-label-cell">
+                                <div class="momento-name">DESARROLLO:</div>
+                                <div class="momento-sublabels">
+                                    <span>Gestión y Acompañamiento del Desarrollo de las Competencias</span>
+                                    <span>(Procesos didácticos del Área — monitoreo y retroalimentación)</span>
+                                </div>
+                                <div class="momento-time">TIEMPO: ${esc(desarrollo.tiempo_total || '')}</div>
+                            </td>
+                            <td class="momento-content-cell" ${ce}>
+                                <div class="momento-section">
+                                    <div class="momento-subsection">
+                                        <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase; margin-bottom:8px;">
+                                            GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
+                                        </div>
+                                    </div>
+                                    <div class="momento-subsection">
+                                        <div class="momento-subsection-title">${esc(title)}</div>
+                                        <div>${escHtml(value)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="eval-column-cell">
+                                <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                            </td>
+                        </tr>`;
+                } else {
+                    desarrolloRowsHtml += `
+                        <tr>
+                            <td class="momento-label-cell empty-label"></td>
+                            <td class="momento-content-cell" ${ce}>
+                                <div class="momento-section">
+                                    <div class="momento-subsection">
+                                        <div class="momento-subsection-title">${esc(title)}</div>
+                                        <div>${escHtml(value)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="eval-column-cell">
+                                <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                            </td>
+                        </tr>`;
+                }
+            });
+        } else {
+            const defaultText = desarrollo.actividades || '• Presentación de la situación significativa.\n• Familiarización con el problema: lectura y comprensión.\n• Búsqueda y ejecución de estrategias.\n• Resolución del reto propuesto.\n• Socialización de resultados.\n• Formalización: el docente sistematiza los aprendizajes.\n• Reflexión: ¿qué procesos seguimos? ¿qué dificultades tuvimos?\n• Transferencia: aplicación a nuevas situaciones.';
+            desarrolloRowsHtml = `
+                <tr>
+                    <td class="momento-label-cell">
+                        <div class="momento-name">DESARROLLO:</div>
+                        <div class="momento-sublabels">
+                            <span>Gestión y Acompañamiento del Desarrollo de las Competencias</span>
+                            <span>(Procesos didácticos del Área — monitoreo y retroalimentación)</span>
+                        </div>
+                        <div class="momento-time">TIEMPO: ${esc(desarrollo.tiempo_total || '')}</div>
+                    </td>
+                    <td class="momento-content-cell" ${ce}>
+                        <div class="momento-section">
+                            <div class="momento-subsection">
+                                <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase;">
+                                    GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
+                                </div>
+                            </div>
+                            <div class="momento-subsection">
+                                <div class="momento-subsection-title">PROCESOS DIDÁCTICOS</div>
+                                <div>${escHtml(defaultText)}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="eval-column-cell">
+                        <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                    </td>
+                </tr>`;
+        }
+
+        let cierreRowsHtml = '';
+        const cierre = momentos.cierre || {};
+        const defaultCierre = cierre.actividades || '• <strong>Metacognición:</strong> ¿Qué aprendimos hoy? ¿Cómo lo aprendimos? ¿Para qué nos sirve?<br>• <strong>Evaluación formativa:</strong> revisión de los criterios de evaluación.<br>• <strong>Extensión para casa:</strong> actividad de refuerzo.';
+
+        cierreRowsHtml = `
+            <tr>
+                <td class="momento-label-cell">
+                    <div class="momento-name">CIERRE:</div>
+                    <div class="momento-sublabels">
+                        <span>• Metacognición</span>
+                        <span>• Evaluación</span>
+                        <span>• Extensión</span>
+                    </div>
+                    <div class="momento-time">TIEMPO: ${esc(cierre.tiempo_total || '')}</div>
+                </td>
+                <td class="momento-content-cell" ${ce}>
+                    <div class="momento-section">${escHtml(defaultCierre)}</div>
+                </td>
+                <td class="eval-column-cell">
+                    <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                </td>
+            </tr>`;
 
         return `
             <table class="print-layout-table">
@@ -154,26 +409,10 @@ const Templates = (() => {
                             <!-- ════════ HEADER INSTITUCIONAL OFICIAL ════════ -->
                             <table class="official-header-table">
                                 <tr>
-                                    <td class="official-logo-cell" rowspan="2">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png" alt="Escudo del Perú" class="official-logo-img">
-                                    </td>
-                                    <td class="official-entity-cell" ${ce}>
-                                        <strong>PERÚ</strong>
-                                    </td>
-                                    <td class="official-entity-cell" ${ce}>
-                                        Ministerio<br>de Educación
-                                    </td>
-                                    <td class="official-entity-cell" ${ce}>
-                                        ${esc(m.dre || 'Dirección Regional de Educación de Ucayali')}
-                                    </td>
-                                    <td class="official-entity-cell" ${ce}>
-                                        ${esc(m.ugel || 'Unidad de Gestión Educativa Local de Padre Abad')}
-                                    </td>
-                                    <td class="official-entity-cell" ${ce}>
-                                        Área de Gestión<br>Pedagógica
-                                    </td>
-                                    <td class="official-logo-cell" rowspan="2">
-                                        <img id="header-logo-regional" src="${m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png'}" alt="Logo Regional" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="cursor: pointer;" title="Haz clic o arrastra un logo aquí para cambiarlo">
+                                    <td class="official-header-logos-cell">
+                                        <div class="official-header-logos-list" id="official-header-logos-list">
+                                            ${buildLogosListHtml(m, ce)}
+                                        </div>
                                     </td>
                                 </tr>
                             </table>
@@ -358,61 +597,9 @@ const Templates = (() => {
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- INICIO -->
-                    <tr>
-                        <td class="momento-label-cell">
-                            <div class="momento-name">INICIO:</div>
-                            <div class="momento-sublabels">
-                                <span>• Saberes Previos</span>
-                                <span>• Problematización</span>
-                                <span>• Propósito y organización</span>
-                            </div>
-                            <div class="momento-time">TIEMPO: ${esc(momentos.inicio?.tiempo_total || '')}</div>
-                        </td>
-                        <td class="momento-content-cell" ${ce}>
-                            ${inicioContent}
-                        </td>
-                        <td class="eval-column-cell">
-                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
-                        </td>
-                    </tr>
-
-                    <!-- DESARROLLO -->
-                    <tr>
-                        <td class="momento-label-cell">
-                            <div class="momento-name">DESARROLLO:</div>
-                            <div class="momento-sublabels">
-                                <span>Gestión y Acompañamiento del Desarrollo de las Competencias</span>
-                                <span>(Procesos didácticos del Área — monitoreo y retroalimentación)</span>
-                            </div>
-                            <div class="momento-time">TIEMPO: ${esc(momentos.desarrollo?.tiempo_total || '')}</div>
-                        </td>
-                        <td class="momento-content-cell" ${ce}>
-                            ${desarrolloContent}
-                        </td>
-                        <td class="eval-column-cell">
-                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
-                        </td>
-                    </tr>
-
-                    <!-- CIERRE -->
-                    <tr>
-                        <td class="momento-label-cell">
-                            <div class="momento-name">CIERRE:</div>
-                            <div class="momento-sublabels">
-                                <span>• Metacognición</span>
-                                <span>• Evaluación</span>
-                                <span>• Extensión</span>
-                            </div>
-                            <div class="momento-time">TIEMPO: ${esc(momentos.cierre?.tiempo_total || '')}</div>
-                        </td>
-                        <td class="momento-content-cell" ${ce}>
-                            ${cierreContent}
-                        </td>
-                        <td class="eval-column-cell">
-                            <div class="eval-vertical-text">E V A L U A C I Ó N</div>
-                        </td>
-                    </tr>
+                    ${inicioRowsHtml}
+                    ${desarrolloRowsHtml}
+                    ${cierreRowsHtml}
                 </tbody>
             </table>
 
@@ -851,6 +1038,46 @@ const Templates = (() => {
         `;
     }
 
+    // ─── HELPER: Render the dynamic logos list for the official header ───
+    function buildLogosListHtml(m, ce) {
+        let logos = m.logos;
+        if (!logos || !Array.isArray(logos) || logos.length === 0) {
+            // Fallback for backward compatibility
+            logos = [
+                {
+                    id: 'header-logo-left',
+                    url: m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png',
+                    style: m.logo_left_style || 'cursor: pointer;'
+                },
+                {
+                    id: 'header-logo-regional',
+                    url: m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png',
+                    style: m.logo_regional_style || 'cursor: pointer;'
+                }
+            ];
+        }
+
+        let html = '';
+        logos.forEach((logo, idx) => {
+            const style = logo.style || 'cursor: pointer;';
+            const id = logo.id || `header-logo-${Date.now()}-${idx}`;
+            html += `
+                <div class="official-logo-item" draggable="true">
+                    <img id="${id}" src="${logo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${style}" title="Haz clic para editar, arrastra para reordenar" draggable="false">
+                    <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+                </div>
+            `;
+        });
+
+        // Interactive "Add logo" placeholder button at the end
+        html += `
+            <div class="add-logo-placeholder no-print" id="btn-add-header-logo" title="Añadir logo">
+                <span>➕</span>
+            </div>
+        `;
+        return html;
+    }
+
     // ─── HELPER: Escape HTML + preserve newlines ───
     function esc(str) {
         if (!str) return '';
@@ -865,8 +1092,9 @@ const Templates = (() => {
     // ─── HELPER: Allow HTML through (for AI-generated rich content) ───
     function escHtml(str) {
         if (!str) return '';
-        // If the string already contains HTML tags, pass through
-        if (/<[a-z][\s\S]*>/i.test(str)) {
+        // Only allow rendering if it contains real HTML tag elements we use
+        const containsRealHtml = /<\/?(strong|b|em|i|u|ul|ol|li|p|br)\b/i.test(str);
+        if (containsRealHtml) {
             return str;
         }
         // Otherwise treat as plain text with newlines
