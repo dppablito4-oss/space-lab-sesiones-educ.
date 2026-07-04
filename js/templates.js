@@ -5,6 +5,44 @@
 
 const Templates = (() => {
 
+    // ─── MAPA DE DATOS OFICIALES DE ENFOQUES CNEB ───
+    const ENFOQUES_DATA_MAP = {
+        "enfoque de derechos": {
+            valor: "Conciencia de derechos / Libertad y responsabilidad / Diálogo y concertación",
+            actitudes: "Los estudiantes deliberan sobre asuntos públicos, formulan propuestas y participan en la toma de decisiones para el bien común."
+        },
+        "enfoque inclusivo o de atención a la diversidad": {
+            valor: "Respeto por las diferencias / Equidad en la enseñanza / Confianza en la persona",
+            actitudes: "Docentes y estudiantes demuestran tolerancia, apertura y respeto a todos, evitando cualquier forma de exclusión o discriminación."
+        },
+        "enfoque intercultural": {
+            valor: "Respeto a la identidad cultural / Justicia / Diálogo intercultural",
+            actitudes: "Los miembros de la comunidad escolar acogen con respeto a todos, propiciando un diálogo abierto y valorando las diversas identidades."
+        },
+        "enfoque de igualdad de género": {
+            valor: "Igualdad y Dignidad / Justicia / Empatía",
+            actitudes: "Estudiantes y docentes reconocen que tanto hombres como mujeres tienen igualdad de derechos, deberes y oportunidades."
+        },
+        "enfoque ambiental": {
+            valor: "Solidaridad planetaria y equidad intergeneracional / Justicia y solidaridad",
+            actitudes: "Docentes y estudiantes promueven estilos de vida saludables y ecoeficientes, reduciendo el consumo de plástico y cuidando el entorno escolar."
+        },
+        "enfoque de orientación al bien común": {
+            valor: "Equidad y justicia / Solidaridad / Empatía / Responsabilidad",
+            actitudes: "Los estudiantes demuestran solidaridad con sus compañeros y asumen responsabilidades por el bienestar del grupo en el aula."
+        },
+        "enfoque de búsqueda de la excelencia": {
+            valor: "Flexibilidad y apertura / Superación personal",
+            actitudes: "Estudiantes y docentes adquieren cualidades que mejoren el propio desempeño para el éxito de sus metas de aprendizaje."
+        }
+    };
+
+    function getEnfoqueData(name) {
+        if (!name) return null;
+        const cleanName = name.trim().toLowerCase();
+        return ENFOQUES_DATA_MAP[cleanName] || null;
+    }
+
     /**
      * Render a session template
      * @param {string} type - 'estandar' | 'laboratorio' | 'refuerzo'
@@ -50,17 +88,29 @@ const Templates = (() => {
                     </tr>`;
             });
         } else {
-            // Default 2 rows from form data
+            // Default 2 rows from form data (resolviendo dinámicamente valor y actitudes)
+            const enf1Name = p.enfoque || 'Enfoque de búsqueda de la excelencia';
+            const enf1Data = getEnfoqueData(enf1Name) || {
+                valor: p.enfoque_valor || 'Equidad y Justicia',
+                actitudes: p.enfoque_actitudes || 'Dialoga con tus compañeros para resolver desacuerdos y escucha con atención.'
+            };
+
+            const enf2Name = p.enfoque2 || 'Enfoque ambiental';
+            const enf2Data = getEnfoqueData(enf2Name) || {
+                valor: p.enfoque2_valor || 'Justicia y solidaridad (orientados a la ecoeficiencia)',
+                actitudes: p.enfoque2_actitudes || 'Reduce el uso de materiales desechables, reutilizando cuadernos, hojas y envases cuando sea posible durante las actividades del aula.'
+            };
+
             enfoquesRows = `
                 <tr>
-                    <td ${ce}>${esc(p.enfoque || 'Enfoque Búsqueda de la Excelencia')}</td>
-                    <td ${ce}>${esc(p.enfoque_valor || 'Equidad y Justicia')}</td>
-                    <td ${ce}>${esc(p.enfoque_actitudes || 'Dialoga con tus compañeros para resolver desacuerdos y escucha con atención.')}</td>
+                    <td ${ce}>${esc(enf1Name)}</td>
+                    <td ${ce}>${esc(enf1Data.valor)}</td>
+                    <td ${ce}>${esc(enf1Data.actitudes)}</td>
                 </tr>
                 <tr>
-                    <td ${ce}>${esc(p.enfoque2 || 'Enfoque ambiental')}</td>
-                    <td ${ce}>${esc(p.enfoque2_valor || 'Justicia y solidaridad (orientados a la ecoeficiencia)')}</td>
-                    <td ${ce}>${esc(p.enfoque2_actitudes || 'Reduce el uso de materiales desechables, reutilizando cuadernos, hojas y envases cuando sea posible durante las actividades del aula.')}</td>
+                    <td ${ce}>${esc(enf2Name)}</td>
+                    <td ${ce}>${esc(enf2Data.valor)}</td>
+                    <td ${ce}>${esc(enf2Data.actitudes)}</td>
                 </tr>`;
         }
 

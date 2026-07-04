@@ -109,34 +109,38 @@ window.Chatbot = (() => {
 
             if (!invokedCloud) {
                 // Fallback local a OpenRouter
-                if (window.AiCopilot && window.AiCopilot.isConfigured()) {
-                    console.log('[Chatbot] Fallback local a OpenRouter...');
-                    // Simulamos llamada a la API local de OpenRouter usando fetch
-                    // Esto evita duplicar todo el código de fetch
+                let hasLocalKey = false;
+                let c = null;
+                try {
                     const config = localStorage.getItem('spacelab_ai_config');
                     if (config) {
-                        const c = JSON.parse(config);
-                        const response = await fetch(c.endpoint || 'https://openrouter.ai/api/v1/chat/completions', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${c.apiKey}`,
-                                'HTTP-Referer': window.location.origin
-                            },
-                            body: JSON.stringify({
-                                model: c.model || 'deepseek/deepseek-chat',
-                                messages: [
-                                    { role: 'system', content: 'Eres un asistente pedagógico de MINEDU Perú.' },
-                                    { role: 'user', content: promptText }
-                                ]
-                            })
-                        });
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        const resJson = await response.json();
-                        responseText = resJson.choices?.[0]?.message?.content || 'Error en formato de respuesta';
-                    } else {
-                        throw new Error('Configuración de IA no encontrada');
+                        c = JSON.parse(config);
+                        if (c && c.apiKey && c.apiKey.length > 10) {
+                            hasLocalKey = true;
+                        }
                     }
+                } catch (e) { /* ignore */ }
+
+                if (hasLocalKey && c) {
+                    console.log('[Chatbot] Fallback local a OpenRouter...');
+                    const response = await fetch(c.endpoint || 'https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${c.apiKey}`,
+                            'HTTP-Referer': window.location.origin
+                        },
+                        body: JSON.stringify({
+                            model: c.model || 'deepseek/deepseek-chat',
+                            messages: [
+                                { role: 'system', content: 'Eres un asistente pedagógico de MINEDU Perú.' },
+                                { role: 'user', content: promptText }
+                            ]
+                        })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const resJson = await response.json();
+                    responseText = resJson.choices?.[0]?.message?.content || 'Error en formato de respuesta';
                 } else {
                     // Si no está configurada la API key local, mostramos un prompt para configurarla
                     if (window.AiCopilot && typeof window.AiCopilot.showConfigPrompt === 'function') {

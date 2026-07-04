@@ -65,14 +65,15 @@ BEGIN
         new.id,
         new.email,
         COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-        CASE 
-            WHEN new.email = 'pabloclsa87@gmail.com' THEN 'superadmin'
-            ELSE 'user'
-        END
+        'user' -- Todos los usuarios se registran como 'user' por seguridad.
     );
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- NOTA DE ADMINISTRACIÓN:
+-- Para promover manualmente a un usuario a administrador o superadministrador en Supabase:
+-- UPDATE public.profiles SET role = 'superadmin' WHERE email = 'correo@ejemplo.com';
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

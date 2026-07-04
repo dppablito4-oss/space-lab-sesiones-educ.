@@ -538,11 +538,11 @@
 
         Loader.show('Generando archivo PDF...');
 
+        const wasEditMode = AppState.editMode;
         try {
             const element = DOM.sessionSheet;
             
             // Temporarily set editMode to false to clean up contenteditable outlines/focus rings
-            const wasEditMode = AppState.editMode;
             if (wasEditMode) {
                 AppState.editMode = false;
                 enforceEditMode();
@@ -558,19 +558,17 @@
 
             // Run html2pdf
             await html2pdf().set(opt).from(element).save();
-            
-            // Restore edit mode if it was active
+            Toast.success('PDF exportado y descargado con éxito');
+        } catch (error) {
+            console.error('[PDF] Error exporting PDF:', error);
+            Toast.error('Error al exportar a PDF: ' + error.message);
+        } finally {
+            // Restore edit mode if it was active originally
             if (wasEditMode) {
                 AppState.editMode = true;
                 enforceEditMode();
             }
-
             Loader.hide();
-            Toast.success('PDF exportado y descargado con éxito');
-        } catch (error) {
-            console.error('[PDF] Error exporting PDF:', error);
-            Loader.hide();
-            Toast.error('Error al exportar a PDF: ' + error.message);
         }
     }
 

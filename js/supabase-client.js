@@ -67,7 +67,7 @@ window.SupabaseClient = (() => {
 
         // Registrar log de seguridad
         if (data?.user) {
-            await logAction('LOGIN_SUCCESS', `Usuario ingresó correctamente con contraseña: ${email}`);
+            await logAction('LOGIN_SUCCESS', `Usuario ingresó correctamente con credenciales (Email: ${email})`);
             // Asegurar perfil por si acaso
             await ensureUserProfile(data.user);
         }
@@ -130,13 +130,12 @@ window.SupabaseClient = (() => {
         try {
             const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             if (!data) {
-                const isMaster = user.email === 'pabloclsa87@gmail.com';
                 const username = user.user_metadata?.username || user.email.split('@')[0];
                 await supabase.from('profiles').insert([{
                     id: user.id,
                     email: user.email,
                     username: username,
-                    role: isMaster ? 'superadmin' : 'user'
+                    role: 'user'
                 }]);
             }
         } catch (e) {

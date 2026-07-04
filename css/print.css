@@ -36,6 +36,11 @@
         print-color-adjust: exact;
     }
 
+    p, li, td, div, h1, h2, h3, h4, h5, h6 {
+        orphans: 3;
+        widows: 3;
+    }
+
     /* ─── Page setup ─── */
     @page {
         size: A4 portrait;
@@ -136,10 +141,16 @@
         page-break-inside: avoid;
     }
 
-    /* Allow momentos table rows to split across pages */
+    /* Keep momentos table rows together on a single page to prevent text slicing and keep borders closed */
     .session-sheet .momentos-table tr {
-        break-inside: auto !important;
-        page-break-inside: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Keep individual subsections together in case a very long row is forced to split */
+    .session-sheet .momento-subsection {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
     }
 
     /* ─── Header cells ─── */
