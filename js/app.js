@@ -824,6 +824,7 @@
             const aiData = await AiCopilot.generateSession({
                 ...formData.metadata,
                 ...formData.proposito,
+                template: DOM.selectTemplate.value,
                 sourceFile: AppState.sourceFileData,
                 pedagogyBrief: (window.PedagogyBrief ? PedagogyBrief.getSummary() : null)
             });
@@ -836,6 +837,8 @@
                 proposito: aiData.proposito || formData.proposito,
                 momentos: aiData.momentos || {},
                 evaluacion: aiData.evaluacion || {},
+                juego_libre_sectores: aiData.juego_libre_sectores || null,
+                ficha_trabajo: aiData.ficha_trabajo || null,
                 createdAt: new Date().toISOString()
             };
 

@@ -65,6 +65,8 @@ const Templates = (() => {
                 return renderLaboratorio(m, p, momentos, evalData, ce);
             case 'refuerzo':
                 return renderRefuerzo(m, p, momentos, evalData, ce);
+            case 'inicial':
+                return renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, data.juego_libre_sectores, data.ficha_trabajo, ce);
             default:
                 return renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, ce);
         }
@@ -1153,6 +1155,557 @@ const Templates = (() => {
             let title = mappings[cleanKey] || cleanKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
             return `<strong>${title}:</strong><br>${desarrollo[key]}`;
         }).join('<br><br>');
+    }
+
+    function renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, juegoLibre, fichaTrabajo, ce) {
+        // 1. Build enfoques rows
+        let enfoquesRows = '';
+        enfoques.forEach(enf => {
+            enfoquesRows += `
+                <tr>
+                    <td class="label-cell" ${ce}>${esc(enf.nombre || 'Enfoque Transversal')}</td>
+                    <td class="value-cell" ${ce}>${esc(enf.valor || '')}</td>
+                    <td class="value-cell" ${ce} colspan="4">${esc(enf.actitudes || '')}</td>
+                </tr>`;
+        });
+        if (!enfoquesRows) {
+            enfoquesRows = `
+                <tr>
+                    <td class="label-cell" ${ce}>Enfoque de Derechos</td>
+                    <td class="value-cell" ${ce}>Conciencia de derechos</td>
+                    <td class="value-cell" ${ce} colspan="4">Los estudiantes participan activamente en las asambleas de aula.</td>
+                </tr>`;
+        }
+
+        // 2. Build capacidades list
+        let capacidadesListHtml = '';
+        const caps = p.capacidades || [];
+        caps.forEach(cap => {
+            capacidadesListHtml += `<li ${ce}>${esc(cap)}</li>`;
+        });
+
+        // 3. Build criterios list
+        let criteriosHtml = '';
+        const criterios = p.criterios_evaluacion || [];
+        criterios.forEach(crit => {
+            criteriosHtml += `<li ${ce}>${esc(crit)}</li>`;
+        });
+
+        // 4. Build Inicio Moments (stacked in single row)
+        let inicioRowsHtml = '';
+        const inicio = momentos.inicio || {};
+        const subMomentsInicio = [];
+        if (inicio.motivacion) subMomentsInicio.push({ title: 'Motivación', content: inicio.motivacion });
+        if (inicio.saberes_previos) subMomentsInicio.push({ title: 'Saberes Previos', content: inicio.saberes_previos });
+        if (inicio.problematizacion) subMomentsInicio.push({ title: 'Problematización', content: inicio.problematizacion });
+        if (inicio.proposito_organizacion) subMomentsInicio.push({ title: 'Propósito y Organización', content: inicio.proposito_organizacion });
+
+        if (subMomentsInicio.length > 0) {
+            const contentHtml = subMomentsInicio.map(sm => `
+                <div class="momento-subsection" style="margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
+                    <div class="momento-subsection-title">${esc(sm.title)}</div>
+                    <div>${escHtml(sm.content)}</div>
+                </div>
+            `).join('');
+
+            inicioRowsHtml = `
+                <tr>
+                    <td class="momento-label-cell">
+                        <div class="momento-name">INICIO:</div>
+                        <div class="momento-sublabels">
+                            <span>• Motivación / Asamblea</span>
+                            <span>• Saberes Previos</span>
+                            <span>• Problematización</span>
+                            <span>• Propósito y acuerdos</span>
+                        </div>
+                        <div class="momento-time">TIEMPO: ${esc(inicio.tiempo_total || '15 min')}</div>
+                    </td>
+                    <td class="momento-content-cell" ${ce}>
+                        <div class="momento-section">
+                            ${contentHtml}
+                        </div>
+                    </td>
+                    <td class="eval-column-cell">
+                        <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                    </td>
+                </tr>`;
+        } else {
+            const defaultText = inicio.actividades || '• Motivación lúdica con títeres/canciones.\n• Asamblea inicial y acuerdos de convivencia.\n• Planteamiento del reto y propósito de la sesión.';
+            inicioRowsHtml = `
+                <tr>
+                    <td class="momento-label-cell">
+                        <div class="momento-name">INICIO:</div>
+                        <div class="momento-sublabels">
+                            <span>• Motivación / Asamblea</span>
+                            <span>• Saberes Previos</span>
+                            <span>• Problematización</span>
+                            <span>• Propósito y acuerdos</span>
+                        </div>
+                        <div class="momento-time">TIEMPO: ${esc(inicio.tiempo_total || '15 min')}</div>
+                    </td>
+                    <td class="momento-content-cell" ${ce}>
+                        <div class="momento-section">
+                            <div>${escHtml(defaultText)}</div>
+                        </div>
+                    </td>
+                    <td class="eval-column-cell">
+                        <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                    </td>
+                </tr>`;
+        }
+
+        // 5. Build Desarrollo Moments (stacked in single row)
+        let desarrolloRowsHtml = '';
+        const desarrollo = momentos.desarrollo || {};
+        const desarrolloKeys = Object.keys(desarrollo)
+            .filter(k => k.startsWith('proceso_') || k.startsWith('paso_'))
+            .sort((a, b) => {
+                const numA = parseInt(a.replace(/^\D+/g, ''), 10) || 0;
+                const numB = parseInt(b.replace(/^\D+/g, ''), 10) || 0;
+                return numA - numB;
+            });
+
+        const mappings = {
+            'familiarizacion': 'Familiarización con el problema',
+            'busqueda_estrategias': 'Búsqueda y ejecución de estrategias',
+            'socializacion': 'Socialización de representaciones',
+            'formalizacion_reflexion': 'Reflexión y Formalización',
+            'experiencia': 'Experiencia',
+            'reflexion': 'Reflexión',
+            'conceptualizacion': 'Conceptualización',
+            'aplicacion': 'Aplicación',
+            'lanzamiento': 'Lanzamiento / Desafío',
+            'indagacion': 'Indagación / Investigación',
+            'desarrollo_producto': 'Desarrollo del Producto',
+            'difusion_evaluacion': 'Difusión y Evaluación',
+            'conexion_externa': 'Conexión de saberes externos',
+            'aplicacion_guiada': 'Aplicación guiada / Taller activo',
+            'consolidacion_retroalimentacion': 'Consolidación y retroalimentación interactiva',
+            'problematizacion': 'Problematización de situaciones',
+            'diseno_estrategias': 'Diseño de estrategias para hacer indagación',
+            'generacion_analisis_datos': 'Generación, registro y análisis de datos',
+            'estructuracion_comunicacion': 'Estructuración del saber construido y comunicación',
+            'organizacion_roles': 'Organización de equipos y roles',
+            'interdependencia_positiva': 'Interdependencia positiva',
+            'interaccion_promotora': 'Interacción promotora',
+            'autoevaluacion_grupal': 'Autoevaluación grupal'
+        };
+
+        if (desarrolloKeys.length > 0) {
+            const contentHtml = desarrolloKeys.map(key => {
+                const value = desarrollo[key];
+                if (!value) return '';
+                const cleanKey = key.replace(/^(proceso|paso)_\d+_/, '');
+                let title = mappings[cleanKey] || cleanKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                return `
+                    <div class="momento-subsection" style="margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
+                        <div class="momento-subsection-title">${esc(title)}</div>
+                        <div>${escHtml(value)}</div>
+                    </div>
+                `;
+            }).join('');
+
+            desarrolloRowsHtml = `
+                <tr>
+                    <td class="momento-label-cell">
+                        <div class="momento-name">DESARROLLO:</div>
+                        <div class="momento-sublabels">
+                            <span>Gestión del Acompañamiento en el Desarrollo de Competencias</span>
+                            <span>(Vivenciación, manipulación concreta, representación gráfica/plástica y verbalización)</span>
+                        </div>
+                        <div class="momento-time">TIEMPO: ${esc(desarrollo.tiempo_total || '20 min')}</div>
+                    </td>
+                    <td class="momento-content-cell" ${ce}>
+                        <div class="momento-section">
+                            <div class="momento-subsection" style="page-break-inside: avoid; break-inside: avoid;">
+                                <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase; margin-bottom:8px;">
+                                    GESTIÓN Y ACOMPAÑAMIENTO (PROCESOS DIDÁCTICOS VIVENCIALES)
+                                </div>
+                            </div>
+                            ${contentHtml}
+                        </div>
+                    </td>
+                    <td class="eval-column-cell">
+                        <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                    </td>
+                </tr>`;
+        } else {
+            const defaultText = desarrollo.actividades || '• Planteamiento de la situación o juego.\n• Manipulación de material didáctico/concreto.\n• Representación plástica (modelado o dibujo).\n• Socialización de sus creaciones y verbalización.';
+            desarrolloRowsHtml = `
+                <tr>
+                    <td class="momento-label-cell">
+                        <div class="momento-name">DESARROLLO:</div>
+                        <div class="momento-sublabels">
+                            <span>Gestión del Acompañamiento en el Desarrollo de Competencias</span>
+                            <span>(Vivenciación, manipulación concreta, representación gráfica/plástica y verbalización)</span>
+                        </div>
+                        <div class="momento-time">TIEMPO: ${esc(desarrollo.tiempo_total || '20 min')}</div>
+                    </td>
+                    <td class="momento-content-cell" ${ce}>
+                        <div class="momento-section">
+                            <div class="momento-subsection">
+                                <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase; margin-bottom:8px;">
+                                    GESTIÓN Y ACOMPAÑAMIENTO (PROCESOS DIDÁCTICOS VIVENCIALES)
+                                </div>
+                            </div>
+                            <div>${escHtml(defaultText)}</div>
+                        </div>
+                    </td>
+                    <td class="eval-column-cell">
+                        <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                    </td>
+                </tr>`;
+        }
+
+        // 6. Build Cierre Moments
+        const cierre = momentos.cierre || {};
+        const defaultCierre = cierre.actividades || '• <strong>Asamblea de Metacognición:</strong> ¿A qué jugamos hoy? ¿Qué descubrimos? ¿Qué materiales usamos? ¿Cómo nos sentimos?<br>• <strong>Evaluación formativa:</strong> Felicitación colectiva por el trabajo y orden del aula.';
+        const cierreRowsHtml = `
+            <tr>
+                <td class="momento-label-cell">
+                    <div class="momento-name">CIERRE:</div>
+                    <div class="momento-sublabels">
+                        <span>• Asamblea Final</span>
+                        <span>• Metacognición</span>
+                        <span>• Felicitación</span>
+                    </div>
+                    <div class="momento-time">TIEMPO: ${esc(cierre.tiempo_total || '10 min')}</div>
+                </td>
+                <td class="momento-content-cell" ${ce}>
+                    <div class="momento-section">${escHtml(defaultCierre)}</div>
+                </td>
+                <td class="eval-column-cell">
+                    <div class="eval-vertical-text">E V A L U A C I Ó N</div>
+                </td>
+            </tr>`;
+
+        // 7. Build Juego Libre Sectores Section
+        let juegoLibreHtml = '';
+        const jl = juegoLibre || {};
+        
+        const jlPlan = jl.planificacion || 'Los niños dialogan en asamblea sobre el sector donde desean jugar y eligen libremente.';
+        const jlOrg = jl.organizacion || 'Se distribuyen en grupos de 4 o 5 niños para cada sector y seleccionan los materiales.';
+        const jlEj = jl.ejecucion || 'Los niños juegan libremente en los sectores de su elección mientras la docente observa y media.';
+        const jlOrd = jl.orden || 'A través de la canción de orden, guardan los juguetes y limpian el espacio.';
+        const jlSoc = jl.socializacion || 'En asamblea, comentan qué hicieron en los sectores, con quién jugaron y qué les gustó.';
+        const jlRep = jl.representacion || 'Los niños dibujan o modelan libremente con plastilina lo que hicieron durante el juego.';
+
+        juegoLibreHtml = `
+            <div class="html2pdf__page-break" style="break-before: page; margin-top: 30px;"></div>
+            <div class="session-title-bar-official" style="margin-top: 20px;">
+                <span>ANEXO: PLANIFICACIÓN DE JUEGO LIBRE EN LOS SECTORES</span>
+            </div>
+            <table class="session-header-table content-table" style="margin-top: 10px;">
+                <thead>
+                    <tr>
+                        <th style="width: 150px; text-align: left;">MOMENTO</th>
+                        <th style="text-align: left;">ACTIVIDADES / ESTRATEGIAS PEDAGÓGICAS</th>
+                        <th style="width: 180px; text-align: left;">RECURSOS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">Planificación</td>
+                        <td ${ce}>${escHtml(jlPlan)}</td>
+                        <td ${ce}>Carteles de sectores, normas.</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">Organización</td>
+                        <td ${ce}>${escHtml(jlOrg)}</td>
+                        <td ${ce}>Identificadores o distintivos.</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">Ejecución o Desarrollo</td>
+                        <td ${ce}>${escHtml(jlEj)}</td>
+                        <td ${ce}>Juguetes y materiales de sectores.</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">Orden</td>
+                        <td ${ce}>${escHtml(jlOrd)}</td>
+                        <td ${ce}>Cajas de guardado, organizadores.</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">Socialización</td>
+                        <td ${ce}>${escHtml(jlSoc)}</td>
+                        <td ${ce}>Asamblea, círculo de conversación.</td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">Representación</td>
+                        <td ${ce}>${escHtml(jlRep)}</td>
+                        <td ${ce}>Hojas de papel, plastilinas, colores.</td>
+                    </tr>
+                </tbody>
+            </table>`;
+
+        // 8. Build Ficha de Trabajo Section
+        let fichaTrabajoHtml = '';
+        if (fichaTrabajo && typeof fichaTrabajo === 'object') {
+            const ft = fichaTrabajo;
+            fichaTrabajoHtml = `
+                <div class="html2pdf__page-break" style="break-before: page; margin-top: 30px;"></div>
+                <div class="session-title-bar-official" style="margin-top: 20px; background: #2980b9 !important; color:#fff !important;">
+                    <span>FICHA DE TRABAJO INDEPENDIENTE PARA EL ESTUDIANTE</span>
+                </div>
+                <div class="ficha-estudiante-container" style="border: 2px dashed #3498db; padding: 25px; border-radius: 12px; margin-top: 15px; background: #ffffff;">
+                    <table style="width: 100%; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;">
+                        <tr>
+                            <td style="font-size: 14px; font-weight: 700; color: #2c3e50; border:none !important; background:transparent !important; padding:0 !important;">
+                                Nombre: __________________________________________________
+                            </td>
+                            <td style="font-size: 14px; font-weight: 700; color: #2c3e50; text-align: right; border:none !important; background:transparent !important; padding:0 !important; width: 120px;">
+                                Edad: ______ años
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="font-size: 16px; font-weight: 800; color: #2980b9; margin-bottom: 8px; text-transform: uppercase;" ${ce}>
+                        🎨 Actividad: ${esc(ft.titulo || 'Mi Ficha Práctica')}
+                    </div>
+                    <div style="font-size: 11px; font-style: italic; color: #7f8c8d; margin-bottom: 20px; padding: 8px; background: #ecf0f1; border-radius: 6px;" ${ce}>
+                        <strong>Instrucciones para el docente/adulto:</strong> ${esc(ft.indicaciones || 'Realiza la actividad según las indicaciones.')}
+                    </div>
+                    
+                    <div class="ficha-actividades-render" style="min-height: 400px; padding: 15px; border: 1px solid #bdc3c7; border-radius: 8px; background: #fafafa;" ${ce}>
+                        ${ft.actividades || '<p style="text-align:center; color:#95a5a6; margin-top:150px;">Escribe o genera las actividades del estudiante aquí...</p>'}
+                    </div>
+                </div>`;
+        } else {
+            fichaTrabajoHtml = `
+                <div class="html2pdf__page-break" style="break-before: page; margin-top: 30px;"></div>
+                <div class="session-title-bar-official" style="margin-top: 20px; background: #2980b9 !important; color:#fff !important;">
+                    <span>FICHA DE TRABAJO INDEPENDIENTE PARA EL ESTUDIANTE</span>
+                </div>
+                <div class="ficha-estudiante-container" style="border: 2px dashed #3498db; padding: 25px; border-radius: 12px; margin-top: 15px; background: #ffffff;">
+                    <table style="width: 100%; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;">
+                        <tr>
+                            <td style="font-size: 14px; font-weight: 700; color: #2c3e50; border:none !important; background:transparent !important; padding:0 !important;">
+                                Nombre: __________________________________________________
+                            </td>
+                            <td style="font-size: 14px; font-weight: 700; color: #2c3e50; text-align: right; border:none !important; background:transparent !important; padding:0 !important; width: 120px;">
+                                Edad: ______ años
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="font-size: 16px; font-weight: 800; color: #2980b9; margin-bottom: 8px; text-transform: uppercase;">
+                        🎨 Actividad de Aprendizaje: Dibujo del Conteo del Día
+                    </div>
+                    <div style="font-size: 11px; font-style: italic; color: #7f8c8d; margin-bottom: 20px; padding: 8px; background: #ecf0f1; border-radius: 6px;">
+                        <strong>Instrucciones:</strong> Observa y cuenta los elementos que trabajamos hoy. Luego dibújalos en el recuadro grande y delinea el número correspondiente.
+                    </div>
+                    
+                    <div class="ficha-actividades-render" style="min-height: 400px; padding: 15px; border: 1px solid #bdc3c7; border-radius: 8px; background: #fafafa;">
+                        <div style="border: 2px dashed #bdc3c7; border-radius:8px; height:250px; text-align:center; padding:100px 0; color:#95a5a6; font-size:14px; font-weight:600; margin-bottom:20px; background:#fff;">
+                            ÁREA DE DIBUJO Y EXPRESIÓN PLÁSTICA
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px;">
+                            <span style="font-size:12px; font-weight:700;">¡Delinea el número del día!</span>
+                            <span style="font-size:36px; font-weight:800; letter-spacing:15px; color:#bdc3c7; border: 1px dashed #bdc3c7; padding: 0 15px; border-radius:6px; background:#fff;">1 2 3 4 5</span>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        // 9. Build Instrumento de Evaluacion grid
+        let checklistRows = '';
+        const studentsList = [
+            'ACOSTA MURGA, CLIFEER AMELEX',
+            'AGUILAR JAVIER, FARID OMAR',
+            'DURAND PLÁCIDO, JENS BRYAN STAM',
+            'MURGA CARBAJAL, JHOSSUÉ GODOFREDO',
+            'MURGS CECILIO, LIAM ERICK',
+            'PALOMINO VEGA, ARELIZ XIMENA',
+            'PALOMINO VEGA, ANDRÉ ANGELO',
+            'QUISPE SAICEDO, MARA JOSELYN',
+            'SILVA BARRETO, ESLIN LIZANDRO',
+            'TARAZONA PACHECO, WALDO',
+            'VALENCIA ROMERO, KIARA ALESSIA'
+        ];
+        studentsList.forEach((stud, idx) => {
+            checklistRows += `
+                <tr>
+                    <td style="text-align: center; font-weight:700;">${idx + 1}</td>
+                    <td style="text-align: left; padding-left: 8px;">${esc(stud)}</td>
+                    <td></td><td></td><td></td><td></td>
+                </tr>`;
+        });
+
+        const instrumentoHtml = `
+            <div class="html2pdf__page-break" style="break-before: page; margin-top: 30px;"></div>
+            <div class="session-title-bar-official" style="margin-top: 20px;">
+                <span>ANEXO: INSTRUMENTO DE EVALUACIÓN (GUÍA DE OBSERVACIÓN / REGISTRO DE LOGRO)</span>
+            </div>
+            <div style="font-size: 10px; margin-bottom: 8px; color: #555;">
+                <strong>Competencia:</strong> ${esc(p.competencia || 'Resuelve problemas de cantidad')}<br>
+                <strong>Criterio de Evaluación:</strong> ${esc(criterios[0] || 'Cuenta correctamente utilizando el conteo uno a uno hasta 5.')}
+            </div>
+            <table class="session-header-table eval-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center; background:#f1f5f9;">N°</th>
+                        <th style="text-align: left; padding-left: 8px; background:#f1f5f9;">APELLIDOS Y NOMBRES DE LOS NIÑOS</th>
+                        <th style="width: 40px; text-align: center; background:#e74c3c; color:#fff !important;">C (Inicio)</th>
+                        <th style="width: 40px; text-align: center; background:#f39c12; color:#fff !important;">B (Proceso)</th>
+                        <th style="width: 40px; text-align: center; background:#2ecc71; color:#fff !important;">A (Logrado)</th>
+                        <th style="width: 40px; text-align: center; background:#2980b9; color:#fff !important;">AD (Destacado)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${checklistRows}
+                </tbody>
+            </table>`;
+
+        // 10. Assemble
+        return `
+            <table class="print-layout-table">
+                <thead>
+                    <tr>
+                        <td>
+                            <!-- ════════ HEADER INSTITUCIONAL INICIAL ════════ -->
+                            <table class="official-header-table" style="width:100%; margin-bottom:10px;">
+                                <tr>
+                                    <td class="official-header-logos-cell" style="border:none !important; padding:0 !important; background:transparent !important;">
+                                        <div class="official-header-logos-list" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:15px; width:100%;">
+                                            <div class="official-logo-item">
+                                                <img class="official-logo-img" src="${m.logo_url || 'assets/logo.png'}" alt="Logo IE" style="max-height: 48px; object-fit: contain;">
+                                            </div>
+                                            <div class="official-header-text-block" style="text-align:center; flex:1; font-family:'Times New Roman', Georgia, serif; line-height:1.2;">
+                                                <div style="font-size:10pt; font-weight:700; text-transform:uppercase; color:#000;">UNIVERSIDAD NACIONAL HERMILIO VALDIZAN</div>
+                                                <div style="font-size:9.5pt; font-weight:700; text-transform:uppercase; color:#000;">FACULTAD DE CIENCIAS DE LA EDUCACIÓN</div>
+                                                <div style="font-size:9.5pt; font-weight:600; font-style:italic; color:#000;">Escuela Profesional de Educación Inicial</div>
+                                                <div style="font-size:8pt; font-weight:600; color:#333; margin-top:2px;">PROYECTO FORMATIVO GESTIONANDO LA PRÁCTICA Y EL TRABAJO ACADÉMICO IV</div>
+                                            </div>
+                                            <div class="official-logo-item">
+                                                <img class="official-logo-img" src="assets/logo.png" alt="Logo UNHEVAL" style="max-height: 48px; object-fit: contain; opacity: 0.85;">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="session-title-bar-official">
+                                <span>ANEXO 01: PLANIFICACIÓN DE LA ACTIVIDAD DE APRENDIZAJE</span>
+                            </div>
+                            
+                            <table class="session-header-table" style="margin-top: 10px;">
+                                <tr>
+                                    <td class="label-cell">Institución Educativa</td>
+                                    <td class="value-cell" ${ce} colspan="3">${esc(m.institucion || 'I.E. N° 145 Sector 5 Amarilis')}</td>
+                                    <td class="label-cell">Edad de los niños</td>
+                                    <td class="value-cell" ${ce}>${esc(m.grado || '4 años')}</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-cell">Practicante / Docente</td>
+                                    <td class="value-cell" ${ce} colspan="3">${esc(m.docente || 'Claudio Inocente Nayra Nelyda')}</td>
+                                    <td class="label-cell">Fecha</td>
+                                    <td class="value-cell" ${ce}>${esc(m.fecha || new Date().toLocaleDateString('es-PE'))}</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-cell">Nombre de Actividad</td>
+                                    <td class="value-cell" ${ce} colspan="3" style="font-weight:700; color:#2c3e50;">“${esc(m.titulo || 'Cuantas maestras hay en el jardín')}”</td>
+                                    <td class="label-cell">Tiempo aprox.</td>
+                                    <td class="value-cell" ${ce}>${esc(m.duracion || '45 minutos')}</td>
+                                </tr>
+                            </table>
+
+                            <div style="margin-top: 12px; padding: 10px; border: 1px solid #000; background:#f8fafc; font-size:10px;">
+                                <strong>PROPÓSITO DE APRENDIZAJE:</strong> <span ${ce}>${esc(p.proposito_sesion || p.proposito || 'Que los niños exploren, descubran y comuniquen utilizando sus sentidos y materiales.')}</span>
+                            </div>
+
+                            <table class="session-header-table content-table" style="margin-top: 15px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px; text-align: left;">Área / Competencia / Capacidades</th>
+                                        <th style="text-align: left;">Estándar de Aprendizaje</th>
+                                        <th style="width: 160px; text-align: left;">Desempeño del Grado</th>
+                                        <th style="width: 130px; text-align: left;">Criterio de Evaluación</th>
+                                        <th style="width: 110px; text-align: left;">Evidencia / Instrumento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="momento-label-cell" style="width: 140px; border-right: 1px solid #000 !important;">
+                                            <div style="font-weight:700; text-transform:uppercase; color:#c0392b; font-size:8pt; margin-bottom:4px;">Área: ${esc(m.area || 'Matemática')}</div>
+                                            <div style="font-weight:700; font-size:8.5pt;" ${ce}>“${esc(p.competencia || 'Resuelve problemas de cantidad')}”</div>
+                                            <div style="margin-top:8px; border-top:1px dashed #7f8c8d; padding-top:6px;">
+                                                <strong style="font-size:7.5pt; text-transform:uppercase;">Capacidades:</strong>
+                                                <ul style="padding-left:10px; margin-top:2px; font-size:7.5pt; list-style-type:circle;">
+                                                    ${capacidadesListHtml}
+                                                </ul>
+                                            </div>
+                                        </td>
+                                        <td ${ce} style="font-size:8.5pt; line-height:1.35; padding: 6px;">${esc(p.estandar || '')}</td>
+                                        <td ${ce} style="font-size:8.5pt; line-height:1.35; padding: 6px;">${esc(p.desempeno || '')}</td>
+                                        <td style="font-size:8.5pt; line-height:1.35; padding: 6px;">
+                                            <ul style="padding-left:10px; list-style-type:square;">
+                                                ${criteriosHtml}
+                                            </ul>
+                                        </td>
+                                        <td style="font-size:8.5pt; padding: 6px;">
+                                            <div style="margin-bottom:6px;">
+                                                <strong>Evidencia:</strong><br>
+                                                <span ${ce}>${esc(p.producto_evidencia || '')}</span>
+                                            </div>
+                                            <div style="border-top:1px dashed #bdc3c7; padding-top:4px;">
+                                                <strong>Inst.:</strong> <span ${ce}>${esc(p.instrumento || 'Lista de Cotejo')}</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div style="margin-top:12px; font-size:8.5pt;">
+                                <strong>Recursos y Materiales:</strong> <span ${ce}>${esc(recursos.materiales || 'Material de sectores, fichas, colores, crayones, hojas bond.')}</span>
+                            </div>
+
+                            <div class="session-title-bar-official" style="margin-top: 20px;">
+                                <span>EJECUCIÓN DE PROCESOS PEDAGÓGICOS (MOMENTOS DE LA ACTIVIDAD)</span>
+                            </div>
+                            <table class="momentos-table">
+                                <thead>
+                                    <tr>
+                                        <th class="momentos-header-left" style="width: 140px">MOMENTOS</th>
+                                        <th class="momentos-header-center">ESTRATEGÍAS PEDAGÓGICAS / PROCESOS DIDÁCTICOS</th>
+                                        <th class="momentos-header-eval" style="width: 30px">EVALUACIÓN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${inicioRowsHtml}
+                                    ${desarrolloRowsHtml}
+                                    ${cierreRowsHtml}
+                                </tbody>
+                            </table>
+                            
+                            <table style="width: 100%; border:none !important; margin-top: 40px; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="width: 45%; border:none !important; text-align: center; background:transparent !important; padding:0 !important;">
+                                        <div style="border-top: 1px solid #000; width: 220px; margin: 0 auto; padding-top: 5px; font-size: 9px; font-weight:700;">
+                                            Silvia Carrasco Valenzuela<br>
+                                            <span style="font-weight:normal; color:#555;">Docente de Aula / Mentora</span>
+                                        </div>
+                                    </td>
+                                    <td style="border:none !important; background:transparent !important; padding:0 !important;"></td>
+                                    <td style="width: 45%; border:none !important; text-align: center; background:transparent !important; padding:0 !important;">
+                                        <div style="border-top: 1px solid #000; width: 220px; margin: 0 auto; padding-top: 5px; font-size: 9px; font-weight:700;">
+                                            ${esc(m.docente || 'Claudio Inocente Nayra Nelyda')}<br>
+                                            <span style="font-weight:normal; color:#555;">Estudiante Practicante</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            ${juegoLibreHtml}
+                            ${fichaTrabajoHtml}
+                            ${instrumentoHtml}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>`;
     }
 
     return { render };

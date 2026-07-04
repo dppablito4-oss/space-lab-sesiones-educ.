@@ -221,6 +221,29 @@ CUÁNDO USAR LATEX:
             dynamicSystemPrompt += `\n\n⚠️ INSTRUCCIÓN CRÍTICA DE METODOLOGÍA DIDÁCTICA REQUERIDA:\n${METHODOLOGY_PROMPTS[metadata.methodology]}`;
         }
 
+        if (metadata.template === 'inicial') {
+            dynamicSystemPrompt += `\n\n⚠️ INSTRUCCIÓN DE FORMATO ESPECIAL PARA EDUCACIÓN INICIAL:
+La sesión que vas a generar es de nivel EDUCACIÓN INICIAL (para niños de 3 a 5 años). Por lo tanto:
+1. Adapta el lenguaje y las dinámicas para que sean sumamente lúdicas, vivenciales y concretas (uso de títeres, juegos de rol, asambleas cortas, manipulación de material concreto, dibujo y expresión plástica).
+2. Debes incluir OBLIGATORIAMENTE dos campos adicionales en la raíz del JSON de respuesta:
+   - "juego_libre_sectores": Objeto con los 6 pasos didácticos del juego libre en los sectores, detallados para este tema específico:
+     {
+       "planificacion": "Detalle de la asamblea y la elección libre del sector.",
+       "organizacion": "Cómo se agrupan los niños y distribuyen los roles en los sectores.",
+       "ejecucion": "Juego libre y cómo el docente acompaña y media en el aprendizaje.",
+       "orden": "Estrategias lúdicas o canciones para guardar los materiales.",
+       "socializacion": "Preguntas que el docente hará para conversar sobre la experiencia del juego.",
+       "representacion": "Detalle de la producción gráfica, modelado o dramatización posterior al juego."
+     }
+   - "ficha_trabajo": Objeto con una propuesta de hoja de aplicación/ficha práctica autónoma para el estudiante:
+     {
+       "titulo": "Título corto y llamativo para el niño (ej. ¡A contar maestras!)",
+       "indicaciones": "Instrucciones de la actividad descritas de forma sumamente sencilla (para la docente/padre).",
+       "actividades": "Código HTML detallado con la estructura visual de la ficha. Usa contenedores con estilos en línea (bordes punteados, recuadros grandes para dibujar, números grandes para delinear con puntitos, dibujos simples representados con símbolos o formas como círculos/estrellas). Debe ser súper interactiva, atractiva y lista para imprimir y colorear/trazar."
+     }
+Asegúrate de que la estructura JSON contenga estos dos nuevos campos en su raíz.`;
+        }
+
         // 1. Intentar llamar a la Edge Function de Supabase si está disponible
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
