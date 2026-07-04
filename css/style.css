@@ -2731,3 +2731,156 @@ body {
         transform: translateY(0);
     }
 }
+
+/* ═══════════════════════════════════════
+   PDF EXPORT GUIDE MODAL
+   ═══════════════════════════════════════ */
+
+.pdf-guide-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 310;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 6, 15, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.pdf-guide-overlay.hidden {
+    display: none !important;
+}
+
+.pdf-guide-card {
+    position: relative;
+    width: 92%;
+    max-width: 440px;
+    padding: 2rem 2rem 1.5rem;
+    text-align: center;
+    animation: slideUp 0.35s var(--transition-spring);
+}
+
+.pdf-guide-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.6rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+}
+.pdf-guide-close:hover {
+    color: var(--text-primary);
+    transform: scale(1.15);
+}
+
+.pdf-guide-icon {
+    font-size: 2.8rem;
+    margin-bottom: 0.6rem;
+}
+
+.pdf-guide-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    color: var(--text-primary);
+}
+
+.pdf-guide-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.pdf-guide-benefits {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.2rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.pdf-guide-benefits li {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.pdf-guide-benefits .check {
+    color: var(--accent-primary);
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.pdf-guide-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin-bottom: 1.4rem;
+}
+
+.pdf-guide-step {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    padding: 0.7rem 1rem;
+    text-align: left;
+}
+
+.pdf-guide-step .step-number {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary, #8b5cf6));
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pdf-guide-step .step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.pdf-guide-step .step-content strong {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.pdf-guide-step .step-content span {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+.pdf-guide-step .step-content em {
+    color: var(--accent-primary);
+    font-style: normal;
+    font-weight: 600;
+}
+
+.pdf-guide-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: center;
+}
+.pdf-guide-actions .btn {
+    min-width: 120px;
+}
+
+.pdf-guide-proceed-btn {
+    gap: 0.35rem;
+}
+

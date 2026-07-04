@@ -256,7 +256,7 @@
         // Action buttons
         DOM.btnToggleEdit.addEventListener('click', toggleEditMode);
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
-        DOM.btnExportPdf.addEventListener('click', handleExportPDF);
+        DOM.btnExportPdf.addEventListener('click', showPdfGuide);
         
         // Word export listeners removed (can be restored if needed in the future)
         /*
@@ -288,6 +288,25 @@
         }
 
         DOM.btnPrint.addEventListener('click', handlePrint);
+
+        // PDF Guide Modal bindings
+        const pdfGuideModal = document.getElementById('pdf-guide-modal');
+        const pdfGuideClose = document.getElementById('pdf-guide-close');
+        const pdfGuideCancel = document.getElementById('pdf-guide-cancel');
+        const pdfGuideProceed = document.getElementById('pdf-guide-proceed');
+        if (pdfGuideClose) pdfGuideClose.addEventListener('click', closePdfGuide);
+        if (pdfGuideCancel) pdfGuideCancel.addEventListener('click', closePdfGuide);
+        if (pdfGuideProceed) pdfGuideProceed.addEventListener('click', () => {
+            closePdfGuide();
+            handlePrint();
+        });
+        // Close on backdrop click
+        if (pdfGuideModal) {
+            pdfGuideModal.addEventListener('click', (e) => {
+                if (e.target === pdfGuideModal) closePdfGuide();
+            });
+        }
+
         DOM.btnSave.addEventListener('click', handleSave);
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
         DOM.btnNew.addEventListener('click', handleNew);
@@ -983,102 +1002,20 @@
         window.print();
     }
 
-    async function handleExportPDF() {
+    // ─── PDF GUIDE MODAL (replaces old html2pdf flow) ───
+
+    function showPdfGuide() {
         if (!AppState.currentSession) {
             Toast.warning('Genera una sesión primero');
             return;
         }
+        const modal = document.getElementById('pdf-guide-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
 
-        // Save current state first
-        saveCurrentState();
-
-        Loader.show('Generando archivo PDF...');
-
-        const wasEditMode = AppState.editMode;
-        const element = DOM.sessionSheet;
-
-        // Capture current visual state to restore later
-        const currentZoom = element.style.zoom;
-        const currentTransform = element.style.transform;
-        const currentTransformOrigin = element.style.transformOrigin;
-        const currentParentHeight = element.parentElement ? element.parentElement.style.height : '';
-
-        try {
-            // Temporarily disable edit mode (removes outline rings and cursors)
-            if (wasEditMode) {
-                AppState.editMode = false;
-                enforceEditMode();
-            }
-
-            // Reset visual transforms so html2canvas captures at real 1:1 scale
-            element.style.zoom = '1';
-            element.style.transform = 'none';
-            element.style.transformOrigin = '';
-            if (element.parentElement) {
-                element.parentElement.style.height = '';
-            }
-
-            const filename = `Sesion_${AppState.currentSession.metadata?.titulo || 'aprendizaje'}.pdf`.replace(/[\s/]+/g, '_');
-
-            const opt = {
-                margin:       [12, 10, 12, 10], // top, left, bottom, right in mm
-                filename,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                // Instructs html2pdf to respect CSS page-break rules and avoid cutting mid-element
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-            };
-
-            // Generate as Blob — this resolves reliably and lets us hide loader immediately
-            const worker = html2pdf().set(opt).from(element);
-            const blob = await worker.toPdf().output('blob');
-
-            // ─── HIDE LOADER as soon as PDF is ready (before download dialog) ───
-            // Restore UI state first
-            element.style.zoom = currentZoom;
-            element.style.transform = currentTransform;
-            element.style.transformOrigin = currentTransformOrigin;
-            if (element.parentElement) {
-                element.parentElement.style.height = currentParentHeight;
-            }
-            if (wasEditMode) {
-                AppState.editMode = true;
-                enforceEditMode();
-            }
-            Loader.hide();
-
-            // Trigger browser download manually via in-memory object URL
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            // Release the object URL after a short delay
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-            Toast.success('PDF exportado y descargado con éxito');
-            Toast.info('💡 Consejo: Para que el encabezado oficial se repita automáticamente en cada página, usa el botón "Imprimir" y elige la opción "Guardar como PDF".', 6000);
-
-        } catch (error) {
-            console.error('[PDF] Error exporting PDF:', error);
-            Toast.error('Error al exportar a PDF: ' + error.message);
-
-            // Ensure UI is always restored even on error
-            element.style.zoom = currentZoom;
-            element.style.transform = currentTransform;
-            element.style.transformOrigin = currentTransformOrigin;
-            if (element.parentElement) {
-                element.parentElement.style.height = currentParentHeight;
-            }
-            if (wasEditMode) {
-                AppState.editMode = true;
-                enforceEditMode();
-            }
-            Loader.hide();
-        }
+    function closePdfGuide() {
+        const modal = document.getElementById('pdf-guide-modal');
+        if (modal) modal.classList.add('hidden');
     }
 
     async function handleExportWord() {

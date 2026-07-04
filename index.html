@@ -47,6 +47,43 @@
         </div>
     </div>
 
+    <!-- ═══════════ PDF EXPORT GUIDE MODAL ═══════════ -->
+    <div id="pdf-guide-modal" class="pdf-guide-overlay hidden">
+        <div class="pdf-guide-card glass-card">
+            <button id="pdf-guide-close" class="pdf-guide-close" title="Cerrar">&times;</button>
+            <div class="pdf-guide-icon">📄</div>
+            <h3 class="pdf-guide-title">Exportar Sesión como PDF Oficial</h3>
+            <p class="pdf-guide-subtitle">Para obtener un PDF de calidad profesional con:</p>
+            <ul class="pdf-guide-benefits">
+                <li><span class="check">✓</span> Texto 100% seleccionable y copiable</li>
+                <li><span class="check">✓</span> Ecuaciones y fórmulas matemáticas vectoriales</li>
+                <li><span class="check">✓</span> Cabecera institucional repetida en cada página</li>
+            </ul>
+            <div class="pdf-guide-steps">
+                <div class="pdf-guide-step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <strong>Destino</strong>
+                        <span>Selecciona <em>"Guardar como PDF"</em></span>
+                    </div>
+                </div>
+                <div class="pdf-guide-step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <strong>Más opciones</strong>
+                        <span>Activa <em>"Gráficos de fondo"</em></span>
+                    </div>
+                </div>
+            </div>
+            <div class="pdf-guide-actions">
+                <button id="pdf-guide-cancel" class="btn btn-ghost">Cancelar</button>
+                <button id="pdf-guide-proceed" class="btn btn-primary pdf-guide-proceed-btn">
+                    <span class="icon">🚀</span> Proceder a Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══════════ BACKGROUND PARTICLES ═══════════ -->
     <canvas id="space-bg" class="space-background"></canvas>
 
