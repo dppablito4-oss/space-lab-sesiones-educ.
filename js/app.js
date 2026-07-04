@@ -33,7 +33,6 @@
         previewArea: $('#preview-area'),
         // Buttons
         btnGenerate: $('#btn-generate'),
-        btnGenerateAI: $('#btn-generate-ai'),
         btnToggleEdit: $('#btn-toggle-edit'),
         btnPreview: $('#btn-preview'),
         btnExportPdf: $('#btn-export-pdf'),
@@ -228,8 +227,7 @@
         });
 
         // Generate buttons
-        DOM.btnGenerate.addEventListener('click', handleGenerate);
-        DOM.btnGenerateAI.addEventListener('click', handleGenerateAI);
+        DOM.btnGenerate.addEventListener('click', handleGenerateAI);
 
         // Pedagogy Brief trigger button
         const btnPedagogyBrief = document.getElementById('btn-pedagogy-brief');
