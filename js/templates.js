@@ -1039,6 +1039,7 @@ const Templates = (() => {
     }
 
     // ─── HELPER: Render the dynamic logos list for the official header ───
+    // ─── HELPER: Render the dynamic logos list for the official header ───
     function buildLogosListHtml(m, ce) {
         let logos = m.logos;
         if (!logos || !Array.isArray(logos) || logos.length === 0) {
@@ -1047,29 +1048,66 @@ const Templates = (() => {
                 {
                     id: 'header-logo-left',
                     url: m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png',
-                    style: m.logo_left_style || 'cursor: pointer;'
+                    style: m.logo_left_style || 'cursor: pointer; max-height: 48px; width: auto;'
                 },
                 {
                     id: 'header-logo-regional',
                     url: m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png',
-                    style: m.logo_regional_style || 'cursor: pointer;'
+                    style: m.logo_regional_style || 'cursor: pointer; max-height: 48px; width: auto;'
                 }
             ];
         }
 
         let html = '';
-        logos.forEach((logo, idx) => {
-            const style = logo.style || 'cursor: pointer;';
-            const id = logo.id || `header-logo-${Date.now()}-${idx}`;
+
+        // Columna Izquierda: Primer Logo
+        const leftLogo = logos[0] || {
+            id: 'header-logo-left',
+            url: m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png',
+            style: m.logo_left_style || 'cursor: pointer; max-height: 48px; width: auto;'
+        };
+        html += `
+            <div class="official-logo-item" draggable="true">
+                <img id="${leftLogo.id}" src="${leftLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${leftLogo.style || 'cursor: pointer; max-height: 48px; width: auto;'}" title="Haz clic para editar" draggable="false">
+                <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+            </div>
+        `;
+
+        // Columna Central: Textos Oficiales (MINEDU, DRE, UGEL, AGP)
+        html += `
+            <div class="official-header-text-block">
+                <div class="header-text-minedu">MINISTERIO DE EDUCACIÓN</div>
+                <div class="header-text-dre" ${ce} data-key="dre">${esc(m.dre || 'DIRECCIÓN REGIONAL DE EDUCACIÓN UCAYALI')}</div>
+                <div class="header-text-ugel" ${ce} data-key="ugel">${esc(m.ugel || 'UNIDAD DE GESTIÓN EDUCATIVA LOCAL PADRE ABAD')}</div>
+                <div class="header-text-agp">ÁREA DE GESTIÓN PEDAGÓGICA</div>
+            </div>
+        `;
+
+        // Columna Derecha: Segundo Logo (Regional)
+        const rightLogo = logos[1] || {
+            id: 'header-logo-regional',
+            url: m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png',
+            style: m.logo_regional_style || 'cursor: pointer; max-height: 48px; width: auto;'
+        };
+        html += `
+            <div class="official-logo-item" draggable="true">
+                <img id="${rightLogo.id}" src="${rightLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${rightLogo.style || 'cursor: pointer; max-height: 48px; width: auto;'}" title="Haz clic para editar" draggable="false">
+                <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+            </div>
+        `;
+
+        // Otros logos (si existieran más de 2)
+        for (let i = 2; i < logos.length; i++) {
+            const logo = logos[i];
             html += `
                 <div class="official-logo-item" draggable="true">
-                    <img id="${id}" src="${logo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${style}" title="Haz clic para editar, arrastra para reordenar" draggable="false">
+                    <img id="${logo.id}" src="${logo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${logo.style || 'cursor: pointer; max-height: 48px; width: auto;'}" title="Haz clic para editar" draggable="false">
                     <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
                 </div>
             `;
-        });
+        }
 
-        // Interactive "Add logo" placeholder button at the end
+        // Placeholder para añadir logos
         html += `
             <div class="add-logo-placeholder no-print" id="btn-add-header-logo" title="Añadir logo">
                 <span>➕</span>
@@ -1077,6 +1115,7 @@ const Templates = (() => {
         `;
         return html;
     }
+
 
     // ─── HELPER: Escape HTML + preserve newlines ───
     function esc(str) {

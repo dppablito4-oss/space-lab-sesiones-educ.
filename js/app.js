@@ -1060,6 +1060,7 @@
             setTimeout(() => URL.revokeObjectURL(url), 5000);
 
             Toast.success('PDF exportado y descargado con éxito');
+            Toast.info('💡 Consejo: Para que el encabezado oficial se repita automáticamente en cada página, usa el botón "Imprimir" y elige la opción "Guardar como PDF".', 6000);
 
         } catch (error) {
             console.error('[PDF] Error exporting PDF:', error);
