@@ -923,52 +923,83 @@
         Loader.show('Generando archivo PDF...');
 
         const wasEditMode = AppState.editMode;
+        const element = DOM.sessionSheet;
+
+        // Capture current visual state to restore later
+        const currentZoom = element.style.zoom;
+        const currentTransform = element.style.transform;
+        const currentTransformOrigin = element.style.transformOrigin;
+        const currentParentHeight = element.parentElement ? element.parentElement.style.height : '';
+
         try {
-            const element = DOM.sessionSheet;
-            
-            // Temporarily set editMode to false to clean up contenteditable outlines/focus rings
+            // Temporarily disable edit mode (removes outline rings and cursors)
             if (wasEditMode) {
                 AppState.editMode = false;
                 enforceEditMode();
             }
 
-            // Temporarily reset zoom and transform to 1.0 to ensure correct PDF page rendering layout
-            const currentZoom = DOM.sessionSheet.style.zoom;
-            const currentTransform = DOM.sessionSheet.style.transform;
-            const currentTransformOrigin = DOM.sessionSheet.style.transformOrigin;
-            const currentParentHeight = DOM.sessionSheet.parentElement ? DOM.sessionSheet.parentElement.style.height : '';
-
-            DOM.sessionSheet.style.zoom = '1';
-            DOM.sessionSheet.style.transform = 'none';
-            DOM.sessionSheet.style.transformOrigin = '';
-            if (DOM.sessionSheet.parentElement) {
-                DOM.sessionSheet.parentElement.style.height = '';
+            // Reset visual transforms so html2canvas captures at real 1:1 scale
+            element.style.zoom = '1';
+            element.style.transform = 'none';
+            element.style.transformOrigin = '';
+            if (element.parentElement) {
+                element.parentElement.style.height = '';
             }
+
+            const filename = `Sesion_${AppState.currentSession.metadata?.titulo || 'aprendizaje'}.pdf`.replace(/[\s/]+/g, '_');
 
             const opt = {
                 margin:       [12, 10, 12, 10], // top, left, bottom, right in mm
-                filename:     `Sesion_${AppState.currentSession.metadata?.titulo || 'aprendizaje'}.pdf`.replace(/[\s/]+/g, '_'),
+                filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2, useCORS: true, logging: false, allowTaint: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                // Instructs html2pdf to respect CSS page-break rules and avoid cutting mid-element
+                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
             };
 
-            // Run html2pdf
-            await html2pdf().set(opt).from(element).save();
+            // Generate as Blob — this resolves reliably and lets us hide loader immediately
+            const worker = html2pdf().set(opt).from(element);
+            const blob = await worker.toPdf().output('blob');
+
+            // ─── HIDE LOADER as soon as PDF is ready (before download dialog) ───
+            // Restore UI state first
+            element.style.zoom = currentZoom;
+            element.style.transform = currentTransform;
+            element.style.transformOrigin = currentTransformOrigin;
+            if (element.parentElement) {
+                element.parentElement.style.height = currentParentHeight;
+            }
+            if (wasEditMode) {
+                AppState.editMode = true;
+                enforceEditMode();
+            }
+            Loader.hide();
+
+            // Trigger browser download manually via in-memory object URL
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            // Release the object URL after a short delay
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+
             Toast.success('PDF exportado y descargado con éxito');
+
         } catch (error) {
             console.error('[PDF] Error exporting PDF:', error);
             Toast.error('Error al exportar a PDF: ' + error.message);
-        } finally {
-            // Restore zoom and transform
-            DOM.sessionSheet.style.zoom = currentZoom;
-            DOM.sessionSheet.style.transform = currentTransform;
-            DOM.sessionSheet.style.transformOrigin = currentTransformOrigin;
-            if (DOM.sessionSheet.parentElement) {
-                DOM.sessionSheet.parentElement.style.height = currentParentHeight;
-            }
 
-            // Restore edit mode if it was active originally
+            // Ensure UI is always restored even on error
+            element.style.zoom = currentZoom;
+            element.style.transform = currentTransform;
+            element.style.transformOrigin = currentTransformOrigin;
+            if (element.parentElement) {
+                element.parentElement.style.height = currentParentHeight;
+            }
             if (wasEditMode) {
                 AppState.editMode = true;
                 enforceEditMode();

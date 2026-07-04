@@ -41,6 +41,16 @@
         widows: 3;
     }
 
+    /* html2pdf.js explicit page-break div */
+    .html2pdf__page-break {
+        break-before: page !important;
+        page-break-before: always !important;
+        height: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        display: block !important;
+    }
+
     /* ─── Page setup ─── */
     @page {
         size: A4 portrait;
@@ -260,17 +270,22 @@
         display: block !important;
     }
 
-    /* Keep individual subsections together in case a very long row is forced to split */
-    /* Prevent text splitting inside paragraph/list elements of moments */
+    /* Prevent text splitting inside any content block in moments */
     .session-sheet .momento-subsection,
     .session-sheet .momento-subsection p,
     .session-sheet .momento-subsection li,
     .session-sheet .momento-subsection div,
+    .session-sheet .momento-section,
     .session-sheet .momento-section p,
     .session-sheet .momento-section li,
-    .session-sheet .momento-section div {
+    .session-sheet .momento-section div,
+    .session-sheet .momento-content-cell p,
+    .session-sheet .momento-content-cell li,
+    .session-sheet .momento-content-cell strong {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
+        orphans: 3 !important;
+        widows: 3 !important;
     }
 
     /* ─── Header cells ─── */
@@ -339,22 +354,7 @@
         color: #000 !important;
     }
 
-    .session-sheet .eval-column-cell {
-        background: #f8fafc !important;
-        width: 30px;
-        vertical-align: middle !important;
-        text-align: center;
-    }
-
-    .session-sheet .eval-vertical-text {
-        writing-mode: vertical-rl;
-        transform: rotate(180deg);
-        text-transform: uppercase;
-        font-weight: 700;
-        font-size: 8pt;
-        letter-spacing: 0.25em;
-        color: #000 !important;
-    }
+    /* eval-column-cell and eval-vertical-text handled by flex overrides above */
 
     /* ─── Logo ─── */
     .session-sheet .official-logo-img {
