@@ -3,10 +3,10 @@
    Space Lab — Sesiones Educativas
    ═══════════════════════════════════════════════════ */
 
-;(function() {
+; (function () {
     'use strict';
 
-    // ─── AUTHENTICATION CHECK ───
+    // ─── AUTHENTICATION CHECK admin super admin ───
     async function checkAdminAuth() {
         if (!window.SupabaseClient) {
             alert('Supabase no está configurado');
@@ -30,7 +30,7 @@
 
             // Mostrar el email del admin
             document.getElementById('admin-user-email').textContent = `👑 ${user.email}`;
-            
+
             // Iniciar aplicación
             initAdmin();
         } catch (e) {
@@ -43,7 +43,7 @@
     function initAdmin() {
         bindTabEvents();
         bindFormEvents();
-        
+
         // Cargar primera tab
         loadTabData('smtp');
 
@@ -112,7 +112,7 @@
                 .maybeSingle();
 
             if (error) throw error;
-            
+
             if (data) {
                 document.getElementById('smtp-email').value = data.smtp_email || '';
                 document.getElementById('smtp-host').value = data.smtp_host || 'smtp.gmail.com';
@@ -184,7 +184,7 @@
             const { data: profiles, error: profError } = await SupabaseClient.client
                 .from('profiles')
                 .select('id, email');
-            
+
             const profileMap = new Map();
             if (!profError && profiles) {
                 profiles.forEach(p => profileMap.set(p.id, p.email));
@@ -198,18 +198,18 @@
             tbody.innerHTML = sessions.map(s => {
                 const email = profileMap.get(s.user_id) || s.user_id;
                 const metadata = s.session_data?.metadata || {};
-                
+
                 let statusHtml = '';
                 let actionsHtml = '';
-                
+
                 if (s.deleted_at) {
                     const delDate = new Date(s.deleted_at);
                     const expireDate = new Date(delDate.getTime() + 7 * 24 * 60 * 60 * 1000);
                     const msLeft = expireDate.getTime() - Date.now();
                     const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
-                    
+
                     statusHtml = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">🗑️ Papelera (${daysLeft}d)</span>`;
-                    
+
                     actionsHtml = `
                         <button class="btn btn-ghost btn-sm btn-preview" data-id="${s.id}" title="Previsualizar Sesión">👁️ Ver</button>
                         <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}" title="Ver JSON de la sesión">📦 JSON</button>
@@ -218,7 +218,7 @@
                     `;
                 } else {
                     statusHtml = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">✅ Activa</span>`;
-                    
+
                     actionsHtml = `
                         <button class="btn btn-ghost btn-sm btn-preview" data-id="${s.id}" title="Previsualizar Sesión">👁️ Ver</button>
                         <button class="btn btn-ghost btn-sm btn-inspect" data-id="${s.id}" title="Ver JSON de la sesión">📦 JSON</button>
@@ -300,7 +300,7 @@
         const overlay = document.createElement('div');
         overlay.className = 'confirm-overlay';
         overlay.style.zIndex = '1000';
-        
+
         overlay.innerHTML = `
             <div class="glass-card" style="width: 95%; max-width: 900px; height: 90vh; padding: 1.5rem; display: flex; flex-direction: column; position: relative; gap: 1rem;">
                 <button id="btn-close-preview" class="btn btn-ghost btn-sm" style="position: absolute; top: 1rem; right: 1rem;">✕</button>
@@ -373,7 +373,7 @@
     // Eliminar la sesión del servidor (soft-delete o purga hard-delete)
     async function deleteServerSession(id, forceHardDelete = false) {
         const title = forceHardDelete ? '¿Purgar permanentemente?' : '¿Enviar a Papelera?';
-        const message = forceHardDelete 
+        const message = forceHardDelete
             ? `¿Estás seguro de que deseas eliminar permanentemente la sesión con ID: ${id}? Esta acción es irreversible.`
             : `¿Deseas enviar la sesión ${id} a la papelera? El docente no la verá pero se guardará por 7 días.`;
         const confirmText = forceHardDelete ? 'Purgar Todo' : 'Mandar a Papelera';
@@ -400,7 +400,7 @@
                 // Soft delete: actualizar deleted_at y last_saved en la DB
                 const { error } = await SupabaseClient.client
                     .from('sesiones')
-                    .update({ 
+                    .update({
                         deleted_at: new Date().toISOString(),
                         last_saved: new Date().toISOString()
                     })
@@ -429,7 +429,7 @@
         try {
             const { error } = await SupabaseClient.client
                 .from('sesiones')
-                .update({ 
+                .update({
                     deleted_at: null,
                     last_saved: new Date().toISOString()
                 })
@@ -448,12 +448,12 @@
     // Mostrar ventana emergente/JSON de la sesión
     function inspectSessionJSON(session) {
         const jsonStr = JSON.stringify(session.session_data, null, 2);
-        
+
         // Crear un modal temporal de visualización
         const overlay = document.createElement('div');
         overlay.className = 'confirm-overlay';
         overlay.style.zIndex = '1000';
-        
+
         overlay.innerHTML = `
             <div class="glass-card" style="width: 90%; max-width: 700px; padding: 2rem; max-height: 80vh; display: flex; flex-direction: column; position: relative;">
                 <button id="btn-close-inspect" class="btn btn-ghost btn-sm" style="position: absolute; top: 1rem; right: 1rem;">✕</button>
@@ -536,7 +536,7 @@
                     });
 
                 if (error) throw error;
-                
+
                 await SupabaseClient.logAction('SMTP_CONFIG_UPDATE', `Configuración SMTP actualizada para el remitente: ${email}`);
                 Toast.success('¡Credenciales SMTP guardadas exitosamente en la base de datos!');
                 smtpPass.value = ''; // Limpiar campo por seguridad
