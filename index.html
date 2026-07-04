@@ -13,6 +13,8 @@
     <link rel="icon" type="image/svg+xml" href="assets/favicon.vsg.svg">
     <link rel="stylesheet" href="css/style.css?v=2">
     <link rel="stylesheet" href="css/print.css" media="print">
+    <!-- KaTeX — renderizado matemático profesional (LaTeX) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
 </head>
 
 <body>
@@ -1091,8 +1093,9 @@
     <script src="js/ai-copilot.js"></script>
     <script src="js/chatbot.js"></script>
     <script src="js/pedagogy-brief.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+    <!-- KaTeX — renderizado matemático (debe cargarse antes de app.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
     <script src="js/app.js"></script>
 </body>
 

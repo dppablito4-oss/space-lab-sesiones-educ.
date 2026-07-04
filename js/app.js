@@ -878,6 +878,36 @@
 
         // Check time balance
         checkTimeBalance();
+
+        // Render math formulas (KaTeX) — only for Matemática sessions or if LaTeX delimiters detected
+        renderMatematica();
+    }
+
+    // ═══════════════════════════════════════
+    // KATEX MATH RENDERING
+    // ═══════════════════════════════════════
+
+    function renderMatematica() {
+        if (typeof renderMathInElement !== 'function') return;
+        if (!DOM.sessionSheet) return;
+
+        try {
+            renderMathInElement(DOM.sessionSheet, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true  },
+                    { left: '$',  right: '$',  display: false },
+                    { left: '\\(', right: '\\)', display: false },
+                    { left: '\\[', right: '\\]', display: true  }
+                ],
+                throwOnError: false,
+                errorColor: '#cc0000',
+                // Preserve the contenteditable attribute after KaTeX rendering
+                trust: (context) => context.command !== '\\href'
+            });
+        } catch (err) {
+            // KaTeX errors are non-fatal — session still renders normally
+            console.warn('[KaTeX] Render warning:', err.message);
+        }
     }
 
     // ═══════════════════════════════════════

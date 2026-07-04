@@ -390,4 +390,58 @@
         break-inside: avoid;
         page-break-inside: avoid;
     }
+
+    /* ─── KaTeX Math — print & PDF safe ─── */
+
+    /* Evita que una expresión matemática se parta entre dos páginas */
+    .katex-display {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Centra correctamente las fórmulas de bloque en la hoja A4 */
+    .katex-display > .katex {
+        display: block;
+        text-align: center;
+        margin: 6pt 0;
+    }
+
+    /* Asegura que el color de las fórmulas sea negro (no heredado de la UI oscura) */
+    .katex,
+    .katex * {
+        color: #000 !important;
+    }
+
+    /* Preserva el tamaño de fuente proporcional en el PDF */
+    .katex {
+        font-size: 1em !important;
+    }
+
+    /* Mantiene alineación vertical de fórmulas inline dentro de celdas de tabla */
+    td .katex,
+    th .katex {
+        vertical-align: middle;
+    }
+}
+
+/* ─── KaTeX pantalla — ajustes en la preview de la hoja A4 ─── */
+
+/* Fórmulas de bloque centradas con espacio correcto */
+.session-sheet .katex-display {
+    text-align: center;
+    margin: 8px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* Alineación vertical correcta para fórmulas inline */
+.session-sheet .katex {
+    font-size: 0.95em;
+    vertical-align: middle;
+}
+
+/* Contraste: fórmulas en negro sobre el blanco de la hoja */
+.session-sheet .katex,
+.session-sheet .katex * {
+    color: #111 !important;
 }

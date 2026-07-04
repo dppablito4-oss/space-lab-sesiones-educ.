@@ -189,6 +189,27 @@ FORMATO DE RESPUESTA (JSON):
     "instrumento": "Lista de Cotejo / Rúbrica"
   }
 }
+
+FORMATO MATEMÁTICO (LaTeX con KaTeX):
+Cuando el área es Matemática o la sesión incluya operaciones, ecuaciones, fracciones, exponentes o cualquier expresión matemática, escríbelas siempre en notación LaTeX rodeada de delimitadores. La app las renderizará automáticamente como tipografía matemática profesional.
+
+REGLAS DE NOTACIÓN:
+- Expresión en línea (dentro de un párrafo): $expresión$ → Ej: "El valor de $x = 8$"
+- Expresión centrada/destacada (en su propia línea): $$expresión$$ → Ej: $$2x + 5 = 21$$
+- Fracciones: \frac{numerador}{denominador} → Ej: $$\frac{25 - a}{21 - a} = \frac{5}{4}$$
+- Flecha de implicación / "entonces": \Rightarrow → Ej: $$2x = 16 \Rightarrow x = 8$$
+- Raíz cuadrada: \sqrt{expresión} → Ej: $\sqrt{b^2 - 4ac}$
+- Potencia: x^{n} → Ej: $x^2 + 5x + 6 = 0$
+- Subíndice: x_{n} → Ej: $x_1, x_2$
+- Fórmula general: $$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$
+- Suma/resta con alineación de pasos: usar $$...$$ en líneas separadas para cada paso del proceso
+
+CUÁNDO USAR LATEX:
+✅ En los pasos de resolución de problemas (proceso 2, proceso 3, proceso 4 del desarrollo)
+✅ En situaciones de problematización cuando se plantee una ecuación
+✅ En la formalización/reflexión al mostrar el procedimiento consolidado
+✅ En preguntas de inicio si involucran cifras matemáticas operadas
+❌ NO uses LaTeX en textos de gestión del aula, instrucciones organizativas ni preguntas de metacognición
 `;
 
     async function generateSession(metadata) {
