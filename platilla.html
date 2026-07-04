@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualización de Space Lab</title>
+    <style>
+        /* RESET STYLES */
+        body,
+        table,
+        td,
+        a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        table,
+        td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+
+        img {
+            -ms-interpolation-mode: bicubic;
+        }
+
+        /* TEMPLATE STYLES */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            height: 100% !important;
+            background-color: #0f172a;
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #334155;
+        }
+
+        table {
+            border-collapse: collapse !important;
+        }
+
+        a {
+            color: #00d2ff;
+            text-decoration: none;
+        }
+
+        .wrapper {
+            width: 100%;
+            table-layout: fixed;
+            background-color: #0f172a;
+            padding-top: 40px;
+            padding-bottom: 40px;
+        }
+
+        .main-table {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #090d16 0%, #172554 100%);
+            padding: 35px 40px;
+            text-align: center;
+            border-bottom: 3px solid #00d2ff;
+        }
+
+        .brand-logo {
+            width: 50px;
+            height: auto;
+            margin-bottom: 12px;
+            vertical-align: middle;
+        }
+
+        .brand-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0;
+            letter-spacing: -0.025em;
+            text-transform: uppercase;
+        }
+
+        .brand-subtitle {
+            font-size: 13px;
+            color: #00d2ff;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* CONTENT BODY */
+        .content-body {
+            padding: 40px 40px 30px 40px;
+            background-color: #ffffff;
+        }
+
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+
+        .paragraph {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #475569;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        /* CUSTOM MESSAGE PLACEHOLDER CARD */
+        .message-card {
+            background-color: #f8fafc;
+            border-left: 4px solid #00d2ff;
+            padding: 20px 24px;
+            margin-top: 25px;
+            margin-bottom: 25px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* FEATURE LIST */
+        .features-list {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .feature-item {
+            font-size: 14.5px;
+            line-height: 1.5;
+            color: #334155;
+            margin-bottom: 12px;
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .feature-icon {
+            position: absolute;
+            left: 0;
+            top: 2px;
+            font-size: 16px;
+        }
+
+        /* BUTTON */
+        .button-container {
+            text-align: center;
+            margin-top: 35px;
+            margin-bottom: 30px;
+        }
+
+        .btn-link {
+            background: linear-gradient(135deg, #00d2ff 0%, #00bcff 100%);
+            color: #0f172a !important;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 14px 32px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(0, 210, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        /* FOOTER (LETRAS CHIQUITAS) */
+        .footer {
+            background-color: #f1f5f9;
+            padding: 30px 40px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer-text {
+            font-size: 11px;
+            line-height: 1.6;
+            color: #64748b;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .footer-links {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 15px;
+        }
+
+        .footer-links a {
+            color: #475569;
+            margin: 0 8px;
+            text-decoration: underline;
+        }
+
+        .footer-confidential {
+            font-size: 10px;
+            font-style: italic;
+            color: #94a3b8;
+            line-height: 1.4;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <table class="main-table" align="center">
+            <!-- HEADER -->
+            <tr>
+                <td class="header">
+                    <!-- Favicon Logo de Space Lab -->
+                    <img src="https://sesiones.sypablitodp.site/assets/favicon.vsg.svg" alt="Space Lab"
+                        class="brand-logo">
+                    <h1 class="brand-title">Space Lab</h1>
+                    <span class="brand-subtitle">Plataforma de Planificación Pedagógica</span>
+                </td>
+            </tr>
+
+            <!-- CONTENT -->
+            <tr>
+                <td class="content-body">
+                    <h2 class="welcome-title">¡Estimado(a) Docente! 🚀</h2>
+                    <p class="paragraph">
+                        Nos complace comunicarle que hemos lanzado una importante actualización en nuestra plataforma
+                        para optimizar su proceso de planificación pedagógica. Nuestro objetivo es que siga
+                        estructurando sus sesiones de aprendizaje de forma rápida, eficiente y completamente alineada
+                        con las normativas vigentes.
+                    </p>
+
+                    <!-- CONTENEDOR DONDE VA TU MENSAJE PERSONALIZADO -->
+                    <div class="message-card">
+                        <!-- === INICIO DEL MENSAJE === -->
+                        <h4 style="margin-top: 0; margin-bottom: 8px; color: #0f172a; font-size: 16px;">
+                            📢 Novedades y mejoras del sistema:
+                        </h4>
+                        <p style="margin: 0; font-size: 14.5px; line-height: 1.6; color: #334155;">
+                            Hemos mejorado la interfaz de usuario en el panel principal y optimizado el sistema de
+                            chatbot de asistencia pedagógica para brindarte respuestas mucho más veloces y
+                            contextualizadas. Además, corregimos errores en los formatos de descarga.
+                        </p>
+                        <!-- === FIN DEL MENSAJE === -->
+                    </div>
+
+                    <p class="paragraph">
+                        Aquí un resumen de lo nuevo que encontrará al ingresar al sistema hoy:
+                    </p>
+
+                    <ul class="features-list">
+                        <li class="feature-item">
+                            <span class="feature-icon">🎨</span>
+                            <strong>Nueva Interfaz Optimizada:</strong> Menús rediseñados y transiciones más fluidas
+                            para una edición cómoda.
+                        </li>
+                        <li class="feature-item">
+                            <span class="feature-icon">📄</span>
+                            <strong>Exportación PDF Corregida:</strong> Se eliminaron los cortes de palabras e
+                            inconsistencias visuales en documentos de varias páginas.
+                        </li>
+                        <li class="feature-item">
+                            <span class="feature-icon">🤖</span>
+                            <strong>Copiloto IA Mejorado:</strong> Respuestas más precisas de DeepSeek y sistema local
+                            de OpenRouter listo ante caídas de red.
+                        </li>
+                        <li class="feature-item">
+                            <span class="feature-icon">🏷️</span>
+                            <strong>Logos de Cabecera Dinámicos:</strong> Diseñe su cabecera arrastrando, ordenando o
+                            quitando los logos oficiales con total libertad.
+                        </li>
+                    </ul>
+
+                    <!-- BOTÓN DE ACCIÓN -->
+                    <div class="button-container">
+                        <a href="https://sesiones.sypablitodp.site" class="btn-link" target="_blank">Ingresar a Space
+                            Lab</a>
+                    </div>
+                </td>
+            </tr>
+
+            <!-- FOOTER (LETRAS CHIQUITAS) -->
+            <tr>
+                <td class="footer">
+                    <p class="footer-text">
+                        Este correo electrónico fue enviado de forma automática a los usuarios registrados en la
+                        plataforma Space Lab. Por favor, no responda directamente a este mensaje, ya que proviene de una
+                        dirección no monitoreada.
+                    </p>
+                    <div class="footer-links">
+                        <a href="https://sesiones.sypablitodp.site" target="_blank">Sitio Web</a> |
+                        <a href="https://sesiones.sypablitodp.site" target="_blank">Soporte Técnico</a>
+                    </div>
+                    <p class="footer-confidential">
+                        <strong>Nota de confidencialidad:</strong> La información contenida en este mensaje es
+                        confidencial y de uso exclusivo para el docente destinatario. Queda prohibida su reproducción
+                        sin autorización. Space Lab © 2026. Todos los derechos reservados.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>
