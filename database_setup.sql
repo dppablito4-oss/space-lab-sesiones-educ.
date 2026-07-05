@@ -249,9 +249,9 @@ CREATE POLICY "Auth Users Upload Logos" ON storage.objects
 -- Permitir a usuarios autenticados actualizar solo sus propios logos
 DROP POLICY IF EXISTS "Auth Users Update Logos" ON storage.objects;
 CREATE POLICY "Auth Users Update Logos" ON storage.objects
-    FOR UPDATE USING (bucket_id = 'logos' AND auth.uid()::text = owner);
+    FOR UPDATE USING (bucket_id = 'logos' AND auth.uid() = owner);
 
 -- Permitir a usuarios autenticados eliminar solo sus propios logos
 DROP POLICY IF EXISTS "Auth Users Delete Logos" ON storage.objects;
 CREATE POLICY "Auth Users Delete Logos" ON storage.objects
-    FOR DELETE USING (bucket_id = 'logos' AND auth.uid()::text = owner);
+    FOR DELETE USING (bucket_id = 'logos' AND auth.uid() = owner);
