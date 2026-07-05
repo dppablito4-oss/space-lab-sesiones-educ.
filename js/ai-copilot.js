@@ -11,7 +11,7 @@ const AiCopilot = (() => {
         // Por defecto conectamos a la API de OpenAI
         endpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: '', // Se configura desde la UI
-        model: 'gpt-4o-mini', // OpenAI GPT-4o Mini por defecto
+        model: 'gpt-5.4-mini', // OpenAI GPT-5.4 Mini por defecto
         maxTokens: 4000, // Ajuste clave para evitar JSONs rotos
         temperature: 0.5 // Bajarlo ayuda a que sea más estricto con el formato JSON
     };
@@ -320,10 +320,10 @@ Asegúrate de que la estructura JSON contenga estos dos nuevos campos en su raí
             if (provider === 'openai') {
                 if (CONFIG.apiKey.startsWith('sk-')) {
                     requestEndpoint = 'https://api.openai.com/v1/chat/completions';
-                    requestModel = 'gpt-4o-mini';
+                    requestModel = 'gpt-5.4-mini';
                 } else {
                     requestEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
-                    requestModel = 'openai/gpt-4o-mini';
+                    requestModel = 'openai/gpt-5.4-mini';
                 }
             } else if (provider === 'deepseek') {
                 if (CONFIG.apiKey.startsWith('sk-')) {
