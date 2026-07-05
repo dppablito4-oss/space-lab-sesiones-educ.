@@ -1,104 +1,152 @@
-Fase 1: Estructura HTML Semántica (La Clave del Éxito)
-Para que el navegador sepa cómo cortar las páginas de tus sesiones de aprendizaje de forma inteligente, debes usar etiquetas HTML estrictas, especialmente para las tablas de competencias o secuencias didácticas (Inicio, Desarrollo, Cierre).
+# `implementacion.md` — Optimización Estética de Exportación PDF (`window.print`)
 
-Al usar clases de Tailwind, mantienes tu código limpio, pero la estructura manda:
+Este módulo contiene el parche de CSS avanzado para inyectar en el stylesheet de impresión (`@media print`). Resuelve el problema de los recuadros abiertos en los saltos de página, limpia los artefactos del navegador y asegura un acabado de documento oficial de escritorio.
 
-<div class="max-w-4xl mx-auto p-8 bg-white text-slate-800" id="sesion-documento">
-  
-  <header class="border-b-2 border-slate-300 pb-4 mb-6">
-    <h1 class="text-2xl font-bold uppercase text-center">Sesión de Aprendizaje</h1>
-    <div class="flex justify-between mt-4 text-sm">
-      <p><strong>Grado:</strong> 4to de Secundaria</p>
-      <p><strong>Área:</strong> Matemática</p>
-    </div>
-  </header>
+---
 
-  <table class="w-full text-left border-collapse mb-8">
-    <thead class="bg-slate-100 table-header-group">
-      <tr>
-        <th class="border p-2">Competencia</th>
-        <th class="border p-2">Capacidades</th>
-        <th class="border p-2">Propósito</th>
-      </tr>
-    </thead>
-    <tbody class="table-row-group">
-      <tr>
-        <td class="border p-2">Resuelve problemas de cantidad</td>
-        <td class="border p-2">Traduce cantidades a expresiones...</td>
-        <td class="border p-2">Aplicar modelos matemáticos...</td>
-      </tr>
-    </tbody>
-  </table>
+## 🛠️ 1. Código CSS de Impresión Premium
 
-  <section class="secuencia-bloque mb-6">
-    <h2 class="text-xl font-semibold mb-2 bg-slate-800 text-white p-2">I. Inicio (15 min)</h2>
-    <p class="p-2 border border-slate-300">Recuperación de saberes previos...</p>
-  </section>
+Agrega este bloque al final de tu archivo CSS global o dentro de tus etiquetas `<style>` en la vista de la sesión de aprendizaje.
 
-</div>
-
-Fase 2: El CSS Mágico (@media print)
-Aquí es donde ocurre la magia. Este CSS se encargará de adaptar tu diseño (incluso si está en modo oscuro en la pantalla) a un formato de papel blanco impecable. Debes agregar esto en tu archivo CSS global:
-
-
+```css
 @media print {
-  /* 1. Resetear fondos oscuros para ahorrar tinta y asegurar legibilidad */
-  body {
-    background-color: white !important;
-    color: black !important;
-    /* Fuerza al navegador a imprimir los colores de fondo de tus celdas/titulos */
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  /* ==========================================
+     1. CONFIGURACIÓN DE PÁGINA Y LIENZO A4
+     ========================================== */
+  @page {
+    size: A4;
+    margin: 2cm 1.5cm 2cm 1.5cm; /* Márgenes estándar para documentos oficiales */
   }
 
-  /* 2. Ocultar la interfaz web (botones, menús, scrollbars) */
-  .no-imprimir, nav, footer, button, .sidebar {
+  body {
+    background: white !important;
+    color: #1e293b !important; /* Gris oscuro profesional, cansa menos la vista que el negro puro */
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  /* Ocultar elementos de la interfaz web que consumen tinta/espacio */
+  .no-print, 
+  button, 
+  nav, 
+  footer, 
+  .sidebar, 
+  .theme-toggle {
     display: none !important;
   }
 
-  /* 3. Configurar la página física */
-  @page {
-    size: A4;
-    margin: 15mm; /* Márgenes profesionales */
+  /* ==========================================
+     2. FIX MAESTRO: CLAUSURA DE RECUADROS (Saltos de Página)
+     ========================================== */
+  .recuadro-sesion, 
+  .bloque-didactico, 
+  .card-anexo {
+    page-break-inside: auto; /* Permite que el bloque se divida si es muy largo */
+    
+    /* LA MAGIA: Clona los bordes, paddings y fondos en cada fragmento de página */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    
+    border: 1.5px solid #0f172a !important; /* Cierra el recuadro abajo en pág 1 y lo abre arriba en pág 2 */
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    background-color: transparent !important;
   }
 
-  /* 4. Controlar los saltos de página para que no se corten los bloques a la mitad */
-  .secuencia-bloque {
-    page-break-inside: avoid;
-    break-inside: avoid;
+  /* ==========================================
+     3. OPTIMIZACIÓN DE TABLAS (Formato UNHEVAL)
+     ========================================== */
+  table {
+    /* IMPORTANTE: 'separate' permite al navegador redibujar bordes en los saltos */
+    border-collapse: separate !important;
+    border-spacing: 0;
+    width: 100%;
+    page-break-inside: auto;
   }
 
-  /* 5. Asegurar que las tablas repitan la cabecera en cada página nueva */
-  thead {
-    display: table-header-group;
-  }
-  
-  /* 6. Evitar que una fila de la tabla se parta en dos páginas */
+  /* Evita que una fila (ej. datos de un alumno o un criterio) se mutile a la mitad */
   tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  th, td {
+    border-bottom: 1px solid #0f172a;
+    border-right: 1px solid #0f172a;
+    padding: 8px;
+    font-size: 10pt;
+  }
+
+  /* Reconstrucción de bordes externos de la tabla dañados por el 'separate' */
+  table {
+    border-top: 1px solid #0f172a;
+    border-left: 1px solid #0f172a;
+  }
+
+  /* ==========================================
+     4. CONTROL DE FLUJO Y TEXTO HUÉRFANO
+     ========================================== */
+  /* Evita que un título se quede solo al final de la página (fuerza el salto con su contenido) */
+  h1, h2, h3, h4, .titulo-momento {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    color: #0f172a !important;
+    margin-top: 15px;
+  }
+
+  /* Forzar salto de página obligatorio para secciones mayores (Sectores, Fichas, Lista de Cotejo) */
+  .break-page-before {
+    page-break-before: always !important;
+    break-before: always !important;
+  }
+
+  /* Evita que párrafos queden con una sola línea suelta */
+  p {
+    orphans: 3;
+    widows: 3;
   }
 }
 
+📂 2. Estructuración en el HTML (Template)
+Para que el CSS aplique el parche de clonación de bordes de forma correcta, asegúrate de envolver los bloques de tu sesión usando las clases mapeadas:
 
-Fase 3: El Controlador de Acción (JavaScript)
-Solo necesitas un botón en tu interfaz de usuario con la clase .no-imprimir (para que desaparezca cuando se genere el PDF) que llame a la función nativa del navegador.
+<!-- Bloque Principal de la Sesión -->
+<div class="recuadro-sesion">
+    <h2 class="titulo-momento">INICIO (10 min)</h2>
+    <p><strong>Motivación / Asamblea:</strong> La docente presenta al títere...</p>
+</div>
 
-<button onclick="exportarSesion()" class="no-imprimir bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">
-  Exportar a PDF
-</button>
+<!-- Estructura de Tabla para Procesos o Lista de Cotejo -->
+<table class="tabla-unheval">
+    <thead>
+        <tr>
+            <th>N°</th>
+            <th>Apellidos y Nombres</th>
+            <th>Criterio de Evaluación</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>ACOSTA MURGA, CLIFEER AMELEX</td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
 
-<script>
-  function exportarSesion() {
-    // Si necesitas hacer algún cambio en el DOM justo antes de imprimir, hazlo aquí
-    
-    // Llamar a la ventana de impresión nativa
-    window.print();
-    
-    // Si cambiaste algo en el DOM, lo restauras aquí abajo
-  }
-</script>
+<!-- Forzar que el anexo de Sectores o Fichas empiece en una página limpia -->
+<div class="recuadro-sesion break-page-before">
+    <h2 class="titulo-momento">ANEXO: PLANIFICACIÓN DE JUEGO LIBRE EN LOS SECTORES</h2>
+    <!-- Contenido del sector -->
+</div>
 
+Logs de Verificación (Checklist Técnico)
+Antes de pasarle el link al usuario final, haz un Ctrl + P en tu navegador y verifica:
 
-Fase 4: Experiencia de Usuario (El detalle final)
-El único "defecto" de este método es que el usuario debe asegurarse de que en la ventana de impresión (la que sale al darle a Exportar) esté marcada la opción de "Gráficos de fondo" o "Imprimir fondos".
+[ ] Bordes Sellados: Las cajas que se parten entre la página 1 y 2 muestran una línea horizontal de cierre en el borde inferior de la pág 1.
+
+[ ] Filas Intactas: Ninguna fila de la lista de cotejo se corta horizontalmente a la mitad del texto del alumno.
+
+[ ] Limpieza de Headers: No se visualizan URLs de localhost/servidor ni la fecha por defecto del navegador en las esquinas (controlado por los márgenes del @page).

@@ -472,6 +472,42 @@
     .session-sheet div[style*="border-top"] {
         border-top-color: var(--theme-border-color, #000) !important;
     }
+
+    /* ─── Parches estéticos y de saltos de página (Fusión planpdf.md) ─── */
+
+    /* Evitar que los títulos queden solos al final de la página (títulos huérfanos) */
+    h1, h2, h3, h4, h5, h6, 
+    .session-title-bar-official, 
+    .subsection-title-bar, 
+    .titulo-momento,
+    .momento-subsection-title {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    /* Evitar que las filas de cualquier tabla se corten por la mitad */
+    .session-sheet tr,
+    tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Cierre estético de bordes para elementos que se dividen entre páginas */
+    .session-sheet .subsection-content-box,
+    .session-sheet td,
+    .session-sheet th,
+    .recuadro-sesion, 
+    .bloque-didactico, 
+    .card-anexo {
+        -webkit-box-decoration-break: clone !important;
+        box-decoration-break: clone !important;
+    }
+
+    /* Clases de compatibilidad para saltos de página forzados */
+    .break-page-before {
+        break-before: page !important;
+        page-break-before: always !important;
+    }
 }
 
 /* ─── KaTeX pantalla — ajustes en la preview de la hoja A4 ─── */
