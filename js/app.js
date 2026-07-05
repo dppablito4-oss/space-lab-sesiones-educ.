@@ -38,6 +38,7 @@
         btnExportPdf: $('#btn-export-pdf'),
         btnPrint: $('#btn-print'),
         btnSave: $('#btn-save'),
+        btnSaveAs: $('#btn-save-as'),
         btnLoad: $('#btn-load'),
         btnNew: $('#btn-new'),
         btnCleanFormat: $('#btn-clean-format'),
@@ -308,6 +309,7 @@
         }
 
         DOM.btnSave.addEventListener('click', handleSave);
+        if (DOM.btnSaveAs) DOM.btnSaveAs.addEventListener('click', handleSaveAs);
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
         DOM.btnNew.addEventListener('click', handleNew);
         DOM.btnCleanFormat.addEventListener('click', handleCleanFormat);
@@ -1447,6 +1449,61 @@
             Toast.error('Error al guardar la sesión');
         }
     }
+
+    function handleSaveAs() {
+        if (!AppState.currentSession) {
+            Toast.warning('No hay sesión activa para guardar como copia');
+            return;
+        }
+
+        // Primero guardar la sesión actual para no perder cambios de la sesión activa
+        saveCurrentState();
+
+        const currentTitulo = AppState.currentSession.metadata?.titulo || AppState.currentSession.titulo || 'Sin título';
+        const nuevoTitulo = prompt("Introduce el título para la nueva copia de la sesión:", currentTitulo + " - Copia");
+
+        if (nuevoTitulo === null) {
+            // Cancelado por el usuario
+            return;
+        }
+
+        const tituloFinal = nuevoTitulo.trim();
+        if (!tituloFinal) {
+            Toast.warning("El título no puede estar vacío.");
+            return;
+        }
+
+        // Crear clon profundo del objeto de sesión actual
+        const clon = JSON.parse(JSON.stringify(AppState.currentSession));
+        clon.id = Storage.generateId();
+        clon.titulo = tituloFinal;
+        if (clon.metadata) {
+            clon.metadata.titulo = tituloFinal;
+        }
+        clon.lastSaved = new Date().toISOString();
+        clon.created_at = new Date().toISOString();
+        clon.synced = false; // Requiere resincronizar en Supabase
+
+        // Guardar la nueva sesión en Storage local (que sincroniza a la nube si está conectado)
+        if (Storage.saveSession(clon)) {
+            // Establecer la nueva sesión como la activa
+            AppState.currentSession = clon;
+            Storage.setCurrentSession(clon);
+            populateForm(clon);
+            
+            // Actualizar inputs del formulario de metadatos (si hay uno en pantalla para el título)
+            if (DOM.inputTitulo) DOM.inputTitulo.value = tituloFinal;
+
+            // Regenerar visualmente con el nuevo título
+            renderSession(clon);
+
+            renderSavedList();
+            Toast.success('💾 Copia de sesión creada correctamente');
+        } else {
+            Toast.error('Error al crear la copia de la sesión');
+        }
+    }
+
     let isUndoingOrRedoing = false;
 
     function saveCurrentState() {
