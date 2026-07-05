@@ -96,6 +96,8 @@
         line-height: 1.4;
         zoom: 1 !important;
         transform: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     /* Ensure font family is inherited by all children elements during print */
