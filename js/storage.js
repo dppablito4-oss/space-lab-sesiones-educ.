@@ -27,6 +27,22 @@ const Storage = (() => {
         }
     });
 
+    // ─── SAFE LOCALSTORAGE SETTER ───
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            console.error('[Storage] Error al escribir en localStorage:', e);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                if (window.Toast && typeof Toast.warning === 'function') {
+                    Toast.warning('⚠️ Almacenamiento local lleno. Guarda o sincroniza tus sesiones en la nube para no perder cambios.');
+                }
+            }
+            return false;
+        }
+    }
+
     // ─── CRUD ───
 
     function getAllSessions(includeDeleted = false) {
@@ -59,7 +75,7 @@ const Storage = (() => {
                 sessions.unshift(session);
             }
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+            safeSetItem(STORAGE_KEY, JSON.stringify(sessions));
 
             // Sincronización asíncrona con Supabase en background si está logueado
             if (window.SupabaseClient && typeof SupabaseClient.saveSessionCloud === 'function') {
@@ -90,7 +106,7 @@ const Storage = (() => {
             if (session) {
                 session.deleted_at = new Date().toISOString();
                 session.lastSaved = new Date().toISOString();
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+                safeSetItem(STORAGE_KEY, JSON.stringify(sessions));
 
                 // Sincronización asíncrona con Supabase en background
                 if (window.SupabaseClient && typeof SupabaseClient.saveSessionCloud === 'function') {
@@ -126,11 +142,7 @@ const Storage = (() => {
     }
 
     function setCurrentSession(session) {
-        try {
-            localStorage.setItem(CURRENT_KEY, JSON.stringify(session));
-        } catch (e) {
-            console.error('[Storage] Error setting current session:', e);
-        }
+        safeSetItem(CURRENT_KEY, JSON.stringify(session));
     }
 
     function clearCurrentSession() {
@@ -153,11 +165,7 @@ const Storage = (() => {
     }
 
     function saveSettings(settings) {
-        try {
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-        } catch (e) {
-            console.error('[Storage] Error saving settings:', e);
-        }
+        safeSetItem(SETTINGS_KEY, JSON.stringify(settings));
     }
 
     // ─── AUTO-SAVE (Debounced) ───
@@ -332,7 +340,7 @@ const Storage = (() => {
             finalSessions.sort((a, b) => new Date(b.lastSaved || 0) - new Date(a.lastSaved || 0));
 
             // Guardar el resultado consolidado en LocalStorage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(finalSessions));
+            safeSetItem(STORAGE_KEY, JSON.stringify(finalSessions));
 
             console.log('🔄 Sesiones sincronizadas con Supabase con éxito');
         } catch (e) {

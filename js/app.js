@@ -917,7 +917,6 @@
             renderMathInElement(DOM.sessionSheet, {
                 delimiters: [
                     { left: '$$', right: '$$', display: true  },
-                    { left: '$',  right: '$',  display: false },
                     { left: '\\(', right: '\\)', display: false },
                     { left: '\\[', right: '\\]', display: true  }
                 ],
@@ -3130,6 +3129,8 @@
         Toast.success("Fila eliminada correctamente");
     }
 
+    let sheetResizeObserver = null;
+
     function applyZoom() {
         const sheet = DOM.sessionSheet;
         if (!sheet) return;
@@ -3150,6 +3151,14 @@
             if (parent) {
                 // Adjust height of the parent container so scrollbar and footer elements render properly
                 parent.style.height = `${sheet.scrollHeight * AppState.zoomScale + 40}px`;
+                
+                // Configurar ResizeObserver dinámico para actualizar la altura cuando cambie el contenido del lienzo
+                if (!sheetResizeObserver) {
+                    sheetResizeObserver = new ResizeObserver(() => {
+                        parent.style.height = `${sheet.scrollHeight * AppState.zoomScale + 40}px`;
+                    });
+                    sheetResizeObserver.observe(sheet);
+                }
             }
         }
         

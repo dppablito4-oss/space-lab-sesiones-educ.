@@ -67,18 +67,15 @@ BEGIN
         COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
         'user' -- Todos los usuarios se registran como 'user' por seguridad.
     );
+    
+    -- Sincronizar también el rol inicial a raw_user_meta_data en auth.users
+    UPDATE auth.users
+    SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('role', 'user')
+    WHERE id = new.id;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- NOTA DE ADMINISTRACIÓN:
--- Para promover manualmente a un usuario a administrador o superadministrador en Supabase:
--- UPDATE public.profiles SET role = 'superadmin' WHERE email = 'correo@ejemplo.com';
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Trigger de protección para evitar que un usuario se auto-asigne el rol de administrador o cambie su rol
 CREATE OR REPLACE FUNCTION public.check_profile_role_update()
@@ -95,6 +92,39 @@ DROP TRIGGER IF EXISTS before_profile_role_update ON public.profiles;
 CREATE TRIGGER before_profile_role_update
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.check_profile_role_update();
+
+-- Función y trigger para sincronizar el rol a auth.users cuando cambie en profiles
+CREATE OR REPLACE FUNCTION public.sync_profile_role_to_auth()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE auth.users 
+    SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('role', NEW.role)
+    WHERE id = NEW.id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS on_profile_role_update ON public.profiles;
+CREATE TRIGGER on_profile_role_update
+    AFTER INSERT OR UPDATE OF role ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.sync_profile_role_to_auth();
+
+-- Redefinición de is_admin sin bucle RLS (usando claims del JWT)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN (
+        auth.jwt() -> 'user_metadata' ->> 'role' IN ('admin', 'superadmin')
+        OR
+        auth.jwt() -> 'app_metadata' ->> 'role' IN ('admin', 'superadmin')
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 
 
@@ -216,12 +246,12 @@ DROP POLICY IF EXISTS "Auth Users Upload Logos" ON storage.objects;
 CREATE POLICY "Auth Users Upload Logos" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'logos' AND auth.role() = 'authenticated');
 
--- Permitir a usuarios autenticados actualizar logos
+-- Permitir a usuarios autenticados actualizar solo sus propios logos
 DROP POLICY IF EXISTS "Auth Users Update Logos" ON storage.objects;
 CREATE POLICY "Auth Users Update Logos" ON storage.objects
-    FOR UPDATE USING (bucket_id = 'logos' AND auth.role() = 'authenticated');
+    FOR UPDATE USING (bucket_id = 'logos' AND auth.uid()::text = owner);
 
--- Permitir a usuarios autenticados eliminar logos
+-- Permitir a usuarios autenticados eliminar solo sus propios logos
 DROP POLICY IF EXISTS "Auth Users Delete Logos" ON storage.objects;
 CREATE POLICY "Auth Users Delete Logos" ON storage.objects
-    FOR DELETE USING (bucket_id = 'logos' AND auth.role() = 'authenticated');
+    FOR DELETE USING (bucket_id = 'logos' AND auth.uid()::text = owner);
