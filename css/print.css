@@ -317,18 +317,8 @@
         display: block !important;
     }
 
-    /* Prevent text splitting inside any content block in moments */
-    .session-sheet .momento-subsection,
-    .session-sheet .momento-subsection p,
-    .session-sheet .momento-subsection li,
-    .session-sheet .momento-subsection div,
-    .session-sheet .momento-section,
-    .session-sheet .momento-section p,
-    .session-sheet .momento-section li,
-    .session-sheet .momento-section div,
-    .session-sheet .momento-content-cell p,
-    .session-sheet .momento-content-cell li,
-    .session-sheet .momento-content-cell strong {
+    /* Prevent text splitting inside individual subsections */
+    .session-sheet .momento-subsection {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
         orphans: 3 !important;
