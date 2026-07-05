@@ -290,6 +290,8 @@ const Storage = (() => {
 
             // Procesar la lista consolidada
             const finalSessions = [];
+            const savePromises = [];
+
             for (const session of mergedMap.values()) {
                 const cloudVersion = cloudSessions.find(cs => cs.id === session.id);
 
@@ -302,7 +304,7 @@ const Storage = (() => {
                     }
                     // Si está en la nube pero no marcada como eliminada en la nube, actualizamos la nube
                     if (!cloudVersion.deleted_at) {
-                        await SupabaseClient.saveSessionCloud(session);
+                        savePromises.push(SupabaseClient.saveSessionCloud(session));
                     }
                     session.synced = true;
                     finalSessions.push(session);
@@ -319,7 +321,7 @@ const Storage = (() => {
                         } else {
                             // Nueva sesión local nunca subida. La subimos.
                             session.synced = true;
-                            await SupabaseClient.saveSessionCloud(session);
+                            savePromises.push(SupabaseClient.saveSessionCloud(session));
                             finalSessions.push(session);
                         }
                     } else {
@@ -328,12 +330,18 @@ const Storage = (() => {
                         const localTime = new Date(session.lastSaved || 0);
                         const cloudTime = new Date(cloudVersion.lastSaved || 0);
                         if (localTime > cloudTime) {
-                            await SupabaseClient.saveSessionCloud(session);
+                            savePromises.push(SupabaseClient.saveSessionCloud(session));
                         }
                         session.synced = true;
                         finalSessions.push(session);
                     }
                 }
+            }
+
+            // Ejecutar subidas/sincronizaciones en la nube en paralelo
+            if (savePromises.length > 0) {
+                console.log(`[Sync] Sincronizando ${savePromises.length} sesiones en la nube en paralelo...`);
+                await Promise.all(savePromises);
             }
 
             // Ordenar por fecha
