@@ -153,6 +153,11 @@
         padding: var(--session-cell-padding, 4px 6px) !important;
         font-size: var(--session-font-size, 8.5pt) !important;
         color: #000 !important;
+    }
+
+    .session-sheet .session-header-table td:not(.label-cell),
+    .session-sheet .content-table td,
+    .session-sheet .eval-table td {
         background: transparent !important;
     }
 
@@ -271,8 +276,11 @@
     .session-sheet .momentos-table td {
         border: none !important;
         padding: 6px 8px !important;
-        background: transparent !important;
         box-sizing: border-box !important;
+    }
+
+    .session-sheet .momentos-table td:not(.momento-label-cell) {
+        background: transparent !important;
     }
     .session-sheet .momento-label-cell {
         width: 120px !important;
@@ -329,7 +337,7 @@
     .session-sheet .label-cell,
     .session-sheet .content-table th,
     .session-sheet .eval-table th {
-        background: #f1f5f9 !important;
+        background: var(--theme-label-bg, #f1f5f9) !important;
         font-weight: 700;
         font-size: 8pt;
         color: #000 !important;
@@ -347,11 +355,11 @@
 
     /* ─── Section titles ─── */
     .session-sheet .subsection-title-bar {
-        background: #e2e8f0 !important;
+        background: var(--theme-label-bg, #e2e8f0) !important;
         color: #000 !important;
         padding: 4px 6px;
         margin: 10px 0 4px;
-        border-left: 3px solid #000 !important;
+        border-left: 3px solid var(--theme-border-color, #000) !important;
         font-size: 8.5pt;
         font-weight: 700;
         text-transform: uppercase;
@@ -368,7 +376,7 @@
 
     /* ─── Moment labels ─── */
     .session-sheet .momento-label-cell {
-        background: #f8fafc !important;
+        background: var(--theme-label-bg, #f8fafc) !important;
         width: 120px;
     }
 
