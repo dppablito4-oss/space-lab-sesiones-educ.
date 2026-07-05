@@ -237,7 +237,7 @@
         background: transparent !important;
     }
     .session-sheet .official-logo-img {
-        max-height: 48px !important;
+        max-height: 48px; /* Permite sobrescribir el alto desde los estilos inline del editor */
         object-fit: contain !important;
         display: block !important;
         margin: 0 auto !important;
@@ -402,10 +402,7 @@
     /* eval-column-cell and eval-vertical-text handled by flex overrides above */
 
     /* ─── Logo ─── */
-    .session-sheet .official-logo-img {
-        max-width: 14mm;
-        max-height: 12mm;
-    }
+    /* Removido max-width y max-height para respetar dimensiones personalizadas del editor */
 
     /* ─── Contenteditable: remove editing styles ─── */
     .session-sheet [contenteditable] {
