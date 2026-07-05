@@ -467,6 +467,11 @@
     th .katex {
         vertical-align: middle;
     }
+
+    /* Sobreescribir las líneas de firma hardcodeadas al color del tema al imprimir */
+    .session-sheet div[style*="border-top"] {
+        border-top-color: var(--theme-border-color, #000) !important;
+    }
 }
 
 /* ─── KaTeX pantalla — ajustes en la preview de la hoja A4 ─── */

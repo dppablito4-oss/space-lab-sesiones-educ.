@@ -902,6 +902,11 @@ body {
     overflow: hidden;
 }
 
+/* Sobreescribir las líneas de firma hardcodeadas al color del tema */
+.session-sheet div[style*="border-top"] {
+    border-top-color: var(--theme-border-color, #000) !important;
+}
+
 /* Ensure font family is inherited by all children elements */
 .session-sheet,
 .session-sheet table,
