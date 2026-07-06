@@ -464,15 +464,23 @@ def install_playwright_chromium_cli():
     ) as progress:
         task = progress.add_task("[cyan]Descargando Chromium...[/cyan]", total=100)
         
-        for line in iter(process.stdout.readline, ""):
-            # Captura porcentajes del tipo " 10% of" o "54% of" que imprime el instalador
-            match = re.search(r'(\d+)%\s+of', line)
-            if match:
-                percent = int(match.group(1))
-                progress.update(task, completed=percent)
+        buffer = ""
+        while True:
+            char = process.stdout.read(1)
+            if not char:
+                break
+            if char in ['\r', '\n']:
+                line = buffer.strip()
+                buffer = ""
+                if line:
+                    match = re.search(r'(\d+)%\s+of', line)
+                    if match:
+                        percent = int(match.group(1))
+                        progress.update(task, completed=percent)
+                    elif "downloaded" in line.lower():
+                        progress.update(task, description="[green]¡Chromium descargado con éxito![/green]")
             else:
-                if "downloaded" in line.lower():
-                    progress.update(task, description="[green]¡Chromium descargado con éxito![/green]")
+                buffer += char
         
         process.wait()
 
