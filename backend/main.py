@@ -2391,7 +2391,7 @@ def start_gui():
             
             print("Iniciando servidor local en el puerto 8000...")
             import uvicorn
-            uvicorn.run(app, host="localhost", port=8000, log_level="warning", log_config=None)
+            uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning", log_config=None)
         except Exception as e:
             print(f"\n❌ [ERROR CRÍTICO]: {str(e)}")
 
