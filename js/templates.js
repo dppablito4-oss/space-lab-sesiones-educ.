@@ -194,16 +194,11 @@ const Templates = (() => {
         }
 
         if (subMomentsInicio.length > 0) {
-            const contentHtml = subMomentsInicio.map(sm => `
-                <div class="momento-subsection" style="margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
-                    <div class="momento-subsection-title">${esc(sm.title)}</div>
-                    <div>${escHtml(sm.content)}</div>
-                </div>
-            `).join('');
-
-            inicioRowsHtml = `
-                <tr>
-                    <td class="momento-label-cell">
+            inicioRowsHtml = subMomentsInicio.map((sm, index) => {
+                const isFirst = index === 0;
+                
+                const labelCell = isFirst ? `
+                    <td class="momento-label-cell" rowspan="${subMomentsInicio.length}">
                         <div class="momento-name">INICIO:</div>
                         <div class="momento-sublabels">
                             <span>• Saberes Previos</span>
@@ -212,19 +207,33 @@ const Templates = (() => {
                         </div>
                         <div class="momento-time">TIEMPO: ${esc(inicio.tiempo_total || '')}</div>
                     </td>
-                    <td class="momento-content-cell" ${ce}>
-                        <div class="momento-section">
-                            ${contentHtml}
-                        </div>
-                    </td>
-                    <td class="eval-column-cell">
+                ` : '';
+
+                const evalCell = isFirst ? `
+                    <td class="eval-column-cell" rowspan="${subMomentsInicio.length}">
                         <div class="eval-vertical-text">E V A L U A C I Ó N</div>
                     </td>
-                </tr>`;
+                ` : '';
+
+                return `
+                    <tr style="page-break-inside: avoid; break-inside: avoid;">
+                        ${labelCell}
+                        <td class="momento-content-cell" ${ce}>
+                            <div class="momento-section" style="padding: 0;">
+                                <div class="momento-subsection" style="margin-bottom: 0;">
+                                    <div class="momento-subsection-title">${esc(sm.title)}</div>
+                                    <div>${escHtml(sm.content)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        ${evalCell}
+                    </tr>
+                `;
+            }).join('');
         } else {
             const defaultText = inicio.actividades || '• El docente empieza la sesión saludando muy cordialmente a los estudiantes...\n• Se consensuan los acuerdos de convivencia para la interacción en clases.\n• Motivación: activity inicial.\n• Saberes previos: preguntas exploratorias.\n• Problematización: situación significativa.\n• Propósito y organización: comunicar el propósito de la sesión y los criterios de evaluación.';
             inicioRowsHtml = `
-                <tr>
+                <tr style="page-break-inside: avoid; break-inside: avoid;">
                     <td class="momento-label-cell">
                         <div class="momento-name">INICIO:</div>
                         <div class="momento-sublabels">
@@ -282,22 +291,16 @@ const Templates = (() => {
         };
 
         if (desarrolloKeys.length > 0) {
-            const contentHtml = desarrolloKeys.map(key => {
+            desarrolloRowsHtml = desarrolloKeys.map((key, index) => {
                 const value = desarrollo[key];
                 if (!value) return '';
                 const cleanKey = key.replace(/^(proceso|paso)_\d+_/, '');
                 let title = mappings[cleanKey] || cleanKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                return `
-                    <div class="momento-subsection" style="margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
-                        <div class="momento-subsection-title">${esc(title)}</div>
-                        <div>${escHtml(value)}</div>
-                    </div>
-                `;
-            }).join('');
+                
+                const isFirst = index === 0;
 
-            desarrolloRowsHtml = `
-                <tr>
-                    <td class="momento-label-cell">
+                const labelCell = isFirst ? `
+                    <td class="momento-label-cell" rowspan="${desarrolloKeys.length}">
                         <div class="momento-name">DESARROLLO:</div>
                         <div class="momento-sublabels">
                             <span>Gestión y Acompañamiento del Desarrollo de las Competencias</span>
@@ -305,24 +308,42 @@ const Templates = (() => {
                         </div>
                         <div class="momento-time">TIEMPO: ${esc(desarrollo.tiempo_total || '')}</div>
                     </td>
-                    <td class="momento-content-cell" ${ce}>
-                        <div class="momento-section">
-                            <div class="momento-subsection" style="page-break-inside: avoid; break-inside: avoid;">
-                                <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase; margin-bottom:8px;">
-                                    GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
-                                </div>
-                            </div>
-                            ${contentHtml}
-                        </div>
-                    </td>
-                    <td class="eval-column-cell">
+                ` : '';
+
+                const evalCell = isFirst ? `
+                    <td class="eval-column-cell" rowspan="${desarrolloKeys.length}">
                         <div class="eval-vertical-text">E V A L U A C I Ó N</div>
                     </td>
-                </tr>`;
+                ` : '';
+
+                const headerTitleHtml = isFirst ? `
+                    <div class="momento-subsection" style="margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
+                        <div class="momento-subsection-title" style="color:#c0392b; font-weight:700; text-decoration:underline; text-transform:uppercase; margin-bottom:8px;">
+                            GESTIÓN Y ACOMPAÑAMIENTO DEL DESARROLLO DE COMPETENCIAS
+                        </div>
+                    </div>
+                ` : '';
+
+                return `
+                    <tr style="page-break-inside: avoid; break-inside: avoid;">
+                        ${labelCell}
+                        <td class="momento-content-cell" ${ce}>
+                            <div class="momento-section" style="padding: 0;">
+                                ${headerTitleHtml}
+                                <div class="momento-subsection" style="margin-bottom: 0;">
+                                    <div class="momento-subsection-title">${esc(title)}</div>
+                                    <div>${escHtml(value)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        ${evalCell}
+                    </tr>
+                `;
+            }).join('');
         } else {
             const defaultText = desarrollo.actividades || '• Presentación de la situación significativa.\n• Familiarización con el problema: lectura y comprensión.\n• Búsqueda y ejecución de estrategias.\n• Resolución del reto propuesto.\n• Socialización de resultados.\n• Formalización: el docente sistematiza los aprendizajes.\n• Reflexión: ¿qué procesos seguimos? ¿qué dificultades tuvimos?\n• Transferencia: aplicación a nuevas situaciones.';
             desarrolloRowsHtml = `
-                <tr>
+                <tr style="page-break-inside: avoid; break-inside: avoid;">
                     <td class="momento-label-cell">
                         <div class="momento-name">DESARROLLO:</div>
                         <div class="momento-sublabels">
