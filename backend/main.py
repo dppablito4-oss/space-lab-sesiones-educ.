@@ -584,6 +584,12 @@ if __name__ == "__main__":
 
         # 3. Arrancar Uvicorn
         uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="warning")
+    except SystemExit as se:
+        if se.code != 0:
+            rprint(f"\n[bold red]❌ [ERROR DE SISTEMA] El proceso terminó de forma inesperada (Código de salida: {se.code}).[/bold red]")
+            rprint("[yellow]Esto suele ocurrir cuando el puerto 8000 ya está en uso por otra ventana del motor local o por otra aplicación.[/yellow]")
+            rprint("[yellow]Cierra las ventanas del motor que tengas abiertas en segundo plano y vuelve a intentar.[/yellow]\n")
+            input("Presiona Enter para salir...")
     except Exception as e:
         rprint(f"\n[bold red]❌ [ERROR CRÍTICO] El servidor no se pudo iniciar:[/bold red]")
         rprint(f"[red]{str(e)}[/red]\n")
