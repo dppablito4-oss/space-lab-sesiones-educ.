@@ -364,12 +364,28 @@
                 btnConnect.disabled = true;
                 btnText.textContent = 'Comprobando conexión...';
 
-                try {
-                    // Hacer la validación al endpoint de Python local
-                    const response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`);
+                let response = null;
+                let fetchError = null;
 
-                    if (!response.ok) {
-                        if (response.status === 401) {
+                try {
+                    // 1. Intentar con la IP directa IPv4
+                    response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`);
+                } catch (e1) {
+                    // 2. Si falla (por ejemplo, por bloqueos de red local numéricos), intentar con localhost (IPv6/IPv4 loopback)
+                    try {
+                        response = await fetch(`http://localhost:8000/verificar-token?token=${token}`);
+                    } catch (e2) {
+                        fetchError = e2;
+                    }
+                }
+
+                try {
+                    if (fetchError) {
+                        throw fetchError;
+                    }
+
+                    if (!response || !response.ok) {
+                        if (response && response.status === 401) {
                             throw new Error('TOKEN_EXPIRED');
                         }
                         const err = await response.json();
@@ -407,10 +423,22 @@
                     btnText.textContent = 'Vincular con Motor Local';
 
                     statusMessage.className = 'status-alert alert-error';
+                    statusMessage.style.textAlign = 'left';
+                    statusMessage.style.fontSize = '14px';
+                    statusMessage.style.lineHeight = '1.5';
+                    
                     if (error.message === 'TOKEN_EXPIRED') {
                         statusMessage.textContent = '❌ El token de enlace está vencido. Haz clic en "[ CLIC AQUÍ PARA VINCULAR ]" en la ventana de pablitopyhost.exe para abrir la pestaña correcta.';
                     } else {
-                        statusMessage.textContent = '❌ No se pudo establecer conexión. Verifica que pablitopyhost.exe esté abierto.';
+                        statusMessage.innerHTML = `
+                            <strong>❌ No se pudo establecer la conexión segura.</strong><br>
+                            Por favor, verifica los siguientes puntos en la PC de tu hermano:<br>
+                            <ol style="margin-left: 20px; margin-top: 5px; padding-left: 0;">
+                                <li>Asegúrate de que la ventana negra de <b>pablitopyhost.exe</b> siga abierta.</li>
+                                <li>Cierra el programa, haz clic derecho en <b>pablitopyhost.exe</b> y selecciona <b>"Ejecutar como administrador"</b> para desbloquear el puerto en el firewall de Windows.</li>
+                                <li>Si usa <b>Brave</b> o extensiones como <b>uBlock Origin / Adblock</b>, desactiva el escudo (Shields) para este sitio web, ya que suelen bloquear conexiones locales.</li>
+                            </ol>
+                        `;
                     }
                 }
             });
