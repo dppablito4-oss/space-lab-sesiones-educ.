@@ -275,7 +275,7 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
                     body: { 
                         prompt: userPrompt, 
                         systemPrompt: dynamicSystemPrompt,
-                        sourceFile: metadata.ai_provider === 'gemini' ? (metadata.sourceFile || null) : null
+                        sourceFile: metadata.sourceFile || null
                     }
                 });
 
@@ -454,6 +454,10 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
         if (m.sourceFile) {
             if (m.sourceFile.textContent) {
                 parts.push(`\n--- CONTENIDO DEL ARCHIVO DE REFERENCIA (${m.sourceFile.name}) ---\n${m.sourceFile.textContent}\n--- FIN DEL ARCHIVO DE REFERENCIA ---`);
+                parts.push(`\n⚠️ INSTRUCCIÓN OBLIGATORIA SOBRE EL ARCHIVO DE REFERENCIA:`);
+                parts.push(`- Utiliza el contenido del archivo de referencia adjunto arriba como la base teórica, pedagógica y práctica principal de la sesión.`);
+                parts.push(`- Extrae del archivo los conceptos clave, problemas, lecturas, actividades o secuencias y utilízalos para dar forma a los momentos didácticos (Inicio, Desarrollo, Cierre) y a la Ficha de Trabajo.`);
+                parts.push(`- Si el tema o título proporcionado se relaciona con este archivo, alinea toda la sesión para que desarrolle el contenido de este archivo enfocado en dicho tema.`);
             } else if (m.sourceFile.base64) {
                 parts.push(`\n[Archivo adjunto de referencia: ${m.sourceFile.name} (tipo: ${m.sourceFile.type}). Utiliza esta fuente de referencia para basar las actividades, conceptos y el diseño pedagógico de la sesión de aprendizaje.]`);
             }

@@ -3475,8 +3475,50 @@
                 Toast.error('Error al leer el archivo de texto.');
             };
             reader.readAsText(file);
+        } else if (fileName.toLowerCase().endsWith('.pdf')) {
+            Loader.show('Procesando PDF y extrayendo texto...');
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const arrayBuffer = e.target.result;
+                    // Obtener base64
+                    const base64Data = arrayBufferToBase64(arrayBuffer);
+                    
+                    // Extraer texto usando pdfjs
+                    const extractedText = await extractTextFromPDF(arrayBuffer);
+                    
+                    AppState.sourceFileData = {
+                        name: fileName,
+                        type: 'application/pdf',
+                        textContent: extractedText,
+                        base64: base64Data
+                    };
+                    Loader.hide();
+                    showSourceFileInfo(fileName);
+                } catch (err) {
+                    Loader.hide();
+                    console.error('[PDF Extraction Error]', err);
+                    Toast.warning('No se pudo extraer el texto del PDF de forma nativa. Se cargará solo como archivo de referencia.');
+                    
+                    // Fallback a solo base64 si falla la extracción
+                    const arrayBuffer = e.target.result;
+                    const base64Data = arrayBufferToBase64(arrayBuffer);
+                    AppState.sourceFileData = {
+                        name: fileName,
+                        type: 'application/pdf',
+                        textContent: null,
+                        base64: base64Data
+                    };
+                    showSourceFileInfo(fileName);
+                }
+            };
+            reader.onerror = function() {
+                Loader.hide();
+                Toast.error('Error al leer el archivo PDF.');
+            };
+            reader.readAsArrayBuffer(file);
         } else {
-            // It's a binary file (PDF, image, audio)
+            // It's a binary file (image, audio, etc.)
             Loader.show('Cargando archivo multimedia...');
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -3498,6 +3540,44 @@
             };
             reader.readAsDataURL(file);
         }
+    }
+
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    async function extractTextFromPDF(arrayBuffer) {
+        if (!window.pdfjsLib) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.onload = () => {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    resolve();
+                };
+                script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
+                document.head.appendChild(script);
+            });
+        }
+
+        const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        let fullText = '';
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += `\n--- PÁGINA ${i} ---\n${pageText}\n`;
+        }
+        
+        return fullText.trim();
     }
 
     function getBinaryMimeFallback(fileName) {
