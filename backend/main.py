@@ -475,23 +475,12 @@ def install_playwright_chromium_cli():
 
 @app.on_event("startup")
 async def startup_event():
-    """Evento que se dispara al iniciar FastAPI para abrir la conexión en el navegador."""
-    # Determinar si conexion.html está localmente o usar dominio de producción
-    local_path = Path(__file__).resolve().parent.parent / "conexion.html"
-    if local_path.exists():
-        target_url = f"file:///{local_path.as_posix()}?token={CONNECTION_TOKEN}"
-    else:
-        target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
+    """Evento que se dispara al iniciar FastAPI para mostrar la URL de conexión segura."""
+    target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
 
     rprint(f"\n[bold green]🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://127.0.0.1:8000[/bold green]")
-    rprint(f"[bold cyan]🔗 [ENLACE SEGURO] Abre el siguiente enlace en tu navegador si no se abre automáticamente:[/bold cyan]")
+    rprint(f"[bold cyan]🔗 [ENLACE SEGURO] Copia y pega esta URL en tu navegador para vincular el motor local con la web:[/bold cyan]")
     rprint(f"[underline blue]{target_url}[/underline blue]\n")
-    
-    # Abrir el navegador en un hilo separado
-    def open_browser():
-        webbrowser.open(target_url)
-
-    threading.Thread(target=open_browser).start()
 
 
 def print_banner():
