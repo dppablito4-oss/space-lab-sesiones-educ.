@@ -1037,7 +1037,7 @@
             return;
         }
         try {
-            const response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`, { method: 'GET' });
+            const response = await fetch(`http://localhost:8000/verificar-token?token=${token}`, { method: 'GET' });
             if (response.ok) {
                 const data = await response.json();
                 if (data.status === 'Connected') {
@@ -1109,7 +1109,7 @@
             const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
             const token = localStorage.getItem('connection_token') || '';
             
-            const response = await fetch('http://127.0.0.1:8000/exportar-pdf', {
+            const response = await fetch('http://localhost:8000/exportar-pdf', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1163,7 +1163,7 @@
             const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
             const token = localStorage.getItem('connection_token') || '';
             
-            const response = await fetch('http://127.0.0.1:8000/exportar-docx', {
+            const response = await fetch('http://localhost:8000/exportar-docx', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
