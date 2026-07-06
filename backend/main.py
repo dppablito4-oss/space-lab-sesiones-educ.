@@ -10,6 +10,8 @@ import subprocess
 import warnings
 import urllib.request
 import zipfile
+import tkinter as tk
+from tkinter import scrolledtext
 from pathlib import Path
 
 # Determinar base absoluta del ejecutable para portabilidad
@@ -476,121 +478,191 @@ def descargar_chromium_nativo():
     # URL directa de Google APIs (Versión ligera y estable para Windows x64)
     url_chromium = "https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/1182249/chrome-win.zip"
 
-    if console:
-        rprint("\n[bold yellow]⚠️  [MOTOR INCOMPLETO] No se detectó ningún navegador compatible (Chrome/Brave/Edge) ni motor local.[/bold yellow]")
-        rprint("[cyan]Iniciando descarga de motor Chromium portable (aprox. 140MB)...[/cyan]")
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=40, style="grey35", complete_style="green"),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TextColumn("• [progress.filesize]{task.completed_size}/{task.total_size}"),
-            expand=True
-        ) as progress:
-            task = progress.add_task("[cyan]Descargando Chromium...[/cyan]", total=100)
-            
-            def progreso_download(block_num, block_size, total_size):
-                if total_size > 0:
-                    completed = block_num * block_size
-                    progress.update(task, completed=completed, total=total_size)
-            
-            urllib.request.urlretrieve(url_chromium, zip_path, reporthook=progreso_download)
-    else:
-        print("Descargando Chromium...")
-        urllib.request.urlretrieve(url_chromium, zip_path)
+    print("\n⚠️  [MOTOR INCOMPLETO] No se detectó ningún navegador compatible (Chrome/Brave/Edge) ni motor local.")
+    print("Iniciando descarga de motor Chromium portable (aprox. 140MB)...")
+    
+    last_percent = -1
+    def progreso_download(block_num, block_size, total_size):
+        nonlocal last_percent
+        if total_size > 0:
+            completed = block_num * block_size
+            percent = int((completed / total_size) * 100)
+            if percent != last_percent and percent % 5 == 0:  # Cada 5%
+                last_percent = percent
+                completed_mb = completed / (1024 * 1024)
+                total_mb = total_size / (1024 * 1024)
+                print(f"Descargando Chromium: {percent}% completado ({completed_mb:.1f} MB de {total_mb:.1f} MB)")
 
     # Extracción del ZIP de forma nativa
-    if console:
-        rprint("[bold green]✓ Descarga completada.[/bold green] [yellow]Extrayendo motor portable...[/yellow]")
-    else:
-        print("Extrayendo motor...")
+    try:
+        urllib.request.urlretrieve(url_chromium, zip_path, reporthook=progreso_download)
+        print("✓ Descarga completada. Extrayendo motor portable...")
         
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(LOCAL_BIN_DIR)
-        
-    # Eliminar el ZIP basura para ahorrar espacio
-    if zip_path.exists():
-        os.remove(zip_path)
-        
-    if console:
-        rprint("[bold green]✓ Motor Chromium extraído y listo para usar en ./bin/chrome-win/[/bold green]\n")
-    else:
-        print("Motor listo.")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(LOCAL_BIN_DIR)
+            
+        # Eliminar el ZIP basura para ahorrar espacio
+        if zip_path.exists():
+            os.remove(zip_path)
+            
+        print("✓ Motor Chromium extraído y listo para usar en ./bin/chrome-win/\n")
+    except Exception as e:
+        print(f"❌ Error al descargar o extraer Chromium: {str(e)}")
 
 
 @app.on_event("startup")
 async def startup_event():
-    """Evento que se dispara al iniciar FastAPI para mostrar la URL de conexión segura."""
+    """Evento que se dispara al iniciar FastAPI para mostrar la URL de conexión segura en los logs."""
     target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
-
-    rprint(f"\n[bold green]🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://127.0.0.1:8000[/bold green]")
-    rprint(f"[bold cyan]🔗 [ENLACE SEGURO] Presiona [bold red]Ctrl+Clic[/bold red] sobre el enlace de abajo para abrirlo directamente en tu navegador:[/bold cyan]")
-    rprint(f"[link={target_url}][underline blue]{target_url}[/link][/underline blue]\n")
+    print(f"🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://127.0.0.1:8000")
+    print(f"🔗 [ENLACE SEGURO] URL de vinculación segura:\n{target_url}\n")
 
 
-def print_banner():
-    """Muestra el banner de bienvenida con formato rich."""
-    if not console:
-        print("====================================================")
-        print("      SYPABLITODP PEDAGOGICAL EXPORT ENGINE         ")
-        print("====================================================")
-        return
+class ConsoleRedirector:
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
+        self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
-    banner_text = """
- [bold magenta]███████╗     ██╗   ██╗     ██████╗   █████╗  ██████╗  ██╗      ████████╗ ████████╗  ██████╗           ██████╗  ██████╗  [/bold magenta]
- [bold magenta]██╔════╝     ╚██╗ ██╔╝     ██╔══██╗ ██╔══██╗ ██╔══██╗ ██║      ╚══██╔══╝ ╚══██╔══╝ ██╔═══██╗          ██╔══██╗ ██╔══██╗ [/bold magenta]
- [bold blue]███████╗      ╚████╔╝      ██████╔╝ ███████║ ██████╔╝ ██║         ██║       ██║    ██║   ██║          ██║  ██║ ██████╔╝ [/bold blue]
- [bold blue]╚════██║ ██╗   ╚██╔╝   ██╗ ██╔═══╝  ██╔══██║ ██╔══██╗ ██║         ██║       ██║    ██║   ██║          ██║  ██║ ██╔═══╝  [/bold blue]
- [bold cyan]███████║ ╚═╝    ██║    ╚═╝ ██║      ██║  ██║ ██████╔╝ ███████╗ ████████╗    ██║    ╚██████╔╝ ████████╗ ██████╔╝ ██║      [/bold cyan]
- [bold cyan]╚══════╝        ╚═╝        ╚═╝      ╚═╝  ╚═╝ ╚═════╝  ╚══════╝ ╚══════╝    ╚═╝     ╚═════╝  ╚═══════╝ ╚═════╝  ╚═╝      [/bold cyan]
-                                                                              
-        [bold white]🚀 Motor de Exportación PDF/Word | Desarrollador: Samuel Pablo C. [/bold white]
-    """
-    console.print(Panel(banner_text, border_style="cyan", title="v1.1.0-Beta (Privada)"))
-
-
-def disable_quick_edit():
-    """Desactiva el modo de edición rápida (QuickEdit) de la consola en Windows para evitar congelar el proceso al hacer clic."""
-    if sys.platform.startswith('win'):
+    def write(self, string):
+        clean_string = self.ansi_escape.sub('', string)
+        if not clean_string:
+            return
         try:
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
-            STD_INPUT_HANDLE = -10
-            h_input = kernel32.GetStdHandle(STD_INPUT_HANDLE)
-            mode = ctypes.c_uint32()
-            kernel32.GetConsoleMode(h_input, ctypes.byref(mode))
-            # Desactivar ENABLE_QUICK_EDIT_MODE (0x0040)
-            new_mode = mode.value & ~0x0040
-            kernel32.SetConsoleMode(h_input, new_mode)
+            self.text_widget.configure(state='normal')
+            self.text_widget.insert('end', clean_string)
+            self.text_widget.see('end')
+            self.text_widget.configure(state='disabled')
         except Exception:
             pass
 
+    def flush(self):
+        pass
+
+
+def start_gui():
+    """Inicia la interfaz gráfica del motor local, desacoplada del CMD."""
+    root = tk.Tk()
+    root.title("S.Y. PABLITO - Motor de Exportación Local")
+    root.geometry("680x500")
+    root.configure(bg="#0f172a")
+    root.resizable(False, False)
+
+    # Intentar cargar icono del programa
+    ico_path = EXE_DIR / "assets" / "logo.ico"
+    if not ico_path.exists():
+        ico_path = EXE_DIR.parent / "assets" / "logo.ico"
+    if ico_path.exists():
+        try:
+            root.iconbitmap(str(ico_path))
+        except Exception:
+            pass
+
+    # Cabecera
+    header_frame = tk.Frame(root, bg="#0f172a")
+    header_frame.pack(fill="x", padx=20, pady=(15, 5))
+
+    title_label = tk.Label(header_frame, text="S.Y. PABLITO - Motor de Exportación local", font=("Arial", 14, "bold"), fg="#38bdf8", bg="#0f172a")
+    title_label.pack(anchor="w")
+
+    subtitle_label = tk.Label(header_frame, text="v1.2.0-Beta (Privada) | Puerto Local: 8000", font=("Arial", 9, "italic"), fg="#94a3b8", bg="#0f172a")
+    subtitle_label.pack(anchor="w")
+
+    # Indicador de Estado
+    status_frame = tk.Frame(root, bg="#1e293b", bd=1, relief="solid")
+    status_frame.pack(fill="x", padx=20, pady=10)
+
+    status_dot = tk.Label(status_frame, text="●", font=("Arial", 12), fg="#f97316", bg="#1e293b")
+    status_dot.pack(side="left", padx=(10, 5), pady=8)
+
+    status_label = tk.Label(status_frame, text="Desconectado - Esperando vinculación", font=("Arial", 10, "bold"), fg="#f8fafc", bg="#1e293b")
+    status_label.pack(side="left", pady=8)
+
+    # Botón de vinculación directa
+    target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
+    
+    def open_browser():
+        webbrowser.open(target_url)
+
+    btn_link = tk.Button(
+        root, 
+        text="🔗 Vincular en el Navegador", 
+        font=("Arial", 11, "bold"), 
+        bg="#0ea5e9", 
+        fg="#ffffff", 
+        activebackground="#0284c7", 
+        activeforeground="#ffffff", 
+        relief="flat", 
+        bd=0, 
+        padx=20, 
+        pady=10, 
+        cursor="hand2",
+        command=open_browser
+    )
+    btn_link.pack(fill="x", padx=20, pady=5)
+
+    # Efectos hover para el botón
+    def on_enter(e):
+        btn_link['background'] = '#38bdf8'
+    def on_leave(e):
+        btn_link['background'] = '#0ea5e9'
+    btn_link.bind("<Enter>", on_enter)
+    btn_link.bind("<Leave>", on_leave)
+
+    # Consola de Registros
+    log_label = tk.Label(root, text="Consola de Registro Local:", font=("Arial", 9, "bold"), fg="#64748b", bg="#0f172a")
+    log_label.pack(anchor="w", padx=20, pady=(10, 2))
+
+    log_area = scrolledtext.ScrolledText(root, bg="#020617", fg="#f8fafc", font=("Consolas", 9), relief="flat", bd=0, insertbackground="white")
+    log_area.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+    log_area.configure(state='disabled')
+
+    # Redirigir stdout y stderr
+    sys.stdout = ConsoleRedirector(log_area)
+    sys.stderr = ConsoleRedirector(log_area)
+
+    # Loop de verificación del estado del enlace
+    def update_status_loop():
+        if CLIENT_CONNECTED:
+            status_dot.config(fg="#22c55e")
+            status_label.config(text="Conectado con la web (Enlace Seguro Activo)", fg="#22c55e")
+        else:
+            status_dot.config(fg="#f97316")
+            status_label.config(text="Desconectado - Esperando vinculación de la web", fg="#f8fafc")
+        root.after(1000, update_status_loop)
+
+    root.after(1000, update_status_loop)
+
+    # Imprimir banner y detalles iniciales
+    print("====================================================")
+    print("      SYPABLITODP PEDAGOGICAL EXPORT ENGINE         ")
+    print("      Versión 1.2.0-Beta - Puerto local: 8000       ")
+    print("====================================================")
+    print(f"Token de sesión generado: {CONNECTION_TOKEN}")
+    print(f"URL de enlace: {target_url}\n")
+
+    # Hilo para ejecutar análisis y arranque del servidor
+    def run_server_flow():
+        try:
+            # 1. Comprobar navegadores de Playwright (Detección Híbrida)
+            motor_valido = buscar_navegador_compatible()
+            if not motor_valido:
+                descargar_chromium_nativo()
+            else:
+                print(f"✓ Navegador compatible detectado en: {motor_valido}")
+            
+            # 2. Iniciar servidor FastAPI con Uvicorn
+            print("Iniciando servidor local de exportación...")
+            import uvicorn
+            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
+        except SystemExit as se:
+            if se.code != 0:
+                print(f"\n❌ [ERROR DE SISTEMA] El puerto 8000 ya está siendo utilizado por otra aplicación.")
+                print("Por favor, cierra los otros procesos de 'pablitopyhost' e intenta de nuevo.")
+        except Exception as e:
+            print(f"\n❌ [ERROR CRÍTICO] El servidor no se pudo iniciar: {str(e)}")
+
+    threading.Thread(target=run_server_flow, daemon=True).start()
+    root.mainloop()
 
 if __name__ == "__main__":
-    import uvicorn
-    
-    try:
-        # Desactivar selección de clic que congela la consola en Windows
-        disable_quick_edit()
-
-        # 1. Imprimir banner
-        print_banner()
-
-        # 2. Comprobar navegadores de Playwright (Detección Híbrida)
-        motor_valido = buscar_navegador_compatible()
-        if not motor_valido:
-            descargar_chromium_nativo()
-
-        # 3. Arrancar Uvicorn
-        uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
-    except SystemExit as se:
-        if se.code != 0:
-            rprint(f"\n[bold red]❌ [ERROR DE SISTEMA] El proceso terminó de forma inesperada (Código de salida: {se.code}).[/bold red]")
-            rprint("[yellow]Esto suele ocurrir cuando el puerto 8000 ya está en uso por otra ventana del motor local o por otra aplicación.[/yellow]")
-            rprint("[yellow]Cierra las ventanas del motor que tengas abiertas en segundo plano y vuelve a intentar.[/yellow]\n")
-            input("Presiona Enter para salir...")
-    except Exception as e:
-        rprint(f"\n[bold red]❌ [ERROR CRÍTICO] El servidor no se pudo iniciar:[/bold red]")
-        rprint(f"[red]{str(e)}[/red]\n")
-        input("Presiona Enter para salir...")
+    start_gui()
