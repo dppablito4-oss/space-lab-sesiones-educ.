@@ -1147,6 +1147,262 @@
         }
     }
 
+    function getFormDataJSON() {
+        if (!AppState.currentSession) return null;
+
+        // 1. Recopilar Logos
+        const logos = [];
+        const logoImgs = DOM.sessionSheet.querySelectorAll('.official-logo-img');
+        logoImgs.forEach((img, index) => {
+            logos.push({
+                url: img.getAttribute('src') || ''
+            });
+        });
+        const logoLeft = logos[0]?.url || '';
+        const logoRegional = logos[1]?.url || '';
+
+        // 2. Extraer Metadatos (desde los inputs sincronizados de la sidebar)
+        const metadata = {
+            institucion: DOM.inputInstitucion.value || '',
+            dre: DOM.inputDre.value || '',
+            ugel: DOM.inputUgel.value || '',
+            docente: DOM.inputDocente.value || '',
+            director: DOM.inputDirector.value || '',
+            fecha: DOM.inputFecha.value || '',
+            nivel: DOM.inputNivel.value || 'SECUNDARIA',
+            numero_sesion: DOM.inputNumeroSesion.value || '',
+            grado: DOM.inputGrado.value || '',
+            seccion: DOM.inputSeccion.value || '',
+            area: DOM.inputArea.value || '',
+            duracion: DOM.inputDuracion.value || '',
+            unidad: DOM.inputUnidad.value || '',
+            titulo: DOM.inputTitulo.value || '',
+            logo_left_url: logoLeft,
+            logo_regional_url: logoRegional
+        };
+
+        // 3. Extraer Propósitos de Aprendizaje
+        let competencia = DOM.inputCompetencia.value || '';
+        let estandar = '';
+        let capacidades = [];
+        let criterios = [];
+        let producto_evidencia = '';
+        let instrumento = '';
+
+        // Extraer estándar y competencia complementaria del DOM
+        const compEstTable = DOM.sessionSheet.querySelector('.content-table');
+        if (compEstTable) {
+            const tds = compEstTable.querySelectorAll('td');
+            if (tds[1]) competencia = tds[1].textContent.trim();
+            if (tds[3]) estandar = tds[3].textContent.trim();
+        }
+
+        // Extraer matriz de propósitos
+        const matrizTable = DOM.sessionSheet.querySelector('.propositos-table');
+        if (matrizTable) {
+            const rows = matrizTable.querySelectorAll('tbody > tr');
+            if (rows.length > 0) {
+                const cells = rows[0].querySelectorAll('td');
+                if (cells.length >= 5) {
+                    // Celdas: 0:Competencia, 1:Capacidades, 2:Criterios, 3:Producto, 4:Instrumento
+                    const ulsCap = cells[1].querySelectorAll('ul.session-list li');
+                    capacidades = Array.from(ulsCap).map(li => li.textContent.trim());
+
+                    const ulsCrit = cells[2].querySelectorAll('ul.session-list li');
+                    criterios = Array.from(ulsCrit).map(li => li.textContent.trim());
+
+                    producto_evidencia = cells[3].textContent.trim();
+                    instrumento = cells[4].textContent.trim();
+                }
+            }
+        }
+
+        const proposito = {
+            proposito_texto: AppState.currentSession.proposito?.proposito_texto || '',
+            conocimientos: AppState.currentSession.proposito?.conocimientos || '',
+            competencia,
+            estandar,
+            capacidades,
+            criterios,
+            producto_evidencia,
+            instrumento
+        };
+
+        // 4. Competencias Transversales
+        const competencias_transversales = [];
+        const ctTable = DOM.sessionSheet.querySelector('.ct-table');
+        if (ctTable) {
+            const rows = ctTable.querySelectorAll('tbody > tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2) {
+                    const ct_titulo = cells[0].textContent.trim();
+                    const ct_desempenos = Array.from(cells[1].querySelectorAll('ul.session-list li')).map(li => li.textContent.trim());
+                    competencias_transversales.push({
+                        titulo: ct_titulo,
+                        desempenos: ct_desempenos
+                    });
+                }
+            });
+        }
+
+        // 5. Enfoques Transversales
+        const enfoques_transversales = [];
+        const enfTable = Array.from(DOM.sessionSheet.querySelectorAll('table.content-table')).find(t => {
+            const th = t.querySelector('th');
+            return th && th.textContent.includes('ENFOQUES TRANSVERSALES');
+        });
+        if (enfTable) {
+            const rows = enfTable.querySelectorAll('tbody > tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 3) {
+                    enfoques_transversales.push({
+                        nombre: cells[0].textContent.trim(),
+                        valor: cells[1].textContent.trim(),
+                        actitudes: cells[2].textContent.trim()
+                    });
+                }
+            });
+        }
+
+        // 6. Recursos
+        let enlaces = '';
+        let materiales = '';
+        let refuerzo = '';
+        const recTable = Array.from(DOM.sessionSheet.querySelectorAll('table.content-table')).find(t => {
+            const td = t.querySelector('td');
+            return td && td.textContent.includes('Páginas de Texto');
+        });
+        if (recTable) {
+            const rows = recTable.querySelectorAll('tr');
+            if (rows[0] && rows[0].querySelectorAll('td')[1]) enlaces = rows[0].querySelectorAll('td')[1].textContent.trim();
+            if (rows[1] && rows[1].querySelectorAll('td')[1]) materiales = rows[1].querySelectorAll('td')[1].textContent.trim();
+            if (rows[2] && rows[2].querySelectorAll('td')[1]) refuerzo = rows[2].querySelectorAll('td')[1].textContent.trim();
+        }
+        
+        const recursos = { enlaces, materiales, refuerzo };
+
+        // 7. Momentos Didácticos
+        let inicio_tiempo = '';
+        let inicio_actividades = [];
+        let desarrollo_tiempo = '';
+        let desarrollo_procesos = [];
+        let cierre_tiempo = '';
+        let cierre_metacognicion = [];
+        let cierre_evaluacion = [];
+        let cierre_extension = [];
+
+        const momTable = DOM.sessionSheet.querySelector('.momentos-table');
+        if (momTable) {
+            const rows = Array.from(momTable.querySelectorAll('tbody > tr'));
+            
+            // Fila 1: Inicio
+            if (rows[0]) {
+                const cellMom = rows[0].querySelectorAll('td')[0];
+                const cellAct = rows[0].querySelectorAll('td')[1];
+                if (cellMom) {
+                    const timeMatch = cellMom.textContent.match(/TIEMPO:\s*(\d+)/i);
+                    if (timeMatch) inicio_tiempo = timeMatch[1];
+                }
+                if (cellAct) {
+                    inicio_actividades = Array.from(cellAct.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t.length > 0);
+                }
+            }
+
+            // Filas de Desarrollo
+            let filasDesarrollo = [];
+            let filaCierreIdx = rows.length - 1;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const cellMom = rows[i].querySelectorAll('td')[0];
+                if (cellMom && cellMom.textContent.includes('CIERRE')) {
+                    filaCierreIdx = i;
+                    break;
+                }
+                filasDesarrollo.push(rows[i]);
+            }
+
+            if (filasDesarrollo[0]) {
+                const cellMom = filasDesarrollo[0].querySelectorAll('td')[0];
+                if (cellMom) {
+                    const timeMatch = cellMom.textContent.match(/TIEMPO:\s*(\d+)/i);
+                    if (timeMatch) desarrollo_tiempo = timeMatch[1];
+                }
+            }
+
+            filasDesarrollo.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                let cellAct = null;
+                if (cells.length === 3) {
+                    cellAct = cells[1];
+                } else if (cells.length === 1) {
+                    cellAct = cells[0];
+                }
+                
+                if (cellAct) {
+                    const titleEl = cellAct.querySelector('.proceso-titulo') || cellAct.querySelector('strong');
+                    const titulo = titleEl ? titleEl.textContent.trim() : 'Proceso Didáctico';
+                    const contenido = Array.from(cellAct.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t !== titulo && t.length > 0);
+                    
+                    desarrollo_procesos.push({
+                        clave: titulo.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                        titulo: titulo,
+                        contenido: contenido
+                    });
+                }
+            });
+
+            // Fila de Cierre
+            const rowCierre = rows[filaCierreIdx];
+            if (rowCierre) {
+                const cellMom = rowCierre.querySelectorAll('td')[0];
+                const cellAct = rowCierre.querySelectorAll('td')[1];
+                if (cellMom) {
+                    const timeMatch = cellMom.textContent.match(/TIEMPO:\s*(\d+)/i);
+                    if (timeMatch) cierre_tiempo = timeMatch[1];
+                }
+                if (cellAct) {
+                    const uls = cellAct.querySelectorAll('ul.session-list');
+                    if (uls[0]) cierre_metacognicion = Array.from(uls[0].querySelectorAll('li')).map(li => li.textContent.trim());
+                    if (uls[1]) cierre_evaluacion = Array.from(uls[1].querySelectorAll('li')).map(li => li.textContent.trim());
+                    if (uls[2]) cierre_extension = Array.from(uls[2].querySelectorAll('li')).map(li => li.textContent.trim());
+                }
+            }
+        }
+
+        const momentos = {
+            inicio: { tiempo_total: inicio_tiempo, actividades: inicio_actividades },
+            desarrollo: { tiempo_total: desarrollo_tiempo, procesos: desarrollo_procesos },
+            cierre: { tiempo_total: cierre_tiempo, metacognicion: cierre_metacognicion, evaluacion: cierre_evaluacion, extension: cierre_extension }
+        };
+
+        // 8. Ficha de Trabajo
+        let ficha_trabajo = null;
+        const fichaTituloEl = DOM.sessionSheet.querySelector('[data-key="ficha_titulo"]');
+        const fichaIndicacionesEl = DOM.sessionSheet.querySelector('[data-key="ficha_indicaciones"]');
+        const fichaActividadesEl = DOM.sessionSheet.querySelector('[data-key="ficha_actividades"]');
+        
+        if (fichaTituloEl && fichaActividadesEl) {
+            ficha_trabajo = {
+                titulo: fichaTituloEl.textContent.trim(),
+                indicaciones: fichaIndicacionesEl ? fichaIndicacionesEl.textContent.replace('Indicaciones:', '').trim() : '',
+                actividades: fichaActividadesEl.textContent.trim()
+            };
+        }
+
+        return {
+            metadata,
+            proposito,
+            competencias_transversales,
+            enfoques_transversales,
+            recursos,
+            momentos,
+            ficha_trabajo,
+            token: localStorage.getItem('connection_token') || ''
+        };
+    }
+
     async function exportarAPDFBackend() {
         if (!AppState.currentSession) {
             Toast.warning('Genera una sesión primero');
@@ -1157,81 +1413,13 @@
         Loader.show('🚀 Generando PDF oficial con el motor local...');
         
         try {
-            // ── Obtener HTML pre-paginado desde Paginador ──
-            let htmlPaginado;
-
-            if (typeof Paginador !== 'undefined') {
-                // Clonar el sheet limpio (sin elementos interactivos)
-                const cloneSheet = DOM.sessionSheet.cloneNode(true);
-                cloneSheet.querySelectorAll('.no-print, #logo-resize-handle, .btn-remove-logo, .add-logo-placeholder').forEach(el => el.remove());
-
-                // Calcular páginas A4 sobre el clon limpio
-                const canvasPaginado = Paginador.calcular(cloneSheet);
-                const hojas = canvasPaginado.querySelectorAll('.hoja-a4');
-                hojas.forEach((h, i) => h.setAttribute('data-pagina', `${i + 1} / ${hojas.length}`));
-                htmlPaginado = canvasPaginado.outerHTML;
-            } else {
-                // Fallback: modo continuo legacy
-                const clone = DOM.sessionSheet.cloneNode(true);
-                clone.querySelectorAll('.no-print, #logo-resize-handle').forEach(el => el.remove());
-                htmlPaginado = `<div class="session-sheet">${clone.innerHTML}</div>`;
-            }
-
-            // ── Recopilar estilos de la página ──
-            let styles = '';
-            const styleSheets = document.styleSheets;
-            for (let i = 0; i < styleSheets.length; i++) {
-                try {
-                    const rules = styleSheets[i].cssRules || styleSheets[i].rules;
-                    if (rules) {
-                        for (let j = 0; j < rules.length; j++) {
-                            styles += rules[j].cssText;
-                        }
-                    }
-                } catch (e) { /* ignorar estilos externos */ }
-            }
-
-            const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
-            const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
-            const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
-
-            // ── Construir payload HTML final ──
-            const htmlPayload = `
-                <style>
-                    ${styles}
-                    body {
-                        margin: 0;
-                        background: #fff !important;
-                        font-family: ${activeFont} !important;
-                        font-size: ${activeSize} !important;
-                        color: #000000 !important;
-                    }
-                    :root { --primary: ${activeColor} !important; }
-                    /* Cada hoja es exactamente una página A4 */
-                    .hoja-a4 {
-                        width: 210mm;
-                        min-height: 297mm;
-                        max-height: 297mm;
-                        padding: 18mm 12mm;
-                        box-sizing: border-box;
-                        background: #ffffff;
-                        overflow: hidden;
-                        page-break-after: always;
-                        break-after: page;
-                    }
-                    /* Ocultar numeración visual en el PDF (el backend añade su propia numeración) */
-                    .hoja-a4::after { display: none !important; }
-                </style>
-                ${htmlPaginado}
-            `;
+            const sessionPayload = getFormDataJSON();
+            const titulo = sessionPayload.metadata.titulo || 'Sesion-de-Aprendizaje';
             
-            const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
-            const token = localStorage.getItem('connection_token') || '';
-            
-            const response = await fetch('http://localhost:8000/exportar-pdf', {
+            const response = await fetch('http://localhost:8000/exportar-pdf-json', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html_content: htmlPayload, titulo, token })
+                body: JSON.stringify(sessionPayload)
             });
             
             if (!response.ok) {
@@ -1268,24 +1456,13 @@
         Loader.show('📝 Generando archivo de Word (.docx) nativo...');
         
         try {
-            const clone = DOM.sessionSheet.cloneNode(true);
-            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
-            noPrintElements.forEach(el => el.remove());
+            const sessionPayload = getFormDataJSON();
+            const titulo = sessionPayload.metadata.titulo || 'Sesion-de-Aprendizaje';
             
-            const cleanHtml = clone.innerHTML;
-            const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
-            const token = localStorage.getItem('connection_token') || '';
-            
-            const response = await fetch('http://localhost:8000/exportar-docx', {
+            const response = await fetch('http://localhost:8000/exportar-docx-json', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    html_content: cleanHtml,
-                    titulo: titulo,
-                    token: token
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sessionPayload)
             });
             
             if (!response.ok) {
