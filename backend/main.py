@@ -1851,23 +1851,23 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     p_f_doc = firmas_table.cell(0, 0).paragraphs[0]
     p_f_doc.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_f_doc.add_run("_______________________________\n").bold = True
-    run_n_doc = p_f_doc.add_run(session.metadata.docente or "Docente de la Sesión")
+    run_n_doc = p_f_doc.add_run((session.metadata.docente or "Docente de la Sesión") + "\n")
     run_n_doc.bold = True
     run_n_doc.font.size = Pt(9.5)
-    p_f_doc.add_paragraph("Docente de la Sesión").alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_f_doc.paragraphs[-1].runs[0].font.size = Pt(8.5)
-    p_f_doc.paragraphs[-1].runs[0].font.color.rgb = RGBColor(100, 116, 139)
+    run_c_doc = p_f_doc.add_run("Docente de la Sesión")
+    run_c_doc.font.size = Pt(8.5)
+    run_c_doc.font.color.rgb = RGBColor(100, 116, 139)
 
     # Firma Director
     p_f_dir = firmas_table.cell(0, 1).paragraphs[0]
     p_f_dir.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_f_dir.add_run("_______________________________\n").bold = True
-    run_n_dir = p_f_dir.add_run(session.metadata.director or "Director(a) / Subdirector(a)")
+    run_n_dir = p_f_dir.add_run((session.metadata.director or "Director(a) / Subdirector(a)") + "\n")
     run_n_dir.bold = True
     run_n_dir.font.size = Pt(9.5)
-    p_f_dir.add_paragraph("Director(a) / Subdirector(a)").alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_f_dir.paragraphs[-1].runs[0].font.size = Pt(8.5)
-    p_f_dir.paragraphs[-1].runs[0].font.color.rgb = RGBColor(100, 116, 139)
+    run_c_dir = p_f_dir.add_run("Director(a) / Subdirector(a)")
+    run_c_dir.font.size = Pt(8.5)
+    run_c_dir.font.color.rgb = RGBColor(100, 116, 139)
 
     # ─── FICHA DE TRABAJO (SI EXISTE) ───
     if session.ficha_trabajo:
