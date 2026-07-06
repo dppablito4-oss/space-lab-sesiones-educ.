@@ -106,6 +106,90 @@ class ExportDocxRequest(BaseModel):
     titulo: str = "Sesion_de_Aprendizaje"
     token: str
 
+# ── MODELO DE DATOS JSON ESTRUCTURADO PARA SESIONES PREMIUM ──
+from typing import List, Optional
+
+class MetadataData(BaseModel):
+    institucion: Optional[str] = ""
+    dre: Optional[str] = ""
+    ugel: Optional[str] = ""
+    docente: Optional[str] = ""
+    director: Optional[str] = ""
+    fecha: Optional[str] = ""
+    nivel: Optional[str] = ""
+    numero_sesion: Optional[str] = ""
+    grado: Optional[str] = ""
+    seccion: Optional[str] = ""
+    area: Optional[str] = ""
+    duracion: Optional[str] = ""
+    unidad: Optional[str] = ""
+    titulo: Optional[str] = ""
+    logo_left_url: Optional[str] = ""
+    logo_regional_url: Optional[str] = ""
+
+class PropositoData(BaseModel):
+    proposito_texto: Optional[str] = ""
+    conocimientos: Optional[str] = ""
+    competencia: Optional[str] = ""
+    estandar: Optional[str] = ""
+    capacidades: List[str] = []
+    criterios: List[str] = []
+    producto_evidencia: Optional[str] = ""
+    instrumento: Optional[str] = ""
+
+class CompetenciaTransversal(BaseModel):
+    titulo: str
+    desempenos: List[str] = []
+
+class EnfoqueTransversal(BaseModel):
+    nombre: str
+    valor: str
+    actitudes: str
+
+class RecursosData(BaseModel):
+    enlaces: Optional[str] = ""
+    materiales: Optional[str] = ""
+    refuerzo: Optional[str] = ""
+
+class MomentoInicio(BaseModel):
+    tiempo_total: Optional[str] = ""
+    actividades: List[str] = []
+
+class ProcesoDesarrollo(BaseModel):
+    clave: str
+    titulo: str
+    contenido: List[str] = []
+
+class MomentoDesarrollo(BaseModel):
+    tiempo_total: Optional[str] = ""
+    procesos: List[ProcesoDesarrollo] = []
+
+class MomentoCierre(BaseModel):
+    tiempo_total: Optional[str] = ""
+    metacognicion: List[str] = []
+    evaluacion: List[str] = []
+    extension: List[str] = []
+
+class MomentosData(BaseModel):
+    inicio: MomentoInicio
+    desarrollo: MomentoDesarrollo
+    cierre: MomentoCierre
+
+class FichaTrabajoData(BaseModel):
+    titulo: Optional[str] = ""
+    indicaciones: Optional[str] = ""
+    actividades: Optional[str] = ""
+
+class SesionAprendizajeRequest(BaseModel):
+    metadata: MetadataData
+    proposito: PropositoData
+    competencias_transversales: List[CompetenciaTransversal] = []
+    enfoques_transversales: List[EnfoqueTransversal] = []
+    recursos: RecursosData
+    momentos: MomentosData
+    ficha_trabajo: Optional[FichaTrabajoData] = None
+    token: str
+
 
 @app.get("/")
 def check_status():
