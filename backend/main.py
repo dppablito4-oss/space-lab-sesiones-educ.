@@ -457,8 +457,8 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
 
             .hoja-a4 {{
                 width: 210mm;
-                min-height: 297mm;
-                padding: 18mm 12mm;
+                min-height: 269mm;
+                padding: 0 12mm;
                 box-sizing: border-box;
                 background: #ffffff;
                 position: relative;
@@ -936,20 +936,20 @@ async def exportar_pdf_json(payload: SesionAprendizajeRequest):
             
             await page.set_content(documento_html, wait_until="networkidle")
             
-            # Captura a PDF con Playwright aplicando prefer_css_page_size
+            # Captura a PDF con Playwright aplicando prefer_css_page_size y márgenes físicos para evitar traslapes
             pdf_bytes = await page.pdf(
                 print_background=True,
                 prefer_css_page_size=True,
-                margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+                margin={"top": "1.4cm", "bottom": "1.4cm", "left": "0", "right": "0"},
                 display_header_footer=True,
                 header_template=f"""
-                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-bottom: 1px solid #f1f5f9;">
+                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 1.2cm; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px;">
                         <span>S.Y. PABLITO_DP &bull; Motor de Exportación Premium</span>
                         <span>{escape_html(titulo)}</span>
                     </div>
                 """,
                 footer_template="""
-                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 1.2cm; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 5px;">
                         <span>Sesión de Aprendizaje Oficial &bull; Space Lab</span>
                         <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
                     </div>
