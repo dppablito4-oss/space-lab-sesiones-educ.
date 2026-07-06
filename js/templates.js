@@ -68,7 +68,7 @@ const Templates = (() => {
             case 'inicial':
                 return renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, data.juego_libre_sectores, data.ficha_trabajo, ce);
             default:
-                return renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, ce);
+                return renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, data.ficha_trabajo, ce);
         }
     }
 
@@ -76,7 +76,7 @@ const Templates = (() => {
     // SESIÓN ESTÁNDAR MINEDU (Formato PDF Oficial)
     // ═══════════════════════════════════════
 
-    function renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, ce) {
+    function renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, fichaTrabajo, ce) {
 
         // Build enfoques rows (at least 2)
         let enfoquesRows = '';
@@ -370,6 +370,39 @@ const Templates = (() => {
                 </td>
             </tr>`;
 
+        let fichaTrabajoHtml = '';
+        if (fichaTrabajo && typeof fichaTrabajo === 'object') {
+            const ft = fichaTrabajo;
+            fichaTrabajoHtml = `
+                <div class="html2pdf__page-break" style="break-before: page; margin-top: 30px;"></div>
+                <div class="session-title-bar-official" style="margin-top: 20px; background: #2980b9 !important; color:#fff !important;">
+                    <span>FICHA DE TRABAJO INDEPENDIENTE PARA EL ESTUDIANTE</span>
+                </div>
+                <div class="ficha-estudiante-container" style="border: 2px dashed #3498db; padding: 25px; border-radius: 12px; margin-top: 15px; background: #ffffff;">
+                    <table style="width: 100%; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;">
+                        <tr>
+                            <td style="font-size: 14px; font-weight: 700; color: #2c3e50; border:none !important; background:transparent !important; padding:0 !important;">
+                                Nombre: __________________________________________________
+                            </td>
+                            <td style="font-size: 14px; font-weight: 700; color: #2c3e50; text-align: right; border:none !important; background:transparent !important; padding:0 !important; width: 220px;">
+                                Grado y Sección: ________________
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="font-size: 16px; font-weight: 800; color: #2980b9; margin-bottom: 8px; text-transform: uppercase;" ${ce} data-key="ficha_titulo">
+                        🎨 Actividad: ${esc(ft.titulo || 'Mi Ficha Práctica')}
+                    </div>
+                    <div style="font-size: 11px; font-style: italic; color: #7f8c8d; margin-bottom: 20px; padding: 8px; background: #ecf0f1; border-radius: 6px;" ${ce} data-key="ficha_indicaciones">
+                        <strong>Indicaciones:</strong> ${esc(ft.indicaciones || 'Realiza la actividad según las indicaciones.')}
+                    </div>
+                    
+                    <div class="ficha-actividades-render" style="min-height: 400px; padding: 15px; border: 1px solid #bdc3c7; border-radius: 8px; background: #fafafa;" ${ce} data-key="ficha_actividades">
+                        ${ft.actividades || '<p style="text-align:center; color:#95a5a6; margin-top:150px;">Escribe o genera las actividades del estudiante aquí...</p>'}
+                    </div>
+                </div>`;
+        }
+
         return `
             <table class="print-layout-table">
                 <thead>
@@ -589,6 +622,7 @@ const Templates = (() => {
                     </tr>
                 </tbody>
             </table>
+            ${fichaTrabajoHtml}
         `;
     }
 

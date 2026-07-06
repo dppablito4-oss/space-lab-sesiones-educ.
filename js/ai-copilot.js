@@ -244,6 +244,22 @@ La sesión que vas a generar es de nivel EDUCACIÓN INICIAL (para niños de 3 a 
 Asegúrate de que la estructura JSON contenga estos dos nuevos campos en su raíz.`;
         }
 
+        if (metadata.nivel === 'PRIMARIA' || (metadata.nivel && metadata.nivel.toUpperCase() === 'PRIMARIA')) {
+            dynamicSystemPrompt += `\n\n⚠️ INSTRUCCIÓN DE FORMATO ESPECIAL PARA EDUCACIÓN PRIMARIA (1° A 6° GRADO):
+La sesión que vas a generar es de nivel EDUCACIÓN PRIMARIA. Por lo tanto, debes incluir OBLIGATORIAMENTE un campo adicional en la raíz del JSON de respuesta llamado "ficha_trabajo" para proponer una ficha de aplicación/trabajo autónoma adaptada de forma rigurosa al grado indicado (${metadata.grado || 'del grado correspondiente'}):
+{
+  "ficha_trabajo": {
+    "titulo": "Título de la actividad para el estudiante (ej. ¡Jugamos y resolvemos sumando!)",
+    "indicaciones": "Instrucciones cortas directas al estudiante (máximo 40 palabras).",
+    "actividades": "Código HTML detallado con la estructura de la ficha. Usa tablas, recuadros punteados o listas con estilos CSS en línea para simular una hoja de trabajo física y atractiva. Adapta el contenido al grado indicado de forma estricta:
+      - 1° y 2° grado (Ciclo III): Actividades muy visuales, trazado de palabras, problemas sencillos usando dibujos sencillos representados con caracteres o tablas, y sumas/restas ilustradas con contenedores grandes para dibujar.
+      - 3° y 4° grado (Ciclo IV): Textos breves para comprensión con preguntas de opción múltiple, problemas matemáticos de dos operaciones con esquemas de solución y crucigramas/sopas de letras básicos.
+      - 5° y 6° grado (Ciclo V): Preguntas reflexivas y críticas, problemas lógicos complejos (fracciones, porcentajes, etc.), organizadores visuales vacíos (ej. mapas conceptuales creados con tablas HTML vacías con bordes) para completar, y tareas de redacción corta."
+  }
+}
+Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" en su raíz.`;
+        }
+
         // 1. Intentar llamar a la Edge Function de Supabase si está disponible
         if (window.SupabaseClient && SupabaseClient.client) {
             try {
