@@ -313,27 +313,27 @@ def build_docx_from_html(html_content: str) -> io.BytesIO:
 
     processed_tags = set()
 
-    def add_runs_to_paragraph(paragraph, element):
+    def add_runs_to_paragraph(paragraph, element, is_bold=False, is_italic=False):
         for child in element.children:
             if isinstance(child, NavigableString):
                 text = str(child)
                 if text:
-                    paragraph.add_run(text)
+                    run = paragraph.add_run(text)
+                    if is_bold:
+                        run.bold = True
+                    if is_italic:
+                        run.italic = True
             elif isinstance(child, Tag):
                 if child.name == 'br':
                     paragraph.add_run('\n')
                 elif child.name in ['strong', 'b']:
-                    run = paragraph.add_run()
-                    run.bold = True
-                    add_runs_to_paragraph(run, child)
+                    add_runs_to_paragraph(paragraph, child, is_bold=True, is_italic=is_italic)
                 elif child.name in ['em', 'i']:
-                    run = paragraph.add_run()
-                    run.italic = True
-                    add_runs_to_paragraph(run, child)
+                    add_runs_to_paragraph(paragraph, child, is_bold=is_bold, is_italic=True)
                 elif child.name in ['span', 'a']:
-                    add_runs_to_paragraph(paragraph, child)
+                    add_runs_to_paragraph(paragraph, child, is_bold=is_bold, is_italic=is_italic)
                 else:
-                    add_runs_to_paragraph(paragraph, child)
+                    add_runs_to_paragraph(paragraph, child, is_bold=is_bold, is_italic=is_italic)
 
     def walk_tree(element):
         if element in processed_tags:
