@@ -2027,6 +2027,50 @@ body {
     overflow: visible !important;
 }
 
+/* ══ A4 Canvas: Google Docs-style multi-page viewer ══ */
+#a4-canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px 0;
+    background: transparent;
+    width: 100%;
+}
+
+/* Cada hoja física A4 dentro del canvas */
+.hoja-a4 {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    overflow: hidden;
+    padding: 18mm 12mm;
+    box-sizing: border-box;
+    background: #ffffff;
+    color: #000;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.10);
+    position: relative;
+    page-break-after: always;
+    break-after: page;
+}
+
+/* Número de página discreto en esquina inferior derecha */
+.hoja-a4::after {
+    content: attr(data-pagina);
+    position: absolute;
+    bottom: 8mm;
+    right: 12mm;
+    font-size: 7pt;
+    color: #94a3b8;
+    font-family: 'Inter', Arial, sans-serif;
+    pointer-events: none;
+}
+
+/* Separador visual entre páginas en la vista previa */
+.hoja-a4 + .hoja-a4 {
+    border-top: 2px solid rgba(99, 102, 241, 0.08);
+}
+
 /* Logo Gallery Premium Styles */
 .logo-gallery-item {
     transition: all var(--transition-fast);

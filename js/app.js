@@ -928,6 +928,26 @@
 
         // Render math formulas (KaTeX) — only for Matemática sessions or if LaTeX delimiters detected
         renderMatematica();
+
+        // ── Paginación A4 Frontend (nueva arquitectura WYSIWYG) ──
+        // Después de renderizar y calcular KaTeX, distribuir el contenido
+        // en hojas .hoja-a4 físicas de 210mm × 297mm.
+        if (typeof Paginador !== 'undefined') {
+            requestAnimationFrame(() => {
+                try {
+                    const canvas = Paginador.calcular(DOM.sessionSheet);
+                    // Numerar hojas
+                    const hojas = canvas.querySelectorAll('.hoja-a4');
+                    hojas.forEach((h, i) => h.setAttribute('data-pagina', `${i + 1} / ${hojas.length}`));
+                    // Reemplazar contenido con el canvas paginado
+                    DOM.sessionSheet.innerHTML = '';
+                    DOM.sessionSheet.appendChild(canvas);
+                } catch (e) {
+                    // Fallo silencioso: el modo continuo (no-paginado) permanece activo
+                    console.warn('[Paginador] Fallo al calcular páginas:', e);
+                }
+            });
+        }
     }
 
     // ═══════════════════════════════════════
@@ -1090,13 +1110,27 @@
         Loader.show('🚀 Generando PDF oficial con el motor local...');
         
         try {
-            const clone = DOM.sessionSheet.cloneNode(true);
-            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
-            noPrintElements.forEach(el => el.remove());
-            
-            const cleanHtml = clone.innerHTML;
-            
-            // Recopilar estilos
+            // ── Obtener HTML pre-paginado desde Paginador ──
+            let htmlPaginado;
+
+            if (typeof Paginador !== 'undefined') {
+                // Clonar el sheet limpio (sin elementos interactivos)
+                const cloneSheet = DOM.sessionSheet.cloneNode(true);
+                cloneSheet.querySelectorAll('.no-print, #logo-resize-handle, .btn-remove-logo, .add-logo-placeholder').forEach(el => el.remove());
+
+                // Calcular páginas A4 sobre el clon limpio
+                const canvasPaginado = Paginador.calcular(cloneSheet);
+                const hojas = canvasPaginado.querySelectorAll('.hoja-a4');
+                hojas.forEach((h, i) => h.setAttribute('data-pagina', `${i + 1} / ${hojas.length}`));
+                htmlPaginado = canvasPaginado.outerHTML;
+            } else {
+                // Fallback: modo continuo legacy
+                const clone = DOM.sessionSheet.cloneNode(true);
+                clone.querySelectorAll('.no-print, #logo-resize-handle').forEach(el => el.remove());
+                htmlPaginado = `<div class="session-sheet">${clone.innerHTML}</div>`;
+            }
+
+            // ── Recopilar estilos de la página ──
             let styles = '';
             const styleSheets = document.styleSheets;
             for (let i = 0; i < styleSheets.length; i++) {
@@ -1107,31 +1141,41 @@
                             styles += rules[j].cssText;
                         }
                     }
-                } catch (e) {
-                    // Ignorar errores de estilos externos
-                }
+                } catch (e) { /* ignorar estilos externos */ }
             }
-            
+
             const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
             const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
             const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
-            
+
+            // ── Construir payload HTML final ──
             const htmlPayload = `
                 <style>
                     ${styles}
                     body {
+                        margin: 0;
+                        background: #fff !important;
                         font-family: ${activeFont} !important;
                         font-size: ${activeSize} !important;
-                        background: #ffffff !important;
                         color: #000000 !important;
                     }
-                    :root {
-                        --primary: ${activeColor} !important;
+                    :root { --primary: ${activeColor} !important; }
+                    /* Cada hoja es exactamente una página A4 */
+                    .hoja-a4 {
+                        width: 210mm;
+                        min-height: 297mm;
+                        max-height: 297mm;
+                        padding: 18mm 12mm;
+                        box-sizing: border-box;
+                        background: #ffffff;
+                        overflow: hidden;
+                        page-break-after: always;
+                        break-after: page;
                     }
+                    /* Ocultar numeración visual en el PDF (el backend añade su propia numeración) */
+                    .hoja-a4::after { display: none !important; }
                 </style>
-                <div class="session-sheet">
-                    ${cleanHtml}
-                </div>
+                ${htmlPaginado}
             `;
             
             const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
@@ -1139,14 +1183,8 @@
             
             const response = await fetch('http://localhost:8000/exportar-pdf', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    html_content: htmlPayload,
-                    titulo: titulo,
-                    token: token
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html_content: htmlPayload, titulo, token })
             });
             
             if (!response.ok) {

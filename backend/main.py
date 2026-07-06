@@ -144,7 +144,7 @@ async def exportar_pdf(payload: ExportPDFRequest):
         filename = re.sub(r'[^a-zA-Z0-9-_\s]', '', payload.titulo).replace(' ', '_')
         nombre_archivo = f"{filename}.pdf"
 
-        # Contenido HTML base estructurado con inyección de CSS extremo anti-cortes
+        # HTML base mínimo — el frontend ya trae el HTML pre-paginado en divs .hoja-a4
         documento_completo = f"""
         <!DOCTYPE html>
         <html>
@@ -152,46 +152,21 @@ async def exportar_pdf(payload: ExportPDFRequest):
             <meta charset="utf-8">
             <title>{payload.titulo}</title>
             <style>
-                @media print {{
-                    @page {{
-                        size: A4;
-                        margin: 1.8cm 1.2cm 1.8cm 1.2cm;
-                    }}
-                    
-                    /* Reglas extremas para controlar saltos de página y evitar cortes a mitad de fila */
-                    tr, img, td, th, .section-box, .momento-box, .panel-cajas {{
-                        page-break-inside: avoid !important;
-                        break-inside: avoid !important;
-                    }}
-                    
-                    /* Ocultar elementos interactivos del editor que no pertenecen al documento exportado */
-                    .no-print,
-                    .add-logo-placeholder,
-                    .btn-remove-logo {{
-                        display: none !important;
-                    }}
-                    
-                    /* Clonar bordes superior e inferior cuando un elemento de tabla se corte */
-                    table, tr, td, th {{
-                        box-decoration-break: clone !important;
-                        -webkit-box-decoration-break: clone !important;
-                    }}
-                    
-                    /* Asegurar que el encabezado del formulario (thead) se repita al saltar de página */
-                    thead {{
-                        display: table-header-group !important;
-                    }}
-                    
-                    /* Evitar que tablas generales se solapen de forma extraña */
-                    table {{
-                        page-break-inside: auto !important;
-                    }}
-                    
-                    /* Salto de página forzado a demanda */
-                    .page-break {{
-                        page-break-before: always !important;
-                        break-before: always !important;
-                    }}
+                /* Glue CSS mínimo: el frontend es responsable del diseño y la paginación */
+                * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+                body {{
+                    background: #fff;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }}
+                /* Garantizar salto de página después de cada hoja */
+                .hoja-a4 {{
+                    page-break-after: always !important;
+                    break-after: page !important;
+                }}
+                /* Ocultar elementos interactivos residuales */
+                .no-print, .add-logo-placeholder, .btn-remove-logo {{
+                    display: none !important;
                 }}
             </style>
         </head>
@@ -210,28 +185,23 @@ async def exportar_pdf(payload: ExportPDFRequest):
             context = await browser.new_context()
             page = await context.new_page()
             
-            # Cargar el HTML y esperar a que finalice la red
             await page.set_content(documento_completo, wait_until="networkidle")
             
-            # Generación de PDF binario con cabecera y pie nativos de Playwright/Chromium
+            # Usar prefer_css_page_size=True → Chromium respeta la medida exacta del div .hoja-a4
+            # Los márgenes van en cero porque el padding ya está definido en el div
             pdf_bytes = await page.pdf(
-                format="A4",
                 print_background=True,
-                margin={
-                    "top": "2.0cm",      # Margen superior suficiente para la cabecera nativa
-                    "bottom": "2.0cm",   # Margen inferior suficiente para el pie de página nativo
-                    "left": "1.2cm",
-                    "right": "1.2cm"
-                },
+                prefer_css_page_size=True,
+                margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
                 display_header_footer=True,
                 header_template=f"""
-                    <div style="font-family: 'Outfit', 'Helvetica', 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; margin: 0 1.2cm; color: #94a3b8; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px;">
+                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-bottom: 1px solid #f1f5f9;">
                         <span>S.Y. PABLITO_DP &bull; Motor de Exportación</span>
                         <span>{payload.titulo}</span>
                     </div>
                 """,
                 footer_template="""
-                    <div style="font-family: 'Outfit', 'Helvetica', 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; margin: 0 1.2cm; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 3px;">
+                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-top: 1px solid #f1f5f9;">
                         <span>Sesión de Aprendizaje Oficial &bull; Space Lab</span>
                         <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
                     </div>
