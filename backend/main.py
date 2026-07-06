@@ -1,0 +1,531 @@
+import os
+import io
+import re
+import sys
+import secrets
+import asyncio
+import webbrowser
+import threading
+import subprocess
+from pathlib import Path
+
+# Configurar consola en Windows para UTF-8 de forma forzada para evitar fallos con emojis/bloques
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel
+from playwright.async_api import async_playwright
+from bs4 import BeautifulSoup, NavigableString, Tag
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+# Librerías para estilizar consola
+try:
+    from rich import print as rprint
+    from rich.console import Console
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+    from rich.panel import Panel
+    console = Console()
+except ImportError:
+    # Fallback si no está instalado rich
+    console = None
+    def rprint(*args, **kwargs):
+        print(*args, **kwargs)
+
+# Inicialización de FastAPI
+app = FastAPI(
+    title="Motor de Exportación Pedagógica",
+    description="Backend local para generación premium de PDFs y Word (.docx)"
+)
+
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Variables globales para el enlace de sesión
+CONNECTION_TOKEN = secrets.token_hex(16)
+CLIENT_CONNECTED = False
+
+# Esquemas de Datos con Token obligatorio para mayor seguridad
+class ExportPDFRequest(BaseModel):
+    html_content: str
+    titulo: str = "Sesion_de_Aprendizaje"
+    token: str
+
+class ExportDocxRequest(BaseModel):
+    html_content: str
+    titulo: str = "Sesion_de_Aprendizaje"
+    token: str
+
+
+@app.get("/")
+def check_status():
+    """Endpoint de control para verificar si el servidor local está activo."""
+    return {
+        "status": "Online",
+        "engine": "FastAPI + Python Export Engine",
+        "connected": CLIENT_CONNECTED
+    }
+
+
+@app.get("/verificar-token")
+def verificar_token(token: str):
+    """Verifica si el token proveído coincide con el de la sesión actual."""
+    global CLIENT_CONNECTED
+    if token == CONNECTION_TOKEN:
+        CLIENT_CONNECTED = True
+        if console:
+            console.print("\n[bold green]⚡ [CONEXIÓN ESTABLECIDA] El navegador se ha enlazado con éxito.[/bold green]")
+        return {"status": "Connected", "message": "Enlace establecido correctamente."}
+    else:
+        raise HTTPException(status_code=401, detail="Token de conexión inválido.")
+
+
+@app.post("/exportar-pdf")
+async def exportar_pdf(payload: ExportPDFRequest):
+    """
+    Exporta el HTML y CSS recibido a un archivo PDF físico A4
+    utilizando Playwright (Chromium headless). Requiere token de conexión.
+    """
+    if payload.token != CONNECTION_TOKEN:
+        raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
+
+    try:
+        # Sanitizar el nombre del archivo
+        filename = re.sub(r'[^a-zA-Z0-9-_\s]', '', payload.titulo).replace(' ', '_')
+        nombre_archivo = f"{filename}.pdf"
+
+        # Contenido HTML base estructurado con codificación UTF-8
+        documento_completo = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>{payload.titulo}</title>
+            <style>
+                @media print {{
+                    @page {{
+                        size: A4;
+                        margin: 1.5cm 1cm 1.5cm 1cm;
+                    }}
+                }}
+            </style>
+        </head>
+        <body>
+            {payload.html_content}
+        </body>
+        </html>
+        """
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
+            
+            # Cargar el HTML y esperar a que finalice la red
+            await page.set_content(documento_completo, wait_until="networkidle")
+            
+            # Generación de PDF binario
+            pdf_bytes = await page.pdf(
+                format="A4",
+                print_background=True,
+                margin={
+                    "top": "1.5cm",
+                    "bottom": "1.5cm",
+                    "left": "1.2cm",
+                    "right": "1.2cm"
+                }
+            )
+            await browser.close()
+
+        if console:
+            console.print(f"[green]✓ [PDF EXPORTADO] Generado con éxito: {nombre_archivo}[/green]")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={nombre_archivo}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    except Exception as e:
+        print("[ERROR PDF]", str(e))
+        raise HTTPException(status_code=500, detail=f"Fallo al compilar PDF: {str(e)}")
+
+
+# ────────────────────────────────────────────────────────────────────────
+# UTILIDADES PARA CONSTRUCCIÓN DE WORD (.docx) NATIVO
+# ────────────────────────────────────────────────────────────────────────
+
+def set_cell_background(cell, hex_color: str):
+    """Establece el color de fondo de una celda en Word."""
+    shading_elm = OxmlElement('w:shd')
+    shading_elm.set(qn('w:val'), 'clear')
+    shading_elm.set(qn('w:color'), 'auto')
+    shading_elm.set(qn('w:fill'), hex_color)
+    cell._tc.get_or_add_tcPr().append(shading_elm)
+
+
+def set_cell_margins(cell, top=120, bottom=120, left=180, right=180):
+    """Establece márgenes internos (padding) de una celda en dxa (1 pt = 20 dxa)."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    tcMar = OxmlElement('w:tcMar')
+    for margin, val in [('top', top), ('bottom', bottom), ('left', left), ('right', right)]:
+        node = OxmlElement(f'w:{margin}')
+        node.set(qn('w:w'), str(val))
+        node.set(qn('w:type'), 'dxa')
+        tcMar.append(node)
+    tcPr.append(tcMar)
+
+
+def add_table_borders(table):
+    """Agrega bordes delgados de color gris claro a toda la tabla."""
+    tblPr = table._tbl.tblPr
+    borders = OxmlElement('w:tblBorders')
+    for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+        border = OxmlElement(f'w:{border_name}')
+        border.set(qn('w:val'), 'single')
+        border.set(qn('w:sz'), '4')  # 4 = 1/2 pt
+        border.set(qn('w:space'), '0')
+        border.set(qn('w:color'), 'CBD5E1')  # Slate-300
+        borders.append(border)
+    tblPr.append(borders)
+
+
+def build_docx_from_html(html_content: str) -> io.BytesIO:
+    """Parsea recursivamente la estructura HTML y construye un documento .docx nativo."""
+    doc = Document()
+    
+    # Configuración de márgenes estándar
+    for section in doc.sections:
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
+
+    # Estilo Normal
+    style_normal = doc.styles['Normal']
+    style_normal.font.name = 'Arial'
+    style_normal.font.size = Pt(10)
+    style_normal.font.color.rgb = RGBColor(30, 41, 59) # Slate-800
+
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Eliminar katex-html para evitar texto duplicado
+    for katex_html in soup.find_all(class_='katex-html'):
+        katex_html.decompose()
+
+    processed_tags = set()
+
+    def add_runs_to_paragraph(paragraph, element):
+        for child in element.children:
+            if isinstance(child, NavigableString):
+                text = str(child)
+                if text:
+                    paragraph.add_run(text)
+            elif isinstance(child, Tag):
+                if child.name == 'br':
+                    paragraph.add_run('\n')
+                elif child.name in ['strong', 'b']:
+                    run = paragraph.add_run()
+                    run.bold = True
+                    add_runs_to_paragraph(run, child)
+                elif child.name in ['em', 'i']:
+                    run = paragraph.add_run()
+                    run.italic = True
+                    add_runs_to_paragraph(run, child)
+                elif child.name in ['span', 'a']:
+                    add_runs_to_paragraph(paragraph, child)
+                else:
+                    add_runs_to_paragraph(paragraph, child)
+
+    def walk_tree(element):
+        if element in processed_tags:
+            return
+        
+        if isinstance(element, Tag):
+            # TÍTULOS
+            if element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                level = int(element.name[1])
+                p = doc.add_paragraph()
+                p.paragraph_format.space_before = Pt(14)
+                p.paragraph_format.space_after = Pt(6)
+                p.paragraph_format.keep_with_next = True
+                
+                run = p.add_run()
+                run.bold = True
+                run.font.name = 'Arial'
+                
+                if level == 1:
+                    run.font.size = Pt(16)
+                    run.font.color.rgb = RGBColor(15, 23, 42)
+                elif level == 2:
+                    run.font.size = Pt(13)
+                    run.font.color.rgb = RGBColor(30, 41, 59)
+                else:
+                    run.font.size = Pt(11)
+                    run.font.color.rgb = RGBColor(71, 85, 105)
+                
+                add_runs_to_paragraph(p, element)
+                processed_tags.add(element)
+                return
+
+            # PÁRRAFOS
+            elif element.name == 'p':
+                text_clean = element.get_text(strip=True)
+                if not text_clean:
+                    processed_tags.add(element)
+                    return
+                
+                p = doc.add_paragraph()
+                p.paragraph_format.space_after = Pt(6)
+                p.paragraph_format.line_spacing = 1.15
+                add_runs_to_paragraph(p, element)
+                processed_tags.add(element)
+                return
+
+            # LISTAS
+            elif element.name in ['ul', 'ol']:
+                list_style = 'List Bullet' if element.name == 'ul' else 'List Number'
+                for li in element.find_all('li', recursive=False):
+                    p = doc.add_paragraph(style=list_style)
+                    p.paragraph_format.space_after = Pt(4)
+                    p.paragraph_format.line_spacing = 1.15
+                    add_runs_to_paragraph(p, li)
+                processed_tags.add(element)
+                return
+
+            # TABLAS
+            elif element.name == 'table':
+                html_rows = element.find_all('tr', recursive=True)
+                if not html_rows:
+                    processed_tags.add(element)
+                    return
+
+                max_cols = 0
+                for r in html_rows:
+                    cols = len(r.find_all(['td', 'th'], recursive=False))
+                    if cols > max_cols:
+                        max_cols = cols
+
+                if max_cols == 0:
+                    processed_tags.add(element)
+                    return
+
+                docx_table = doc.add_table(rows=0, cols=max_cols)
+                docx_table.autofit = True
+                add_table_borders(docx_table)
+
+                for row_idx, html_row in enumerate(html_rows):
+                    row_cells = docx_table.add_row().cells
+                    html_cells = html_row.find_all(['td', 'th'], recursive=False)
+
+                    for col_idx, html_cell in enumerate(html_cells):
+                        if col_idx < len(row_cells):
+                            cell = row_cells[col_idx]
+                            is_header = html_cell.name == 'th'
+
+                            bg_color = "F8FAFC" if is_header else "FFFFFF"
+
+                            style_attr = html_cell.get('style', '')
+                            class_attr = html_cell.get('class', [])
+                            
+                            hex_match = re.search(r'background-color:\s*#([A-Fa-f0-9]{6})', style_attr)
+                            if hex_match:
+                                bg_color = hex_match.group(1).upper()
+                            elif 'cell-peru' in class_attr:
+                                bg_color = "C0392B"
+                            elif 'cell-minedu' in class_attr:
+                                bg_color = "2C3E50"
+
+                            set_cell_background(cell, bg_color)
+                            set_cell_margins(cell, top=100, bottom=100, left=140, right=140)
+
+                            p = cell.paragraphs[0]
+                            p.paragraph_format.space_after = Pt(2)
+                            p.paragraph_format.line_spacing = 1.1
+
+                            if is_header:
+                                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                run = p.add_run()
+                                run.bold = True
+                                if bg_color in ["C0392B", "2C3E50"]:
+                                    run.font.color.rgb = RGBColor(255, 255, 255)
+                                else:
+                                    run.font.color.rgb = RGBColor(15, 23, 42)
+                                add_runs_to_paragraph(p, html_cell)
+                            else:
+                                add_runs_to_paragraph(p, html_cell)
+
+                doc.add_paragraph().paragraph_format.space_before = Pt(8)
+                processed_tags.add(element)
+                return
+
+            for child in element.children:
+                walk_tree(child)
+
+    walk_tree(soup)
+
+    stream = io.BytesIO()
+    doc.save(stream)
+    stream.seek(0)
+    return stream
+
+
+@app.post("/exportar-docx")
+async def exportar_docx(payload: ExportDocxRequest):
+    """
+    Convierte el HTML de la sesión en un archivo Word (.docx) nativo.
+    Requiere token de conexión.
+    """
+    if payload.token != CONNECTION_TOKEN:
+        raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
+
+    try:
+        # Sanitizar nombre del archivo
+        filename = re.sub(r'[^a-zA-Z0-9-_\s]', '', payload.titulo).replace(' ', '_')
+        nombre_archivo = f"{filename}.docx"
+
+        # Compilar archivo DOCX
+        docx_stream = build_docx_from_html(payload.html_content)
+
+        if console:
+            console.print(f"[blue]✓ [WORD EXPORTADO] Generado con éxito: {nombre_archivo}[/blue]")
+
+        return StreamingResponse(
+            docx_stream,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={nombre_archivo}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    except Exception as e:
+        print("[ERROR DOCX]", str(e))
+        raise HTTPException(status_code=500, detail=f"Fallo al compilar archivo de Word (.docx): {str(e)}")
+
+
+# ────────────────────────────────────────────────────────────────────────
+# INICIALIZACIÓN, COMPROBACIÓN DE CHROMIUM Y ARRANQUE
+# ────────────────────────────────────────────────────────────────────────
+
+async def check_playwright_browsers():
+    """Intenta arrancar playwright para verificar si chromium está listo."""
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            await browser.close()
+            return True
+    except Exception:
+        return False
+
+
+def install_playwright_chromium_cli():
+    """Descarga e instala Chromium utilizando la barra de progreso de rich."""
+    if not console:
+        # Fallback sin rich
+        print("Instalando Chromium para Playwright...")
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
+        return
+
+    rprint("\n[bold yellow]⚠️  [MOTOR INCOMPLETO] No se detectó Chromium. Iniciando instalación...[/bold yellow]")
+    
+    cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=40, style="grey35", complete_style="green"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        expand=True
+    ) as progress:
+        task = progress.add_task("[cyan]Descargando Chromium...[/cyan]", total=100)
+        
+        for line in iter(process.stdout.readline, ""):
+            # Captura porcentajes del tipo " 10% of" o "54% of" que imprime el instalador
+            match = re.search(r'(\d+)%\s+of', line)
+            if match:
+                percent = int(match.group(1))
+                progress.update(task, completed=percent)
+            else:
+                if "downloaded" in line.lower():
+                    progress.update(task, description="[green]¡Chromium descargado con éxito![/green]")
+        
+        process.wait()
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Evento que se dispara al iniciar FastAPI para abrir la conexión en el navegador."""
+    # Determinar si conexion.html está localmente o usar dominio de producción
+    local_path = Path(__file__).resolve().parent.parent / "conexion.html"
+    if local_path.exists():
+        target_url = f"file:///{local_path.as_posix()}?token={CONNECTION_TOKEN}"
+    else:
+        target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
+
+    rprint(f"\n[bold green]🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://127.0.0.1:8000[/bold green]")
+    rprint(f"[bold cyan]🔗 [ENLACE SEGURO] Abre el siguiente enlace en tu navegador si no se abre automáticamente:[/bold cyan]")
+    rprint(f"[underline blue]{target_url}[/underline blue]\n")
+    
+    # Abrir el navegador en un hilo separado
+    def open_browser():
+        webbrowser.open(target_url)
+
+    threading.Thread(target=open_browser).start()
+
+
+def print_banner():
+    """Muestra el banner de bienvenida con formato rich."""
+    if not console:
+        print("====================================================")
+        print("      SYPABLITODP PEDAGOGICAL EXPORT ENGINE         ")
+        print("====================================================")
+        return
+
+    banner_text = """
+ [bold magenta]███████╗██╗   ██╗██████╗  █████╗ ██████╗ ██╗     ██╗████████╗██████╗  ██████╗ [/bold magenta]
+ [bold magenta]██╔════╝╚██╗ ██╔╝██╔══██╗██╔══██╗██╔══██╗██║     ██║╚══██╔══╝██╔══██╗██╔═══██╗[/bold magenta]
+ [bold blue]███████╗ ╚████╔╝ ██████╔╝███████║██████╔╝██║     ██║   ██║   ██║  ██║██║   ██║[/bold blue]
+ [bold blue]╚════██║  ╚██╔╝  ██╔═══╝ ██╔══██║██╔══██╗██║     ██║   ██║   ██║  ██║██║   ██║[/bold blue]
+ [bold cyan]███████║   ██║   ██║     ██║  ██║██████╔╝███████╗██║   ██║   ██████╔╝╚██████╔╝[/bold cyan]
+ [bold cyan]╚══════╝   ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝   ╚═╝   ╚══════╝  ╚═════╝ [/bold cyan]
+                                                                              
+        [bold white]🚀 Motor de Exportación Local PDF/Word | Desarrollador: Samuel Pablo[/bold white]
+    """
+    console.print(Panel(banner_text, border_style="cyan", title="v1.0.0-Beta (Privada)"))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    # 1. Imprimir banner
+    print_banner()
+
+    # 2. Comprobar navegadores de Playwright
+    loop = asyncio.get_event_loop()
+    has_browsers = loop.run_until_complete(check_playwright_browsers())
+    if not has_browsers:
+        install_playwright_chromium_cli()
+
+    # 3. Arrancar Uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="warning")

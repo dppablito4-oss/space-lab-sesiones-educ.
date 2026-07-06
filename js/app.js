@@ -17,7 +17,8 @@
         activeTableCell: null, // Stores currently active/focused table cell
         zoomScale: 1.0, // Custom zoom level for the sheet (1.0 = 100%)
         undoStack: [],
-        redoStack: []
+        redoStack: [],
+        backendOnline: false
     };
 
     // ─── DOM REFERENCES ───
@@ -204,6 +205,9 @@
             }).catch(e => console.warn('[Sync] Sync failed at startup:', e));
         }
 
+        // Check local backend status
+        checkBackendStatus();
+
         console.log('🚀 Space Lab initialized');
     }
 
@@ -257,10 +261,15 @@
         // Action buttons
         DOM.btnToggleEdit.addEventListener('click', toggleEditMode);
         DOM.btnPreview.addEventListener('click', togglePreviewMode);
-        DOM.btnExportPdf.addEventListener('click', showPdfGuide);
+        DOM.btnExportPdf.addEventListener('click', () => {
+            if (AppState.backendOnline) {
+                exportarAPDFBackend();
+            } else {
+                showPdfGuide();
+            }
+        });
         
-        // Word export listeners removed (can be restored if needed in the future)
-        /*
+        // Word export listeners
         const btnExportWord = document.getElementById('btn-export-word');
         if (btnExportWord) {
             btnExportWord.addEventListener('click', handleExportWord);
@@ -269,7 +278,6 @@
         if (btnExportWordPreview) {
             btnExportWordPreview.addEventListener('click', handleExportWord);
         }
-        */
         
         const btnAiRubrica = document.getElementById('btn-ai-rubrica');
         if (btnAiRubrica) {
@@ -1022,9 +1030,183 @@
         if (modal) modal.classList.add('hidden');
     }
 
+    async function checkBackendStatus() {
+        const token = localStorage.getItem('connection_token');
+        if (!token) {
+            AppState.backendOnline = false;
+            return;
+        }
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`, { method: 'GET' });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'Connected') {
+                    AppState.backendOnline = true;
+                    console.log('[OK] Enlace seguro con el motor de exportación en Python confirmado.');
+                    return;
+                }
+            }
+        } catch (err) {
+            console.log('[INFO] El motor de exportación local está inactivo o el token expiró.');
+        }
+        AppState.backendOnline = false;
+    }
+
+    async function exportarAPDFBackend() {
+        if (!AppState.currentSession) {
+            Toast.warning('Genera una sesión primero');
+            return;
+        }
+        
+        saveCurrentState();
+        Loader.show('🚀 Generando PDF oficial con el motor local...');
+        
+        try {
+            const clone = DOM.sessionSheet.cloneNode(true);
+            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
+            noPrintElements.forEach(el => el.remove());
+            
+            const cleanHtml = clone.innerHTML;
+            
+            // Recopilar estilos
+            let styles = '';
+            const styleSheets = document.styleSheets;
+            for (let i = 0; i < styleSheets.length; i++) {
+                try {
+                    const rules = styleSheets[i].cssRules || styleSheets[i].rules;
+                    if (rules) {
+                        for (let j = 0; j < rules.length; j++) {
+                            styles += rules[j].cssText;
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de estilos externos
+                }
+            }
+            
+            const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
+            const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
+            const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
+            
+            const htmlPayload = `
+                <style>
+                    ${styles}
+                    body {
+                        font-family: ${activeFont} !important;
+                        font-size: ${activeSize} !important;
+                        background: #ffffff !important;
+                        color: #000000 !important;
+                    }
+                    :root {
+                        --primary: ${activeColor} !important;
+                    }
+                </style>
+                <div class="session-sheet">
+                    ${cleanHtml}
+                </div>
+            `;
+            
+            const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
+            const token = localStorage.getItem('connection_token') || '';
+            
+            const response = await fetch('http://127.0.0.1:8000/exportar-pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    html_content: htmlPayload,
+                    titulo: titulo,
+                    token: token
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Error del servidor: ${response.statusText}`);
+            }
+            
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            Toast.success('¡PDF exportado con éxito!');
+        } catch (error) {
+            console.error('[PDF Export Local] Error:', error);
+            Toast.error('Error al exportar PDF con motor local: ' + error.message);
+        } finally {
+            Loader.hide();
+        }
+    }
+
+    async function exportarAWordBackend() {
+        if (!AppState.currentSession) {
+            Toast.warning('Genera una sesión primero');
+            return;
+        }
+        
+        saveCurrentState();
+        Loader.show('📝 Generando archivo de Word (.docx) nativo...');
+        
+        try {
+            const clone = DOM.sessionSheet.cloneNode(true);
+            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
+            noPrintElements.forEach(el => el.remove());
+            
+            const cleanHtml = clone.innerHTML;
+            const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
+            const token = localStorage.getItem('connection_token') || '';
+            
+            const response = await fetch('http://127.0.0.1:8000/exportar-docx', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    html_content: cleanHtml,
+                    titulo: titulo,
+                    token: token
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Error del servidor: ${response.statusText}`);
+            }
+            
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            Toast.success('¡Word (.docx) exportado con éxito!');
+        } catch (error) {
+            console.error('[Word Export Local] Error:', error);
+            Toast.error('Error al exportar Word con motor local: ' + error.message);
+        } finally {
+            Loader.hide();
+        }
+    }
+
     async function handleExportWord() {
         if (!AppState.currentSession) {
             Toast.warning('No hay ninguna sesión activa para exportar.');
+            return;
+        }
+
+        if (AppState.backendOnline) {
+            await exportarAWordBackend();
             return;
         }
 
