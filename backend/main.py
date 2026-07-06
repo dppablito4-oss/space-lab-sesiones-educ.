@@ -164,6 +164,13 @@ async def exportar_pdf(payload: ExportPDFRequest):
                         break-inside: avoid !important;
                     }}
                     
+                    /* Ocultar elementos interactivos del editor que no pertenecen al documento exportado */
+                    .no-print,
+                    .add-logo-placeholder,
+                    .btn-remove-logo {{
+                        display: none !important;
+                    }}
+                    
                     /* Clonar bordes superior e inferior cuando un elemento de tabla se corte */
                     table, tr, td, th {{
                         box-decoration-break: clone !important;
@@ -311,6 +318,11 @@ def build_docx_from_html(html_content: str) -> io.BytesIO:
     for katex_html in soup.find_all(class_='katex-html'):
         katex_html.decompose()
 
+    # Limpiar elementos interactivos del editor que no pertenecen al documento
+    for selector in ['no-print', 'add-logo-placeholder', 'btn-remove-logo']:
+        for el in soup.find_all(class_=selector):
+            el.decompose()
+
     processed_tags = set()
 
     def add_runs_to_paragraph(paragraph, element, is_bold=False, is_italic=False):
@@ -391,67 +403,117 @@ def build_docx_from_html(html_content: str) -> io.BytesIO:
                 processed_tags.add(element)
                 return
 
-            # TABLAS
+            # TABLAS — con soporte de rowspan/colspan via merge grid
             elif element.name == 'table':
                 html_rows = element.find_all('tr', recursive=True)
                 if not html_rows:
                     processed_tags.add(element)
                     return
 
+                # ── Paso 1: Calcular dimensiones reales de la grilla ──
+                # Construir una grilla lógica 2D para mapear ocupación de celdas
+                num_rows = len(html_rows)
+                # Calcular max_cols considerando colspan
                 max_cols = 0
                 for r in html_rows:
-                    cols = len(r.find_all(['td', 'th'], recursive=False))
-                    if cols > max_cols:
-                        max_cols = cols
+                    total = 0
+                    for c in r.find_all(['td', 'th'], recursive=False):
+                        cs = int(c.get('colspan', 1) or 1)
+                        total += cs
+                    if total > max_cols:
+                        max_cols = total
 
                 if max_cols == 0:
                     processed_tags.add(element)
                     return
 
-                docx_table = doc.add_table(rows=0, cols=max_cols)
+                # Grilla de ocupación: occupied[row][col] = True si ya está ocupada por un rowspan previo
+                occupied = [[False] * max_cols for _ in range(num_rows)]
+
+                # ── Paso 2: Crear tabla docx con dimensiones exactas ──
+                docx_table = doc.add_table(rows=num_rows, cols=max_cols)
                 docx_table.autofit = True
                 add_table_borders(docx_table)
 
+                # ── Paso 3: Recorrer filas HTML y mapear celdas con merge ──
+                # Almacenar merges pendientes para ejecutar después de llenar contenido
+                merges = []  # Lista de (start_row, start_col, end_row, end_col)
+
                 for row_idx, html_row in enumerate(html_rows):
-                    row_cells = docx_table.add_row().cells
                     html_cells = html_row.find_all(['td', 'th'], recursive=False)
+                    col_cursor = 0  # Posición lógica actual en la grilla
 
-                    for col_idx, html_cell in enumerate(html_cells):
-                        if col_idx < len(row_cells):
-                            cell = row_cells[col_idx]
-                            is_header = html_cell.name == 'th'
+                    for html_cell in html_cells:
+                        # Avanzar cursor saltando celdas ya ocupadas por rowspan de filas anteriores
+                        while col_cursor < max_cols and occupied[row_idx][col_cursor]:
+                            col_cursor += 1
 
-                            bg_color = "F8FAFC" if is_header else "FFFFFF"
+                        if col_cursor >= max_cols:
+                            break
 
-                            style_attr = html_cell.get('style', '')
-                            class_attr = html_cell.get('class', [])
-                            
-                            hex_match = re.search(r'background-color:\s*#([A-Fa-f0-9]{6})', style_attr)
-                            if hex_match:
-                                bg_color = hex_match.group(1).upper()
-                            elif 'cell-peru' in class_attr:
-                                bg_color = "C0392B"
-                            elif 'cell-minedu' in class_attr:
-                                bg_color = "2C3E50"
+                        rs = int(html_cell.get('rowspan', 1) or 1)
+                        cs = int(html_cell.get('colspan', 1) or 1)
 
-                            set_cell_background(cell, bg_color)
-                            set_cell_margins(cell, top=100, bottom=100, left=140, right=140)
+                        # Marcar celdas ocupadas en la grilla
+                        for dr in range(rs):
+                            for dc in range(cs):
+                                target_r = row_idx + dr
+                                target_c = col_cursor + dc
+                                if target_r < num_rows and target_c < max_cols:
+                                    occupied[target_r][target_c] = True
 
-                            p = cell.paragraphs[0]
-                            p.paragraph_format.space_after = Pt(2)
-                            p.paragraph_format.line_spacing = 1.1
+                        # Registrar merge si abarca más de una celda
+                        if rs > 1 or cs > 1:
+                            end_row = min(row_idx + rs - 1, num_rows - 1)
+                            end_col = min(col_cursor + cs - 1, max_cols - 1)
+                            merges.append((row_idx, col_cursor, end_row, end_col))
 
-                            if is_header:
-                                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                run = p.add_run()
-                                run.bold = True
-                                if bg_color in ["C0392B", "2C3E50"]:
-                                    run.font.color.rgb = RGBColor(255, 255, 255)
-                                else:
-                                    run.font.color.rgb = RGBColor(15, 23, 42)
-                                add_runs_to_paragraph(p, html_cell)
+                        # Llenar contenido en la celda de la esquina superior izquierda
+                        cell = docx_table.rows[row_idx].cells[col_cursor]
+                        is_header = html_cell.name == 'th'
+
+                        bg_color = "F8FAFC" if is_header else "FFFFFF"
+
+                        style_attr = html_cell.get('style', '')
+                        class_attr = html_cell.get('class', [])
+
+                        hex_match = re.search(r'background-color:\s*#([A-Fa-f0-9]{6})', style_attr)
+                        if hex_match:
+                            bg_color = hex_match.group(1).upper()
+                        elif 'cell-peru' in class_attr:
+                            bg_color = "C0392B"
+                        elif 'cell-minedu' in class_attr:
+                            bg_color = "2C3E50"
+
+                        set_cell_background(cell, bg_color)
+                        set_cell_margins(cell, top=100, bottom=100, left=140, right=140)
+
+                        p = cell.paragraphs[0]
+                        p.paragraph_format.space_after = Pt(2)
+                        p.paragraph_format.line_spacing = 1.1
+
+                        if is_header:
+                            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            run = p.add_run()
+                            run.bold = True
+                            if bg_color in ["C0392B", "2C3E50"]:
+                                run.font.color.rgb = RGBColor(255, 255, 255)
                             else:
-                                add_runs_to_paragraph(p, html_cell)
+                                run.font.color.rgb = RGBColor(15, 23, 42)
+                            add_runs_to_paragraph(p, html_cell)
+                        else:
+                            add_runs_to_paragraph(p, html_cell)
+
+                        col_cursor += cs
+
+                # ── Paso 4: Ejecutar merges de celdas ──
+                for start_r, start_c, end_r, end_c in merges:
+                    try:
+                        cell_a = docx_table.rows[start_r].cells[start_c]
+                        cell_b = docx_table.rows[end_r].cells[end_c]
+                        cell_a.merge(cell_b)
+                    except Exception:
+                        pass  # Merge inválido — ignorar silenciosamente
 
                 doc.add_paragraph().paragraph_format.space_before = Pt(8)
                 processed_tags.add(element)

@@ -16,7 +16,9 @@
     .preview-toolbar,
     .empty-state,
     .load-modal,
-    #btn-menu-mobile {
+    #btn-menu-mobile,
+    .add-logo-placeholder,
+    .btn-remove-logo {
         display: none !important;
     }
 
