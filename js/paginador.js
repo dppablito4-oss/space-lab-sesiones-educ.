@@ -71,13 +71,56 @@ const Paginador = (() => {
         ].join(';');
         document.body.appendChild(medidor);
 
-        let hojaActual = crearHoja(canvas);
-        let alturaUsada = 0;
+        // 1. Extraer la cabecera oficial y el contenido real a paginar
+        let headerOficial = null;
+        let nodosContenido = [];
 
-        // Obtener los nodos hijos de nivel superior del session-sheet
-        const nodos = Array.from(sessionSheetEl.childNodes);
+        const printLayoutTable = sessionSheetEl.querySelector('.print-layout-table');
+        if (printLayoutTable) {
+            // Extraer el encabezado institucional para repetirlo en cada página
+            const headerTable = printLayoutTable.querySelector('.official-header-table');
+            if (headerTable) {
+                headerOficial = headerTable.cloneNode(true);
+            }
 
-        for (const nodo of nodos) {
+            // Extraer nodos contenidos dentro de la celda de datos principal
+            const tbodyTd = printLayoutTable.querySelector(':scope > tbody > tr > td') || printLayoutTable.querySelector('tbody td');
+            if (tbodyTd) {
+                nodosContenido = Array.from(tbodyTd.childNodes);
+            } else {
+                nodosContenido = Array.from(printLayoutTable.childNodes);
+            }
+
+            // Añadir los elementos que queden fuera o después de la tabla contenedora
+            const hermanos = Array.from(sessionSheetEl.childNodes);
+            const indexTable = hermanos.indexOf(printLayoutTable);
+            if (indexTable !== -1) {
+                nodosContenido = nodosContenido.concat(hermanos.slice(indexTable + 1));
+            }
+        } else {
+            // Sin layout table contenedora, procesar todo linealmente
+            nodosContenido = Array.from(sessionSheetEl.childNodes);
+        }
+
+        // Helper para inicializar una nueva página A4 con su cabecera si existe
+        function crearNuevaHoja() {
+            const hoja = document.createElement('div');
+            hoja.className = 'hoja-a4';
+            canvas.appendChild(hoja);
+
+            let alturaCabecera = 0;
+            if (headerOficial) {
+                const headerClone = headerOficial.cloneNode(true);
+                hoja.appendChild(headerClone);
+                alturaCabecera = medirNodo(headerClone, medidor);
+            }
+            return { hoja, alturaCabecera };
+        }
+
+        let { hoja: hojaActual, alturaCabecera: alturaCabeceraActual } = crearNuevaHoja();
+        let alturaUsada = alturaCabeceraActual;
+
+        for (const nodo of nodosContenido) {
             // Ignorar nodos de texto vacíos y comentarios
             if (nodo.nodeType !== Node.ELEMENT_NODE) continue;
 
@@ -120,9 +163,11 @@ const Paginador = (() => {
                             tablaActual.querySelector('tbody').appendChild(fila.cloneNode(true));
                             alturaUsada += alturaFila;
                         } else {
-                            // Salto de página: nueva hoja, repetir cabecera
-                            hojaActual = crearHoja(canvas);
-                            alturaUsada = 0;
+                            // Salto de página: crear nueva hoja e inyectar cabecera oficial
+                            const res = crearNuevaHoja();
+                            hojaActual = res.hoja;
+                            alturaUsada = res.alturaCabecera;
+
                             tablaActual = crearTablaClonada(tabla, thead);
                             hojaActual.appendChild(tablaActual);
                             tablaActual.querySelector('tbody').appendChild(fila.cloneNode(true));
@@ -134,8 +179,10 @@ const Paginador = (() => {
             }
 
             // ── Caso 3: Bloque genérico que no cabe → forzar salto de página ──
-            hojaActual = crearHoja(canvas);
-            alturaUsada = 0;
+            const res = crearNuevaHoja();
+            hojaActual = res.hoja;
+            alturaUsada = res.alturaCabecera;
+
             hojaActual.appendChild(nodo.cloneNode(true));
             alturaUsada += alturaElem;
         }

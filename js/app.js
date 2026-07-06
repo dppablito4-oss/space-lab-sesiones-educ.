@@ -18,7 +18,8 @@
         zoomScale: 1.0, // Custom zoom level for the sheet (1.0 = 100%)
         undoStack: [],
         redoStack: [],
-        backendOnline: false
+        backendOnline: false,
+        backendRunning: false
     };
 
     // ─── DOM REFERENCES ───
@@ -279,6 +280,10 @@
         DOM.btnExportPdf.addEventListener('click', () => {
             if (AppState.backendOnline) {
                 exportarAPDFBackend();
+            } else if (AppState.backendRunning) {
+                if (typeof Toast !== 'undefined') {
+                    Toast.warning('El Motor Local está encendido pero falta vincularlo. Haz clic en "[ CLIC AQUÍ PARA VINCULAR ]" en la ventana de pablitopyhost.exe para enlazar de forma segura.');
+                }
             } else {
                 showPdfGuide();
             }
@@ -655,6 +660,47 @@
 
         // Refine text modal listeners
         initRefineTextModal();
+
+        // ── Interceptación de impresión para paginado A4 dinámico temporal ──
+        window.addEventListener('beforeprint', () => {
+            if (typeof Paginador !== 'undefined') {
+                try {
+                    // Guardar HTML original interactivo
+                    DOM.sessionSheet.setAttribute('data-original-html', DOM.sessionSheet.innerHTML);
+                    
+                    // Clonar limpio para medir
+                    const clone = DOM.sessionSheet.cloneNode(true);
+                    clone.querySelectorAll('.no-print, #logo-resize-handle, .btn-remove-logo, .add-logo-placeholder').forEach(el => el.remove());
+                    
+                    const canvas = Paginador.calcular(clone);
+                    const hojas = canvas.querySelectorAll('.hoja-a4');
+                    hojas.forEach((h, i) => h.setAttribute('data-pagina', `${i + 1} / ${hojas.length}`));
+                    
+                    // Reemplazar DOM temporalmente
+                    DOM.sessionSheet.innerHTML = '';
+                    DOM.sessionSheet.appendChild(canvas);
+                } catch (e) {
+                    console.warn('[Paginador] Error al aplicar paginado temporal para impresión:', e);
+                }
+            }
+        });
+
+        window.addEventListener('afterprint', () => {
+            const originalHtml = DOM.sessionSheet.getAttribute('data-original-html');
+            if (originalHtml) {
+                DOM.sessionSheet.innerHTML = originalHtml;
+                DOM.sessionSheet.removeAttribute('data-original-html');
+                
+                // Re-inicializar fórmulas matemáticas en el DOM restaurado
+                renderMatematica();
+                
+                // Re-enlazar celdas editables para que el cursor no pierda foco
+                const editables = DOM.sessionSheet.querySelectorAll('[contenteditable]');
+                editables.forEach(el => {
+                    el.addEventListener('focusout', saveSelection);
+                });
+            }
+        });
     }
 
     // ═══════════════════════════════════════
@@ -928,26 +974,6 @@
 
         // Render math formulas (KaTeX) — only for Matemática sessions or if LaTeX delimiters detected
         renderMatematica();
-
-        // ── Paginación A4 Frontend (nueva arquitectura WYSIWYG) ──
-        // Después de renderizar y calcular KaTeX, distribuir el contenido
-        // en hojas .hoja-a4 físicas de 210mm × 297mm.
-        if (typeof Paginador !== 'undefined') {
-            requestAnimationFrame(() => {
-                try {
-                    const canvas = Paginador.calcular(DOM.sessionSheet);
-                    // Numerar hojas
-                    const hojas = canvas.querySelectorAll('.hoja-a4');
-                    hojas.forEach((h, i) => h.setAttribute('data-pagina', `${i + 1} / ${hojas.length}`));
-                    // Reemplazar contenido con el canvas paginado
-                    DOM.sessionSheet.innerHTML = '';
-                    DOM.sessionSheet.appendChild(canvas);
-                } catch (e) {
-                    // Fallo silencioso: el modo continuo (no-paginado) permanece activo
-                    console.warn('[Paginador] Fallo al calcular páginas:', e);
-                }
-            });
-        }
     }
 
     // ═══════════════════════════════════════
@@ -1068,15 +1094,35 @@
     let lastBackendState = null;
 
     async function checkBackendStatus() {
-        const token = localStorage.getItem('connection_token');
-        if (!token) {
+        // 1. Verificar si el servidor local está respondiendo (ping básico al puerto 8000)
+        try {
+            const pingResponse = await fetch('http://localhost:8000/', { method: 'GET' });
+            if (pingResponse.ok) {
+                AppState.backendRunning = true;
+            } else {
+                AppState.backendRunning = false;
+            }
+        } catch (pingErr) {
+            AppState.backendRunning = false;
             AppState.backendOnline = false;
             if (lastBackendState !== false) {
-                console.log('[INFO] El motor de exportación local está inactivo o no hay token de enlace.');
+                console.log('[INFO] El motor de exportación local está apagado o inaccesible.');
                 lastBackendState = false;
             }
             return;
         }
+
+        // 2. Si el motor está en ejecución, verificar el token de conexión
+        const token = localStorage.getItem('connection_token');
+        if (!token) {
+            AppState.backendOnline = false;
+            if (lastBackendState !== false) {
+                console.log('[INFO] El motor local está encendido, pero no hay token de conexión en localStorage.');
+                lastBackendState = false;
+            }
+            return;
+        }
+
         try {
             const response = await fetch(`http://localhost:8000/verificar-token?token=${token}`, { method: 'GET' });
             if (response.ok) {
@@ -1091,11 +1137,12 @@
                 }
             }
         } catch (err) {
-            // Silencioso para evitar inundación de logs en la consola del navegador
+            // Silencioso
         }
+
         AppState.backendOnline = false;
         if (lastBackendState !== false) {
-            console.log('[INFO] El motor de exportación local está inactivo o el token de enlace expiró.');
+            console.log('[INFO] El motor local está encendido, pero el token guardado no es válido o expiró.');
             lastBackendState = false;
         }
     }
