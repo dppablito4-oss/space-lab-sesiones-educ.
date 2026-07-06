@@ -247,64 +247,49 @@
         background: transparent !important;
     }
 
-    /* Convert momentos-table layout to blocks/flex to allow clean page breaking without slicing text */
+    /* Restaurar el comportamiento de tabla nativa para asegurar bordes y líneas verticales continuas */
     .session-sheet .momentos-table {
-        display: block !important;
+        display: table !important;
         width: 100% !important;
         border-collapse: collapse !important;
-        border: none !important;
+        border: 1px solid var(--theme-border-color, #000) !important;
         page-break-inside: auto !important;
         break-inside: auto !important;
     }
     .session-sheet .momentos-table > thead {
-        display: none !important;
+        display: table-header-group !important;
     }
     .session-sheet .momentos-table > tbody {
-        display: block !important;
+        display: table-row-group !important;
         width: 100% !important;
     }
     .session-sheet .momentos-table > tbody > tr {
-        display: flex !important;
-        width: 100% !important;
-        border: 1px solid var(--theme-border-color, #000) !important;
-        border-top: none !important;
-        margin-bottom: 0 !important;
+        display: table-row !important;
         break-inside: auto !important;
         page-break-inside: auto !important;
     }
-    .session-sheet .momentos-table > tbody > tr:first-child {
-        border-top: 1px solid var(--theme-border-color, #000) !important;
-    }
-    .session-sheet .momentos-table td {
-        border: none !important;
+    .session-sheet .momentos-table td,
+    .session-sheet .momentos-table th {
+        border: 1px solid var(--theme-border-color, #000) !important;
         padding: 6px 8px !important;
         box-sizing: border-box !important;
-    }
-
-    .session-sheet .momentos-table td:not(.momento-label-cell) {
         background: transparent !important;
+        vertical-align: top !important;
     }
     .session-sheet .momento-label-cell {
         width: 120px !important;
         min-width: 120px !important;
         max-width: 120px !important;
-        border-right: 1px solid var(--theme-border-color, #000) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: flex-start !important;
+        background: var(--theme-label-bg, #f8fafc) !important;
     }
     .session-sheet .momento-content-cell {
-        flex: 1 !important;
-        display: block !important;
+        /* Se adapta automáticamente en modo tabla */
     }
     .session-sheet .eval-column-cell {
         width: 30px !important;
         min-width: 30px !important;
         max-width: 30px !important;
-        border-left: 1px solid var(--theme-border-color, #000) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        vertical-align: middle !important;
     }
     .session-sheet .eval-vertical-text {
         writing-mode: vertical-rl;
@@ -314,7 +299,8 @@
         font-size: 8pt;
         letter-spacing: 0.25em;
         color: #000 !important;
-        display: block !important;
+        display: inline-block !important;
+        margin: 0 auto !important;
     }
 
     /* Prevent text splitting inside individual subsections */
