@@ -8,7 +8,19 @@ import webbrowser
 import threading
 import subprocess
 import warnings
+import urllib.request
+import zipfile
 from pathlib import Path
+
+# Determinar base absoluta del ejecutable para portabilidad
+if getattr(sys, 'frozen', False):
+    EXE_DIR = Path(sys.executable).parent
+else:
+    EXE_DIR = Path(__file__).resolve().parent
+
+LOCAL_BIN_DIR = EXE_DIR / "bin"
+CHROMIUM_DIR = LOCAL_BIN_DIR / "chrome-win"
+CHROMIUM_EXE = CHROMIUM_DIR / "chrome.exe"
 
 # Desactivar advertencias molestas en la consola (como DeprecationWarnings de FastAPI/Lifespan)
 warnings.filterwarnings("ignore")
@@ -137,7 +149,11 @@ async def exportar_pdf(payload: ExportPDFRequest):
         """
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            ruta_motor = buscar_navegador_compatible()
+            launch_args = {"headless": True}
+            if ruta_motor:
+                launch_args["executable_path"] = ruta_motor
+            browser = await p.chromium.launch(**launch_args)
             context = await browser.new_context()
             page = await context.new_page()
             
@@ -431,58 +447,76 @@ async def exportar_docx(payload: ExportDocxRequest):
 # INICIALIZACIÓN, COMPROBACIÓN DE CHROMIUM Y ARRANQUE
 # ────────────────────────────────────────────────────────────────────────
 
-async def check_playwright_browsers():
-    """Intenta arrancar playwright para verificar si chromium está listo."""
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            await browser.close()
-            return True
-    except Exception:
-        return False
+def buscar_navegador_compatible():
+    """Busca un ejecutable de Chromium en la carpeta local o en el sistema."""
+    # 1. Prioridad Máxima: Verificar si ya existe en nuestra carpeta portable './bin'
+    if CHROMIUM_EXE.exists():
+        return str(CHROMIUM_EXE)
+
+    # 2. Prioridad Secundaria: Buscar navegadores instalados en Windows
+    if sys.platform.startswith('win'):
+        rutas_sistema = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+        ]
+        for ruta in rutas_sistema:
+            if Path(ruta).exists():
+                return ruta
+    return None
 
 
-def install_playwright_chromium_cli():
-    """Descarga e instala Chromium utilizando la barra de progreso de rich."""
-    if not console:
-        # Fallback sin rich
-        print("Instalando Chromium para Playwright...")
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
-        return
-
-    rprint("\n[bold yellow]⚠️  [MOTOR INCOMPLETO] No se detectó Chromium. Iniciando instalación...[/bold yellow]")
+def descargar_chromium_nativo():
+    """Descarga Chromium usando urllib para no congelar el .exe y muestra barra de progreso."""
+    LOCAL_BIN_DIR.mkdir(exist_ok=True)
+    zip_path = LOCAL_BIN_DIR / "chromium.zip"
     
-    cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", bufsize=1)
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(bar_width=40, style="grey35", complete_style="green"),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        expand=True
-    ) as progress:
-        task = progress.add_task("[cyan]Descargando Chromium...[/cyan]", total=100)
+    # URL directa de Google APIs (Versión ligera y estable para Windows x64)
+    url_chromium = "https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/1182249/chrome-win.zip"
+
+    if console:
+        rprint("\n[bold yellow]⚠️  [MOTOR INCOMPLETO] No se detectó ningún navegador compatible (Chrome/Brave/Edge) ni motor local.[/bold yellow]")
+        rprint("[cyan]Iniciando descarga de motor Chromium portable (aprox. 140MB)...[/cyan]")
         
-        buffer = ""
-        while True:
-            char = process.stdout.read(1)
-            if not char:
-                break
-            if char in ['\r', '\n']:
-                line = buffer.strip()
-                buffer = ""
-                if line:
-                    match = re.search(r'(\d+)%\s+of', line)
-                    if match:
-                        percent = int(match.group(1))
-                        progress.update(task, completed=percent)
-                    elif "downloaded" in line.lower():
-                        progress.update(task, description="[green]¡Chromium descargado con éxito![/green]")
-            else:
-                buffer += char
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(bar_width=40, style="grey35", complete_style="green"),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("• [progress.filesize]{task.completed_size}/{task.total_size}"),
+            expand=True
+        ) as progress:
+            task = progress.add_task("[cyan]Descargando Chromium...[/cyan]", total=100)
+            
+            def progreso_download(block_num, block_size, total_size):
+                if total_size > 0:
+                    completed = block_num * block_size
+                    progress.update(task, completed=completed, total=total_size)
+            
+            urllib.request.urlretrieve(url_chromium, zip_path, reporthook=progreso_download)
+    else:
+        print("Descargando Chromium...")
+        urllib.request.urlretrieve(url_chromium, zip_path)
+
+    # Extracción del ZIP de forma nativa
+    if console:
+        rprint("[bold green]✓ Descarga completada.[/bold green] [yellow]Extrayendo motor portable...[/yellow]")
+    else:
+        print("Extrayendo motor...")
         
-        process.wait()
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(LOCAL_BIN_DIR)
+        
+    # Eliminar el ZIP basura para ahorrar espacio
+    if zip_path.exists():
+        os.remove(zip_path)
+        
+    if console:
+        rprint("[bold green]✓ Motor Chromium extraído y listo para usar en ./bin/chrome-win/[/bold green]\n")
+    else:
+        print("Motor listo.")
 
 
 @app.on_event("startup")
@@ -504,30 +538,49 @@ def print_banner():
         return
 
     banner_text = """
- [bold magenta]███████╗██╗   ██╗██████╗  █████╗ ██████╗ ██╗     ██╗████████╗██████╗  ██████╗ [/bold magenta]
- [bold magenta]██╔════╝╚██╗ ██╔╝██╔══██╗██╔══██╗██╔══██╗██║     ██║╚══██╔══╝██╔══██╗██╔═══██╗[/bold magenta]
- [bold blue]███████╗ ╚████╔╝ ██████╔╝███████║██████╔╝██║     ██║   ██║   ██║  ██║██║   ██║[/bold blue]
- [bold blue]╚════██║  ╚██╔╝  ██╔═══╝ ██╔══██║██╔══██╗██║     ██║   ██║   ██║  ██║██║   ██║[/bold blue]
- [bold cyan]███████║   ██║   ██║     ██║  ██║██████╔╝███████╗██║   ██║   ██████╔╝╚██████╔╝[/bold cyan]
- [bold cyan]╚══════╝   ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝   ╚═╝   ╚══════╝  ╚═════╝ [/bold cyan]
+ [bold magenta]███████╗     ██╗   ██╗     ██████╗   █████╗  ██████╗  ██╗      ████████╗ ████████╗  ██████╗           ██████╗  ██████╗  [/bold magenta]
+ [bold magenta]██╔════╝     ╚██╗ ██╔╝     ██╔══██╗ ██╔══██╗ ██╔══██╗ ██║      ╚══██╔══╝ ╚══██╔══╝ ██╔═══██╗          ██╔══██╗ ██╔══██╗ [/bold magenta]
+ [bold blue]███████╗      ╚████╔╝      ██████╔╝ ███████║ ██████╔╝ ██║         ██║       ██║    ██║   ██║          ██║  ██║ ██████╔╝ [/bold blue]
+ [bold blue]╚════██║ ██╗   ╚██╔╝   ██╗ ██╔═══╝  ██╔══██║ ██╔══██╗ ██║         ██║       ██║    ██║   ██║          ██║  ██║ ██╔═══╝  [/bold blue]
+ [bold cyan]███████║ ╚═╝    ██║    ╚═╝ ██║      ██║  ██║ ██████╔╝ ███████╗ ████████╗    ██║    ╚██████╔╝ ████████╗ ██████╔╝ ██║      [/bold cyan]
+ [bold cyan]╚══════╝        ╚═╝        ╚═╝      ╚═╝  ╚═╝ ╚═════╝  ╚══════╝ ╚══════╝    ╚═╝     ╚═════╝  ╚═══════╝ ╚═════╝  ╚═╝      [/bold cyan]
                                                                               
-        [bold white]🚀 Motor de Exportación Local PDF/Word | Desarrollador: Samuel Pablo[/bold white]
+        [bold white]🚀 Motor de Exportación PDF/Word | Desarrollador: Samuel Pablo C. [/bold white]
     """
-    console.print(Panel(banner_text, border_style="cyan", title="v1.0.0-Beta (Privada)"))
+    console.print(Panel(banner_text, border_style="cyan", title="v1.1.0-Beta (Privada)"))
+
+
+def disable_quick_edit():
+    """Desactiva el modo de edición rápida (QuickEdit) de la consola en Windows para evitar congelar el proceso al hacer clic."""
+    if sys.platform.startswith('win'):
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            STD_INPUT_HANDLE = -10
+            h_input = kernel32.GetStdHandle(STD_INPUT_HANDLE)
+            mode = ctypes.c_uint32()
+            kernel32.GetConsoleMode(h_input, ctypes.byref(mode))
+            # Desactivar ENABLE_QUICK_EDIT_MODE (0x0040)
+            new_mode = mode.value & ~0x0040
+            kernel32.SetConsoleMode(h_input, new_mode)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
     import uvicorn
     
     try:
+        # Desactivar selección de clic que congela la consola en Windows
+        disable_quick_edit()
+
         # 1. Imprimir banner
         print_banner()
 
-        # 2. Comprobar navegadores de Playwright
-        loop = asyncio.get_event_loop()
-        has_browsers = loop.run_until_complete(check_playwright_browsers())
-        if not has_browsers:
-            install_playwright_chromium_cli()
+        # 2. Comprobar navegadores de Playwright (Detección Híbrida)
+        motor_valido = buscar_navegador_compatible()
+        if not motor_valido:
+            descargar_chromium_nativo()
 
         # 3. Arrancar Uvicorn
         uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="warning")
