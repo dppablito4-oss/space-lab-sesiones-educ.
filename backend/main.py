@@ -17,8 +17,10 @@ from pathlib import Path
 # Determinar base absoluta del ejecutable para portabilidad
 if getattr(sys, 'frozen', False):
     EXE_DIR = Path(sys.executable).parent
+    BASE_DIR = Path(sys._MEIPASS)
 else:
     EXE_DIR = Path(__file__).resolve().parent
+    BASE_DIR = EXE_DIR.parent
 
 LOCAL_BIN_DIR = EXE_DIR / "bin"
 CHROMIUM_DIR = LOCAL_BIN_DIR / "chrome-win"
@@ -565,7 +567,7 @@ def start_gui():
     root.resizable(False, False)
 
     # Cargar icono si existe
-    ico_path = EXE_DIR / "assets" / "logo.ico"
+    ico_path = BASE_DIR / "assets" / "logo.ico"
     if not ico_path.exists():
         ico_path = EXE_DIR.parent / "assets" / "logo.ico"
     if ico_path.exists():
@@ -573,6 +575,14 @@ def start_gui():
             root.iconbitmap(str(ico_path))
         except Exception:
             pass
+
+    # Interceptar el evento de cierre de ventana para mostrar advertencia
+    from tkinter import messagebox
+    def on_closing():
+        if messagebox.askokcancel("Confirmar Salida", "¿Deseas cerrar el motor de exportación?\n\nSi lo cierras, se desconectará del navegador y no podrás exportar PDFs ni archivos de Word."):
+            root.destroy()
+            
+    root.protocol("WM_DELETE_WINDOW", on_closing)
 
     # 1. Widget de Texto Principal (Ocupa toda la ventana, sin bordes)
     terminal = scrolledtext.ScrolledText(
@@ -668,6 +678,7 @@ def start_gui():
         if CLIENT_CONNECTED:
             terminal.configure(state='normal')
             terminal.insert('end', "\n✓ [CONECTADO] El enlace de seguridad fue establecido con la web.\n", "green")
+            terminal.insert('end', "⚠️  [IMPORTANTE] Mantén esta ventana abierta en segundo plano. Si la cierras, se desconectará del navegador.\n\n", "yellow")
             terminal.configure(state='disabled')
             terminal.see('end')
         else:

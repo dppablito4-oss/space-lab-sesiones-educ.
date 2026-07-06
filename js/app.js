@@ -208,6 +208,21 @@
         // Check local backend status
         checkBackendStatus();
 
+        // Loop de verificación en tiempo real del estado del motor (cada 6 segundos)
+        setInterval(async () => {
+            const wasOnline = AppState.backendOnline;
+            await checkBackendStatus();
+            if (wasOnline && !AppState.backendOnline) {
+                if (typeof Toast !== 'undefined') {
+                    Toast.warning('El motor de exportación local (pablitopyhost.exe) se ha cerrado o desconectado.');
+                }
+            } else if (!wasOnline && AppState.backendOnline) {
+                if (typeof Toast !== 'undefined') {
+                    Toast.success('¡Motor de exportación local conectado en tiempo real!');
+                }
+            }
+        }, 6000);
+
         console.log('🚀 Space Lab initialized');
     }
 
