@@ -441,6 +441,24 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
     <html>
     <head>
         <meta charset="utf-8">
+        <!-- Cargar MathJax para renderizar ecuaciones matemáticas en el PDF -->
+        <script>
+            window.MathJax = {{
+                tex: {{
+                    inlineMath: [['$', '$'], ['\\(', '\\)']],
+                    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                    processEscapes: true
+                }},
+                options: {{
+                    ignoreHtmlClass: 'tex2jax_ignore',
+                    processHtmlClass: 'tex2jax_process'
+                }},
+                svg: {{
+                    fontCache: 'global'
+                }}
+            }};
+        </script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
             
@@ -936,6 +954,12 @@ async def exportar_pdf_json(payload: SesionAprendizajeRequest):
             
             await page.set_content(documento_html, wait_until="networkidle")
             
+            # Esperar a que MathJax termine de procesar las fórmulas matemáticas (si está presente)
+            try:
+                await page.evaluate("() => window.MathJax && window.MathJax.startup && window.MathJax.startup.promise")
+            except Exception as e:
+                print("[WARN MATHJAX WAIT]", str(e))
+            
             # Captura a PDF con Playwright aplicando prefer_css_page_size y márgenes físicos para evitar traslapes
             pdf_bytes = await page.pdf(
                 print_background=True,
@@ -1298,7 +1322,166 @@ def get_image_stream(url: str):
         return None
 
 
+def format_latex_to_unicode(text: str) -> str:
+    """
+    Traduce expresiones comunes de LaTeX a caracteres Unicode matemáticos para legibilidad en Word.
+    """
+    if not text:
+        return ""
+    
+    # Tabla de equivalencias directas de LaTeX a Unicode
+    replacements = {
+        r'\pm': '±',
+        r'\le': '≤',
+        r'\ge': '≥',
+        r'\neq': '≠',
+        r'\times': '×',
+        r'\div': '÷',
+        r'\approx': '≈',
+        r'\alpha': 'α',
+        r'\beta': 'β',
+        r'\gamma': 'γ',
+        r'\theta': 'θ',
+        r'\pi': 'π',
+        r'\infty': '∞',
+        r'\Delta': 'Δ',
+        r'\Sigma': 'Σ',
+        r'\rightarrow': '→',
+        r'\leftarrow': '←',
+        r'\leftrightarrow': '↔',
+        r'\Rightarrow': '⇒',
+        r'\Leftarrow': '⇐',
+        r'\partial': '∂',
+        r'\sqrt': '√',
+        r'\cdot': '·',
+        r'\text{o}': ' o ',
+        r'\;': ' ',
+        r'\:': ' ',
+        r'\,': ' ',
+        r'\!': '',
+    }
+    
+    # Remover delimitadores de dólar
+    cleaned = text
+    cleaned = re.sub(r'\$\$(.*?)\$\$', r'\1', cleaned)
+    cleaned = re.sub(r'\$(.*?)\$', r'\1', cleaned)
+    
+    # Aplicar equivalencias de comandos
+    for key, val in replacements.items():
+        cleaned = cleaned.replace(key, val)
+        
+    # Reemplazos de potencias comunes a superíndices unicode
+    supers = {'0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', 
+              '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ', 'i': 'ⁱ'}
+    
+    def replace_super(match):
+        val = match.group(1)
+        return "".join(supers.get(c, c) for c in val)
+        
+    cleaned = re.sub(r'\^\{?([0-9+\-xyn]+)\}?', replace_super, cleaned)
+    
+    # Reemplazos de subíndices comunes a unicode
+    subs = {'0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', 
+            '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎', 'n': 'ₙ', 'x': 'ₓ', 'y': 'ᵧ', 'i': 'ᵢ'}
+            
+    def replace_sub(match):
+        val = match.group(1)
+        return "".join(subs.get(c, c) for c in val)
+        
+    cleaned = re.sub(r'\_\{?([0-9+\-xyni]+)\}?', replace_sub, cleaned)
+    
+    return cleaned
+
+
+def preprocess_session_latex(session):
+    """
+    Recorre el modelo de la sesión y traduce todas las expresiones LaTeX de sus textos
+    a caracteres Unicode matemáticos listos para la exportación a Word.
+    """
+    if not session:
+        return
+        
+    # Metadatos
+    if session.metadata:
+        session.metadata.titulo = format_latex_to_unicode(session.metadata.titulo)
+        session.metadata.institucion = format_latex_to_unicode(session.metadata.institucion)
+        session.metadata.docente = format_latex_to_unicode(session.metadata.docente)
+        session.metadata.area = format_latex_to_unicode(session.metadata.area)
+        session.metadata.unidad = format_latex_to_unicode(session.metadata.unidad)
+        
+    # Propósitos
+    if session.proposito:
+        session.proposito.proposito_texto = format_latex_to_unicode(session.proposito.proposito_texto)
+        session.proposito.conocimientos = format_latex_to_unicode(session.proposito.conocimientos)
+        session.proposito.competencia = format_latex_to_unicode(session.proposito.competencia)
+        session.proposito.estandar = format_latex_to_unicode(session.proposito.estandar)
+        session.proposito.producto_evidencia = format_latex_to_unicode(session.proposito.producto_evidencia)
+        session.proposito.instrumento = format_latex_to_unicode(session.proposito.instrumento)
+        
+        if session.proposito.capacidades:
+            session.proposito.capacidades = [format_latex_to_unicode(c) for c in session.proposito.capacidades]
+        if session.proposito.criterios:
+            session.proposito.criterios = [format_latex_to_unicode(cr) for cr in session.proposito.criterios]
+
+    # Competencias transversales
+    if session.competencias_transversales:
+        for ct in session.competencias_transversales:
+            ct.titulo = format_latex_to_unicode(ct.titulo)
+            if ct.desempenos:
+                ct.desempenos = [format_latex_to_unicode(d) for d in ct.desempenos]
+
+    # Enfoques transversales
+    if session.enfoques_transversales:
+        for et in session.enfoques_transversales:
+            et.nombre = format_latex_to_unicode(et.nombre)
+            et.valor = format_latex_to_unicode(et.valor)
+            et.actitudes = format_latex_to_unicode(et.actitudes)
+
+    # Recursos
+    if session.recursos:
+        session.recursos.enlaces = format_latex_to_unicode(session.recursos.enlaces)
+        session.recursos.materiales = format_latex_to_unicode(session.recursos.materiales)
+        session.recursos.refuerzo = format_latex_to_unicode(session.recursos.refuerzo)
+
+    # Momentos
+    if session.momentos:
+        # Inicio
+        if session.momentos.inicio:
+            if session.momentos.inicio.actividades:
+                session.momentos.inicio.actividades = [format_latex_to_unicode(a) for a in session.momentos.inicio.actividades]
+        # Desarrollo
+        if session.momentos.desarrollo:
+            if session.momentos.desarrollo.procesos:
+                for proc in session.momentos.desarrollo.procesos:
+                    proc.titulo = format_latex_to_unicode(proc.titulo)
+                    if proc.actividades:
+                        proc.actividades = [format_latex_to_unicode(a) for a in proc.actividades]
+        # Cierre
+        if session.momentos.cierre:
+            if session.momentos.cierre.estrategias:
+                session.momentos.cierre.estrategias = [format_latex_to_unicode(e) for e in session.momentos.cierre.estrategias]
+            if session.momentos.cierre.evaluacion:
+                session.momentos.cierre.evaluacion = [format_latex_to_unicode(ev) for ev in session.momentos.cierre.evaluacion]
+            if session.momentos.cierre.extension:
+                session.momentos.cierre.extension = [format_latex_to_unicode(ex) for ex in session.momentos.cierre.extension]
+
+    # Ficha de trabajo
+    if session.ficha_trabajo:
+        session.ficha_trabajo.titulo = format_latex_to_unicode(session.ficha_trabajo.titulo)
+        session.ficha_trabajo.indicaciones = format_latex_to_unicode(session.ficha_trabajo.indicaciones)
+        session.ficha_trabajo.actividades = format_latex_to_unicode(session.ficha_trabajo.actividades)
+
+    # Firmas
+    if session.firmas:
+        for f in session.firmas:
+            f.nombre = format_latex_to_unicode(f.nombre)
+            f.cargo = format_latex_to_unicode(f.cargo)
+
+
 def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
+    # Preprocesar LaTeX a Unicode para asegurar compatibilidad matemática y estética en Word
+    preprocess_session_latex(session)
+    
     doc = Document()
     
     # Configuración de márgenes estándar (1.1 pulgadas arriba para membrete institucional, 0.8 en los lados)
@@ -1319,12 +1502,15 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     header = section.header
     
     # Tabla sin bordes de 3 columnas para logos y textos oficiales
-    header_table = header.add_table(rows=1, cols=3)
-    header_table.autofit = True
+    header_table = header.add_table(rows=1, cols=3, width=Inches(6.9))
+    header_table.autofit = False
+    header_table.allow_autofit = False
     
-    # Quitar bordes a la tabla de cabecera
+    # Quitar bordes y fijar anchos a la tabla de cabecera
+    anchos_header = [Inches(1.2), Inches(4.5), Inches(1.2)]
     for row in header_table.rows:
-        for cell in row.cells:
+        for col_idx, cell in enumerate(row.cells):
+            cell.width = anchos_header[col_idx]
             tcPr = cell._tc.get_or_add_tcPr()
             tcBorders = OxmlElement('w:tcBorders')
             for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
