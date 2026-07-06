@@ -531,36 +531,40 @@ async def startup_event():
     print(f"🔗 [ENLACE SEGURO] URL de vinculación segura:\n{target_url}\n")
 
 
-class ConsoleRedirector:
+class TerminalRedirector:
     def __init__(self, text_widget):
         self.text_widget = text_widget
         self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
     def write(self, string):
         clean_string = self.ansi_escape.sub('', string)
-        if not clean_string:
-            return
+        if not clean_string: return
+        
         try:
             self.text_widget.configure(state='normal')
-            self.text_widget.insert('end', clean_string)
+            # Pintar de verde si detecta éxito, rojo si es error, blanco el resto
+            tag = "muted"
+            if "✓" in clean_string or "ONLINE" in clean_string or "Conectado" in clean_string or "enlazado" in clean_string: tag = "green"
+            if "❌" in clean_string or "ERROR" in clean_string or "Fallo" in clean_string: tag = "red"
+            
+            self.text_widget.insert('end', clean_string, tag)
             self.text_widget.see('end')
             self.text_widget.configure(state='disabled')
         except Exception:
             pass
 
-    def flush(self):
-        pass
+    def flush(self): pass
 
 
 def start_gui():
-    """Inicia la interfaz gráfica del motor local, con estética idéntica a la consola CMD de Windows."""
+    """Interfaz gráfica ultra-minimalista tipo terminal hacker."""
     root = tk.Tk()
-    root.title("S.Y. PABLITO - Motor de Exportación Local")
-    root.geometry("720x480")
-    root.configure(bg="#000000")
+    root.title("S.Y. PABLITO_DP - Servidor Local")
+    root.geometry("850x500")
+    root.configure(bg="#050505") # Negro profundo
     root.resizable(False, False)
 
-    # Intentar cargar icono del programa
+    # Cargar icono si existe
     ico_path = EXE_DIR / "assets" / "logo.ico"
     if not ico_path.exists():
         ico_path = EXE_DIR.parent / "assets" / "logo.ico"
@@ -570,101 +574,106 @@ def start_gui():
         except Exception:
             pass
 
-    # Cabecera / Status en formato consola
-    status_frame = tk.Frame(root, bg="#000000")
-    status_frame.pack(fill="x", padx=10, pady=(10, 5))
-
-    status_label = tk.Label(
-        status_frame, 
-        text="[ESTADO] Esperando vinculación de la web...", 
-        font=("Consolas", 10, "bold"), 
-        fg="#eab308", 
-        bg="#000000"
-    )
-    status_label.pack(side="left")
-
-    target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
-    
-    def open_browser():
-        webbrowser.open(target_url)
-
-    btn_link = tk.Button(
-        status_frame, 
-        text="[ CLIC AQUÍ PARA VINCULAR ]", 
-        font=("Consolas", 10, "bold"), 
-        bg="#000000", 
-        fg="#0ea5e9", 
-        activebackground="#000000", 
-        activeforeground="#38bdf8", 
-        relief="flat", 
-        bd=0, 
-        cursor="hand2",
-        command=open_browser
-    )
-    btn_link.pack(side="right")
-
-    # Consola de Registros (CMD clásico)
-    log_area = scrolledtext.ScrolledText(
+    # 1. Widget de Texto Principal (Ocupa toda la ventana, sin bordes)
+    terminal = scrolledtext.ScrolledText(
         root, 
-        bg="#000000", 
-        fg="#CCCCCC", 
+        bg="#050505", 
+        fg="#e2e8f0", 
         font=("Consolas", 10), 
         relief="flat", 
         bd=0, 
-        insertbackground="#CCCCCC",
-        highlightthickness=0
+        insertbackground="#e2e8f0",
+        highlightthickness=0,
+        padx=20,
+        pady=20
     )
-    log_area.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-    log_area.configure(state='disabled')
+    terminal.pack(fill="both", expand=True)
 
-    # Redirigir stdout y stderr
-    sys.stdout = ConsoleRedirector(log_area)
-    sys.stderr = ConsoleRedirector(log_area)
+    # 2. Configuración de Etiquetas de Color (Sintaxis Hacker)
+    terminal.tag_config("magenta", foreground="#d946ef")
+    terminal.tag_config("blue", foreground="#3b82f6")
+    terminal.tag_config("cyan", foreground="#06b6d4")
+    terminal.tag_config("green", foreground="#22c55e")
+    terminal.tag_config("yellow", foreground="#eab308")
+    terminal.tag_config("red", foreground="#ef4444")
+    terminal.tag_config("muted", foreground="#64748b")
+    
+    # Etiqueta especial para el ENLACE (Puras letritas, pero clickeable)
+    terminal.tag_config("link", foreground="#38bdf8", underline=True)
+    
+    # Eventos del enlace (Cambia el cursor a la manito y abre la web)
+    target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
+    terminal.tag_bind("link", "<Enter>", lambda e: terminal.config(cursor="hand2"))
+    terminal.tag_bind("link", "<Leave>", lambda e: terminal.config(cursor="xterm"))
+    terminal.tag_bind("link", "<Button-1>", lambda e: webbrowser.open(target_url))
 
-    # Loop de verificación del estado del enlace
-    def update_status_loop():
-        if CLIENT_CONNECTED:
-            status_label.config(text="[ESTADO] Conectado con la web (Enlace Seguro Activo)", fg="#22c55e")
-            btn_link.pack_forget() # Ocultar el botón una vez conectado
-        else:
-            status_label.config(text="[ESTADO] Esperando vinculación de la web...", fg="#eab308")
-            btn_link.pack(side="right")
-        root.after(1000, update_status_loop)
+    # 3. El Banner Oficial (Ahora se renderizará perfecto sin cortes)
+    banner_magenta = (
+        "███████╗     ██╗   ██╗     ██████╗   █████╗  ██████╗  ██╗      ████████╗ ████████╗  ██████╗           ██████╗  ██████╗ \n"
+        "██╔════╝     ╚██╗ ██╔╝     ██╔══██╗ ██╔══██╗ ██╔══██╗ ██║      ╚══██╔══╝ ╚══██╔══╝ ██╔═══██╗          ██╔══██╗ ██╔══██╗ \n"
+    )
+    banner_blue = (
+        "███████╗      ╚████╔╝      ██████╔╝ ███████║ ██████╔╝ ██║         ██║       ██║    ██║   ██║          ██║  ██║ ██████╔╝ \n"
+        "╚════██║ ██╗   ╚██╔╝   ██╗ ██╔═══╝  ██╔══██║ ██╔══██╗ ██║         ██║       ██║    ██║   ██║          ██║  ██║ ██╔═══╝  \n"
+    )
+    banner_cyan = (
+        "███████║ ╚═╝    ██║    ╚═╝ ██║      ██║  ██║ ██████╔╝ ███████╗ ████████╗    ██║    ╚██████╔╝ ████████╗ ██████╔╝ ██║     \n"
+        "╚══════╝        ╚═╝        ╚═╝      ╚═╝  ╚═╝ ╚═════╝  ╚══════╝ ╚══════╝    ╚═╝     ╚═════╝  ╚═══════╝ ╚═════╝  ╚═╝     \n"
+    )
 
-    root.after(1000, update_status_loop)
+    # Insertar el Banner
+    terminal.insert("end", banner_magenta, "magenta")
+    terminal.insert("end", banner_blue, "blue")
+    terminal.insert("end", banner_cyan, "cyan")
+    
+    # Separador y créditos
+    terminal.insert("end", "\n" + "─" * 80 + "\n", "muted")
+    terminal.insert("end", "  [ MOTOR DE EXPORTACIÓN LOCAL ]", "green")
+    terminal.insert("end", " | Desarrollado por: Samuel Pablo C.\n", "muted")
+    terminal.insert("end", "─" * 80 + "\n\n", "muted")
 
-    # Imprimir banner y detalles iniciales
-    print("Microsoft Windows [Versión 10.0.22631]")
-    print("(c) Microsoft Corporation. Todos los derechos reservados.\n")
-    print("====================================================")
-    print("      SYPABLITODP PEDAGOGICAL EXPORT ENGINE         ")
-    print("      Versión 1.2.0-Beta - Puerto local: 8000       ")
-    print("====================================================")
-    print(f"Token de sesión generado: {CONNECTION_TOKEN}")
-    print(f"URL de enlace: {target_url}\n")
+    # Instrucciones y URL Clickeable
+    terminal.insert("end", "[ESTADO] ", "yellow")
+    terminal.insert("end", "Esperando vinculación de la web...\n")
+    terminal.insert("end", "[ENLACE] ", "cyan")
+    terminal.insert("end", "Haz clic en la siguiente URL para autorizar el motor:\n")
+    
+    # Aquí insertamos la URL pura con la etiqueta 'link'
+    terminal.insert("end", f"> {target_url}\n\n", "link")
 
-    # Hilo para ejecutar análisis y arranque del servidor
+    sys.stdout = TerminalRedirector(terminal)
+    sys.stderr = TerminalRedirector(terminal)
+    terminal.configure(state='disabled')
+
+    # 5. Hilo para arrancar FastAPI sin congelar la terminal UI
     def run_server_flow():
         try:
-            # 1. Comprobar navegadores de Playwright (Detección Híbrida)
+            print("Escaneando motor de renderizado Chromium...")
             motor_valido = buscar_navegador_compatible()
             if not motor_valido:
                 descargar_chromium_nativo()
             else:
-                print(f"✓ Navegador compatible detectado en: {motor_valido}")
+                print(f"✓ Navegador compatible detectado: {motor_valido}")
             
-            # 2. Iniciar servidor FastAPI con Uvicorn (usando log_config=None para evitar el error de formatters en PyInstaller)
-            print("Iniciando servidor local de exportación...")
+            print("Iniciando servidor local en el puerto 8000...")
             import uvicorn
             uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning", log_config=None)
-        except SystemExit as se:
-            if se.code != 0:
-                print(f"\n❌ [ERROR DE SISTEMA] El puerto 8000 ya está siendo utilizado por otra aplicación.")
-                print("Por favor, cierra los otros procesos de 'pablitopyhost' e intenta de nuevo.")
         except Exception as e:
-            print(f"\n❌ [ERROR CRÍTICO] El servidor no se pudo iniciar: {str(e)}")
+            print(f"\n❌ [ERROR CRÍTICO]: {str(e)}")
 
     threading.Thread(target=run_server_flow, daemon=True).start()
+    
+    # 6. Actualizar el estado visual cuando se conecte
+    def check_connection():
+        if CLIENT_CONNECTED:
+            terminal.configure(state='normal')
+            terminal.insert('end', "\n✓ [CONECTADO] El enlace de seguridad fue establecido con la web.\n", "green")
+            terminal.configure(state='disabled')
+            terminal.see('end')
+        else:
+            root.after(2000, check_connection)
+
+    root.after(2000, check_connection)
     root.mainloop()
 
 if __name__ == "__main__":
