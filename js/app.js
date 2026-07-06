@@ -934,8 +934,6 @@
             renderSession(session);
             Loader.hide();
             Toast.success('¡Sesión generada con IA exitosamente!');
-            clearSourceFile();
-
         } catch (error) {
             Loader.hide();
 
@@ -3420,14 +3418,10 @@
     // ═══════════════════════════════════════
 
     function handleAiProviderChange() {
-        const provider = DOM.selectAiProvider.value;
+        // Permitir archivos de referencia para todos los proveedores
         const fileGroup = $('.source-file-group');
-        
-        if (provider === 'gemini') {
-            if (fileGroup) fileGroup.classList.remove('hidden');
-        } else {
-            if (fileGroup) fileGroup.classList.add('hidden');
-            clearSourceFile();
+        if (fileGroup) {
+            fileGroup.classList.remove('hidden');
         }
     }
 
@@ -3476,7 +3470,7 @@
             };
             reader.readAsText(file);
         } else if (fileName.toLowerCase().endsWith('.pdf')) {
-            Loader.show('Procesando PDF y extrayendo texto...');
+            Loader.show('Procesando PDF, extrayendo texto e imágenes...');
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
@@ -3486,12 +3480,21 @@
                     
                     // Extraer texto usando pdfjs
                     const extractedText = await extractTextFromPDF(arrayBuffer);
+
+                    // Renderizar páginas como imágenes para visión multimodal (máximo 4 páginas)
+                    let renderedImages = [];
+                    try {
+                        renderedImages = await renderPDFToImages(arrayBuffer, 4);
+                    } catch (renderErr) {
+                        console.error('[PDF Render Warning] No se pudieron renderizar las páginas del PDF como imágenes:', renderErr);
+                    }
                     
                     AppState.sourceFileData = {
                         name: fileName,
                         type: 'application/pdf',
                         textContent: extractedText,
-                        base64: base64Data
+                        base64: base64Data,
+                        images: renderedImages
                     };
                     Loader.hide();
                     showSourceFileInfo(fileName);
@@ -3507,7 +3510,8 @@
                         name: fileName,
                         type: 'application/pdf',
                         textContent: null,
-                        base64: base64Data
+                        base64: base64Data,
+                        images: []
                     };
                     showSourceFileInfo(fileName);
                 }
@@ -3526,11 +3530,17 @@
                 const dataUrl = e.target.result;
                 // Strip metadata from data URL
                 const base64Data = dataUrl.split(',')[1];
+                const mimeType = fileType || getBinaryMimeFallback(fileName);
+                
+                // Si es imagen, la inyectamos en el array de imágenes
+                const images = mimeType.startsWith('image/') ? [{ base64: base64Data, type: mimeType }] : [];
+
                 AppState.sourceFileData = {
                     name: fileName,
-                    type: fileType || getBinaryMimeFallback(fileName),
+                    type: mimeType,
                     textContent: null,
-                    base64: base64Data
+                    base64: base64Data,
+                    images: images
                 };
                 showSourceFileInfo(fileName);
             };
@@ -3578,6 +3588,53 @@
         }
         
         return fullText.trim();
+    }
+
+    async function renderPDFToImages(arrayBuffer, maxPages = 4) {
+        if (!window.pdfjsLib) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.onload = () => {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    resolve();
+                };
+                script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
+                document.head.appendChild(script);
+            });
+        }
+
+        const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const images = [];
+        const numPages = Math.min(pdf.numPages, maxPages);
+
+        for (let i = 1; i <= numPages; i++) {
+            try {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 1.2 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+                
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                const base64 = dataUrl.split(',')[1];
+                images.push({
+                    base64: base64,
+                    type: 'image/jpeg'
+                });
+            } catch (pageErr) {
+                console.error(`[PDF Render Page Error] No se pudo renderizar la página ${i}`, pageErr);
+            }
+        }
+        return images;
     }
 
     function getBinaryMimeFallback(fileName) {

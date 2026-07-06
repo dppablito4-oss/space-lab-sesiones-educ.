@@ -364,9 +364,21 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
             
             let response;
             if (provider === 'gemini' && requestEndpoint.includes('generativelanguage.googleapis.com')) {
-                // Inyectar el archivo multimodal en la llamada directa de Gemini si existe
+                // Inyectar el texto del prompt
                 const parts = [{ text: userPrompt }];
-                if (metadata.sourceFile && metadata.sourceFile.base64 && metadata.sourceFile.type) {
+                
+                // Si el modelo es Gemini directo y tenemos las imágenes renderizadas, las agregamos como inlineData
+                if (metadata.sourceFile && metadata.sourceFile.images && metadata.sourceFile.images.length > 0) {
+                    metadata.sourceFile.images.forEach(img => {
+                        parts.push({
+                            inlineData: {
+                                mimeType: img.type,
+                                data: img.base64
+                            }
+                        });
+                    });
+                } else if (metadata.sourceFile && metadata.sourceFile.base64 && metadata.sourceFile.type) {
+                    // Fallback: Si no hay imágenes pero hay un archivo cargado completo en base64
                     parts.push({
                         inlineData: {
                             mimeType: metadata.sourceFile.type,
@@ -385,6 +397,24 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
                     })
                 });
             } else {
+                // Para OpenAI / OpenRouter / DeepSeek
+                let userContent;
+                if (metadata.sourceFile && metadata.sourceFile.images && metadata.sourceFile.images.length > 0) {
+                    userContent = [
+                        { type: 'text', text: userPrompt }
+                    ];
+                    metadata.sourceFile.images.forEach(img => {
+                        userContent.push({
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${img.type};base64,${img.base64}`
+                            }
+                        });
+                    });
+                } else {
+                    userContent = userPrompt;
+                }
+
                 response = await fetch(requestEndpoint, {
                     method: 'POST',
                     headers: {
@@ -397,7 +427,7 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
                         model: requestModel,
                         messages: [
                             { role: 'system', content: dynamicSystemPrompt },
-                            { role: 'user', content: userPrompt }
+                            { role: 'user', content: userContent }
                         ],
                         max_tokens: CONFIG.maxTokens,
                         temperature: CONFIG.temperature
