@@ -366,7 +366,7 @@
 
                 try {
                     // Hacer la validación al endpoint de Python local
-                    const response = await fetch(`http://localhost:8000/verificar-token?token=${token}`);
+                    const response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`);
 
                     if (!response.ok) {
                         if (response.status === 401) {
