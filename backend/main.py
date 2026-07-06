@@ -618,6 +618,695 @@ async def exportar_docx(payload: ExportDocxRequest):
         raise HTTPException(status_code=500, detail=f"Fallo al compilar archivo de Word (.docx): {str(e)}")
 
 
+def get_image_stream(url: str):
+    """Intenta descargar la imagen desde la URL y devuelve un BytesIO. Retorna None si falla o es vacía."""
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        return None
+    try:
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        )
+        with urllib.request.urlopen(req, timeout=3) as response:
+            return io.BytesIO(response.read())
+    except Exception as e:
+        print(f"[WARN LOGO] No se pudo descargar el logo {url}: {e}")
+        return None
+
+
+def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
+    doc = Document()
+    
+    # Configuración de márgenes a 0.8 pulgadas (2 cm aprox) para optimizar espacio
+    for s in doc.sections:
+        s.top_margin = Inches(0.8)
+        s.bottom_margin = Inches(0.8)
+        s.left_margin = Inches(0.8)
+        s.right_margin = Inches(0.8)
+
+    # Estilo Normal
+    style_normal = doc.styles['Normal']
+    style_normal.font.name = 'Arial'
+    style_normal.font.size = Pt(10)
+    style_normal.font.color.rgb = RGBColor(30, 41, 59) # Slate-800
+
+    # ─── CABECERA INSTITUCIONAL ───
+    # Tabla sin bordes de 3 columnas para logos y textos oficiales
+    header_table = doc.add_table(rows=1, cols=3)
+    header_table.autofit = True
+    
+    # Quitar bordes a la tabla de cabecera
+    for row in header_table.rows:
+        for cell in row.cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcBorders = OxmlElement('w:tcBorders')
+            for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+                border = OxmlElement(f'w:{edge}')
+                border.set(qn('w:val'), 'nil')
+                tcBorders.append(border)
+            tcPr.append(tcBorders)
+
+    # Llenar columna 1: Logo Izquierdo
+    logo_left_stream = get_image_stream(session.metadata.logo_left_url)
+    if logo_left_stream:
+        try:
+            p_logo = header_table.cell(0, 0).paragraphs[0]
+            p_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p_logo.add_run().add_picture(logo_left_stream, width=Inches(0.8))
+        except Exception:
+            pass
+
+    # Llenar columna 2: Textos Oficiales
+    p_text = header_table.cell(0, 1).paragraphs[0]
+    p_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    run_minedu = p_text.add_run("MINISTERIO DE EDUCACIÓN\n")
+    run_minedu.bold = True
+    run_minedu.font.size = Pt(8.5)
+    
+    run_dre = p_text.add_run(f"{session.metadata.dre or 'DIRECCIÓN REGIONAL DE EDUCACIÓN'}\n")
+    run_dre.bold = True
+    run_dre.font.size = Pt(9)
+    
+    run_ugel = p_text.add_run(f"{session.metadata.ugel or 'UNIDAD DE GESTIÓN EDUCATIVA LOCAL'}\n")
+    run_ugel.bold = True
+    run_ugel.font.size = Pt(9)
+    
+    run_agp = p_text.add_run("ÁREA DE GESTIÓN PEDAGÓGICA")
+    run_agp.italic = True
+    run_agp.font.size = Pt(8)
+
+    # Llenar columna 3: Logo Derecho (Regional)
+    logo_right_stream = get_image_stream(session.metadata.logo_regional_url)
+    if logo_right_stream:
+        try:
+            p_logo_r = header_table.cell(0, 2).paragraphs[0]
+            p_logo_r.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            p_logo_r.add_run().add_picture(logo_right_stream, width=Inches(0.8))
+        except Exception:
+            pass
+
+    # Línea divisoria debajo de la cabecera
+    p_divider = doc.add_paragraph()
+    p_divider.paragraph_format.space_before = Pt(6)
+    p_divider.paragraph_format.space_after = Pt(12)
+    p_divider_border = OxmlElement('w:pBdr')
+    bottom_border = OxmlElement('w:bottom')
+    bottom_border.set(qn('w:val'), 'single')
+    bottom_border.set(qn('w:sz'), '12') # 1.5 pt
+    bottom_border.set(qn('w:space'), '1')
+    bottom_border.set(qn('w:color'), '000000')
+    p_divider_border.append(bottom_border)
+    p_divider._p.get_or_add_pPr().append(p_divider_border)
+
+    # ─── TÍTULO PRINCIPAL ───
+    p_title = doc.add_paragraph()
+    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_title.paragraph_format.space_after = Pt(12)
+    run_title = p_title.add_run(f"SESIÓN DE APRENDIZAJE N° {session.metadata.numero_sesion or '01'}")
+    run_title.bold = True
+    run_title.font.size = Pt(13)
+    run_title.font.color.rgb = RGBColor(15, 23, 42)
+
+    # Título de la sesión
+    p_sub_title = doc.add_paragraph()
+    p_sub_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_sub_title.paragraph_format.space_after = Pt(14)
+    run_sub = p_sub_title.add_run(f"\"{session.metadata.titulo or 'Título de la Sesión'}\"")
+    run_sub.bold = True
+    run_sub.italic = True
+    run_sub.font.size = Pt(11)
+
+    # ─── DATOS GENERALES (Tabla estructurada) ───
+    dg_table = doc.add_table(rows=4, cols=6)
+    dg_table.autofit = True
+    add_table_borders(dg_table)
+    
+    # Rellenar fila 1
+    dg_table.cell(0, 0).text = "Institución Educativa"
+    set_cell_background(dg_table.cell(0, 0), "F1F5F9")
+    dg_table.cell(0, 0).paragraphs[0].runs[0].bold = True
+    dg_table.cell(0, 1).text = session.metadata.institucion or ""
+    dg_table.cell(0, 1).merge(dg_table.cell(0, 3)) # Combina columnas 1 a 3 para el nombre de I.E.
+    
+    dg_table.cell(0, 4).text = "Nivel"
+    set_cell_background(dg_table.cell(0, 4), "F1F5F9")
+    dg_table.cell(0, 4).paragraphs[0].runs[0].bold = True
+    dg_table.cell(0, 5).text = session.metadata.nivel or ""
+
+    # Rellenar fila 2
+    dg_table.cell(1, 0).text = "Docente"
+    set_cell_background(dg_table.cell(1, 0), "F1F5F9")
+    dg_table.cell(1, 0).paragraphs[0].runs[0].bold = True
+    dg_table.cell(1, 1).text = session.metadata.docente or ""
+    dg_table.cell(1, 1).merge(dg_table.cell(1, 3))
+    
+    dg_table.cell(1, 4).text = "Área"
+    set_cell_background(dg_table.cell(1, 4), "F1F5F9")
+    dg_table.cell(1, 4).paragraphs[0].runs[0].bold = True
+    dg_table.cell(1, 5).text = session.metadata.area or ""
+
+    # Rellenar fila 3
+    dg_table.cell(2, 0).text = "Grado"
+    set_cell_background(dg_table.cell(2, 0), "F1F5F9")
+    dg_table.cell(2, 0).paragraphs[0].runs[0].bold = True
+    dg_table.cell(2, 1).text = session.metadata.grado or ""
+    
+    dg_table.cell(2, 2).text = "Sección"
+    set_cell_background(dg_table.cell(2, 2), "F1F5F9")
+    dg_table.cell(2, 2).paragraphs[0].runs[0].bold = True
+    dg_table.cell(2, 3).text = session.metadata.seccion or ""
+    
+    dg_table.cell(2, 4).text = "Unidad / Proyecto"
+    set_cell_background(dg_table.cell(2, 4), "F1F5F9")
+    dg_table.cell(2, 4).paragraphs[0].runs[0].bold = True
+    dg_table.cell(2, 5).text = session.metadata.unidad or ""
+
+    # Rellenar fila 4
+    dg_table.cell(3, 0).text = "Fecha"
+    set_cell_background(dg_table.cell(3, 0), "F1F5F9")
+    dg_table.cell(3, 0).paragraphs[0].runs[0].bold = True
+    dg_table.cell(3, 1).text = session.metadata.fecha or ""
+    dg_table.cell(3, 1).merge(dg_table.cell(3, 3))
+    
+    dg_table.cell(3, 4).text = "Duración"
+    set_cell_background(dg_table.cell(3, 4), "F1F5F9")
+    dg_table.cell(3, 4).paragraphs[0].runs[0].bold = True
+    dg_table.cell(3, 5).text = f"{session.metadata.duracion or ''} min" if session.metadata.duracion else ""
+
+    # Estilos a las celdas de la tabla de datos
+    for row in dg_table.rows:
+        for cell in row.cells:
+            set_cell_margins(cell, top=60, bottom=60, left=100, right=100)
+            cell.paragraphs[0].paragraph_format.line_spacing = 1.15
+            cell.paragraphs[0].paragraph_format.space_after = Pt(2)
+
+    # ─── PROPÓSITO DE LA SESIÓN ───
+    doc.add_paragraph().paragraph_format.space_before = Pt(12)
+    h_prop = doc.add_paragraph()
+    h_prop.paragraph_format.keep_with_next = True
+    run_h_prop = h_prop.add_run("I. PROPÓSITO DE LA SESIÓN")
+    run_h_prop.bold = True
+    run_h_prop.font.size = Pt(11)
+    
+    p_prop = doc.add_paragraph()
+    p_prop.paragraph_format.left_indent = Inches(0.2)
+    p_prop.add_run(session.proposito.proposito_texto or "")
+
+    # ─── CONOCIMIENTOS ───
+    h_cono = doc.add_paragraph()
+    h_cono.paragraph_format.keep_with_next = True
+    run_h_cono = h_cono.add_run("II. CONOCIMIENTOS")
+    run_h_cono.bold = True
+    run_h_cono.font.size = Pt(11)
+    
+    p_cono = doc.add_paragraph()
+    p_cono.paragraph_format.left_indent = Inches(0.2)
+    p_cono.add_run(session.proposito.conocimientos or "")
+
+    # ─── PROPÓSITOS DE APRENDIZAJE ───
+    doc.add_paragraph().paragraph_format.space_before = Pt(10)
+    h_apren = doc.add_paragraph()
+    h_apren.paragraph_format.keep_with_next = True
+    run_h_apren = h_apren.add_run("III. PROPÓSITOS DE APRENDIZAJE")
+    run_h_apren.bold = True
+    run_h_apren.font.size = Pt(11)
+
+    # Subtabla Competencia / Estándar
+    comp_est_table = doc.add_table(rows=2, cols=2)
+    comp_est_table.autofit = True
+    add_table_borders(comp_est_table)
+    
+    comp_est_table.cell(0, 0).text = "Competencia"
+    set_cell_background(comp_est_table.cell(0, 0), "F1F5F9")
+    comp_est_table.cell(0, 0).paragraphs[0].runs[0].bold = True
+    comp_est_table.cell(0, 0).width = Inches(1.8)
+    comp_est_table.cell(0, 1).text = session.proposito.competencia or ""
+    comp_est_table.cell(0, 1).paragraphs[0].runs[0].bold = True
+
+    comp_est_table.cell(1, 0).text = "Estándar de aprendizaje"
+    set_cell_background(comp_est_table.cell(1, 0), "F1F5F9")
+    comp_est_table.cell(1, 0).paragraphs[0].runs[0].bold = True
+    comp_est_table.cell(1, 1).text = session.proposito.estandar or ""
+    
+    for row in comp_est_table.rows:
+        for cell in row.cells:
+            set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+            cell.paragraphs[0].paragraph_format.line_spacing = 1.15
+
+    # Tabla Matriz de Propósitos (Competencias, Capacidades, Criterios, Evidencia, Instrumento)
+    doc.add_paragraph().paragraph_format.space_before = Pt(6)
+    matriz_table = doc.add_table(rows=2, cols=5)
+    matriz_table.autofit = True
+    add_table_borders(matriz_table)
+    
+    # Encabezados
+    headers = ["COMPETENCIAS", "CAPACIDADES", "CRITERIOS DE EVALUACIÓN", "PRODUCTO / EVIDENCIA", "INSTRUMENTOS DE EVALUACIÓN"]
+    for idx, text in enumerate(headers):
+        cell = matriz_table.cell(0, idx)
+        cell.text = text
+        set_cell_background(cell, "E2E8F0")
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.runs[0].bold = True
+        p.runs[0].font.size = Pt(8.5)
+
+    # Rellenar datos
+    matriz_table.cell(1, 0).text = session.proposito.competencia or ""
+    matriz_table.cell(1, 0).paragraphs[0].runs[0].bold = True
+    
+    # Capacidades (lista)
+    cell_cap = matriz_table.cell(1, 1)
+    cell_cap.text = ""
+    for cap in session.proposito.capacidades:
+        p = cell_cap.add_paragraph(style='List Bullet')
+        p.paragraph_format.space_after = Pt(2)
+        p.add_run(cap)
+        
+    # Criterios (lista)
+    cell_crit = matriz_table.cell(1, 2)
+    cell_crit.text = ""
+    for crit in session.proposito.criterios:
+        p = cell_crit.add_paragraph(style='List Bullet')
+        p.paragraph_format.space_after = Pt(2)
+        p.add_run(crit)
+        
+    matriz_table.cell(1, 3).text = session.proposito.producto_evidencia or ""
+    matriz_table.cell(1, 4).text = session.proposito.instrumento or ""
+
+    for row_idx, row in enumerate(matriz_table.rows):
+        for cell in row.cells:
+            set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+            for p in cell.paragraphs:
+                p.paragraph_format.line_spacing = 1.15
+                if row_idx > 0:
+                    p.paragraph_format.space_after = Pt(4)
+
+    # ─── COMPETENCIAS TRANSVERSALES ───
+    if session.competencias_transversales:
+        doc.add_paragraph().paragraph_format.space_before = Pt(10)
+        ct_table = doc.add_table(rows=1 + len(session.competencias_transversales), cols=2)
+        ct_table.autofit = True
+        add_table_borders(ct_table)
+        
+        # Headers
+        ct_table.cell(0, 0).text = "COMPETENCIAS TRANSVERSALES"
+        set_cell_background(ct_table.cell(0, 0), "E2E8F0")
+        ct_table.cell(0, 0).paragraphs[0].runs[0].bold = True
+        ct_table.cell(0, 0).width = Inches(2.5)
+        
+        ct_table.cell(0, 1).text = "DESEMPEÑOS PRECISADOS / PRODUCTO / INSTRUMENTOS"
+        set_cell_background(ct_table.cell(0, 1), "E2E8F0")
+        ct_table.cell(0, 1).paragraphs[0].runs[0].bold = True
+        
+        for idx, ct in enumerate(session.competencias_transversales):
+            cell_titulo = ct_table.cell(idx + 1, 0)
+            cell_titulo.text = ct.titulo
+            cell_titulo.paragraphs[0].runs[0].bold = True
+            
+            cell_des = ct_table.cell(idx + 1, 1)
+            cell_des.text = ""
+            for des in ct.desempenos:
+                p = cell_des.add_paragraph(style='List Bullet')
+                p.paragraph_format.space_after = Pt(2)
+                p.add_run(des)
+
+        for row in ct_table.rows:
+            for cell in row.cells:
+                set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+                for p in cell.paragraphs:
+                    p.paragraph_format.line_spacing = 1.15
+
+    # ─── ENFOQUES TRANSVERSALES ───
+    if session.enfoques_transversales:
+        doc.add_paragraph().paragraph_format.space_before = Pt(10)
+        enf_table = doc.add_table(rows=1 + len(session.enfoques_transversales), cols=3)
+        enf_table.autofit = True
+        add_table_borders(enf_table)
+        
+        headers_enf = ["ENFOQUES TRANSVERSALES", "VALORES", "ACTITUDES O ACCIONES OBSERVABLES"]
+        for idx, text in enumerate(headers_enf):
+            cell = enf_table.cell(0, idx)
+            cell.text = text
+            set_cell_background(cell, "E2E8F0")
+            cell.paragraphs[0].runs[0].bold = True
+            
+        enf_table.cell(0, 0).width = Inches(2.2)
+        enf_table.cell(0, 1).width = Inches(1.8)
+        
+        for idx, enf in enumerate(session.enfoques_transversales):
+            enf_table.cell(idx + 1, 0).text = enf.nombre
+            enf_table.cell(idx + 1, 0).paragraphs[0].runs[0].bold = True
+            enf_table.cell(idx + 1, 1).text = enf.valor
+            enf_table.cell(idx + 1, 2).text = enf.actitudes
+
+        for row in enf_table.rows:
+            for cell in row.cells:
+                set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+                for p in cell.paragraphs:
+                    p.paragraph_format.line_spacing = 1.15
+
+    # ─── RECURSOS Y MATERIALES ───
+    doc.add_paragraph().paragraph_format.space_before = Pt(10)
+    rec_table = doc.add_table(rows=3, cols=2)
+    rec_table.autofit = True
+    add_table_borders(rec_table)
+    
+    labels_rec = [
+        ("Páginas de Texto, otros textos de consulta/Enlace web, etc.", session.recursos.enlaces),
+        ("Materiales y recursos", session.recursos.materiales),
+        ("Actividades de Refuerzo Escolar (N° ficha y Título)", session.recursos.refuerzo)
+    ]
+    for idx, (label, val) in enumerate(labels_rec):
+        rec_table.cell(idx, 0).text = label
+        set_cell_background(rec_table.cell(idx, 0), "F1F5F9")
+        rec_table.cell(idx, 0).paragraphs[0].runs[0].bold = True
+        rec_table.cell(idx, 0).width = Inches(3.0)
+        rec_table.cell(idx, 1).text = val or ""
+
+    for row in rec_table.rows:
+        for cell in row.cells:
+            set_cell_margins(cell, top=60, bottom=60, left=100, right=100)
+            cell.paragraphs[0].paragraph_format.line_spacing = 1.15
+
+    # ─── MOMENTOS DE LA SESIÓN ───
+    doc.add_paragraph().paragraph_format.space_before = Pt(12)
+    h_mom = doc.add_paragraph()
+    h_mom.paragraph_format.keep_with_next = True
+    run_h_mom = h_mom.add_run("IV. SECUENCIA DIDÁCTICA (MOMENTOS)")
+    run_h_mom.bold = True
+    run_h_mom.font.size = Pt(11)
+
+    procesos_des = session.momentos.desarrollo.procesos
+    cant_procesos = len(procesos_des) if procesos_des else 1
+    total_filas = 1 + 1 + cant_procesos + 1
+    
+    mom_table = doc.add_table(rows=total_filas, cols=3)
+    mom_table.autofit = True
+    add_table_borders(mom_table)
+    
+    # Headers
+    headers_mom = ["MOMENTOS DE LA SESIÓN", "ESTRATEGIAS / ACTIVIDADES", "EVALUACIÓN"]
+    for idx, text in enumerate(headers_mom):
+        cell = mom_table.cell(0, idx)
+        cell.text = text
+        set_cell_background(cell, "E2E8F0")
+        cell.paragraphs[0].runs[0].bold = True
+        
+    mom_table.cell(0, 0).width = Inches(1.8)
+    mom_table.cell(0, 2).width = Inches(1.2)
+
+    # ── Fila de Inicio (Fila 1) ──
+    cell_mom_inicio = mom_table.cell(1, 0)
+    set_cell_background(cell_mom_inicio, "F8FAFC")
+    p_mom_ini = cell_mom_inicio.paragraphs[0]
+    run_mom_ini = p_mom_ini.add_run("INICIO:\n")
+    run_mom_ini.bold = True
+    run_mom_ini.font.size = Pt(9.5)
+    
+    p_sub_ini = cell_mom_inicio.add_paragraph()
+    p_sub_ini.paragraph_format.space_before = Pt(4)
+    p_sub_ini.add_run("• Saberes Previos\n• Problematización\n• Motivación").font.size = Pt(8)
+    
+    p_time_ini = cell_mom_inicio.add_paragraph()
+    p_time_ini.paragraph_format.space_before = Pt(6)
+    run_time_ini = p_time_ini.add_run(f"TIEMPO: {session.momentos.inicio.tiempo_total or ''} min" if session.momentos.inicio.tiempo_total else "")
+    run_time_ini.bold = True
+    run_time_ini.font.size = Pt(8.5)
+
+    # Estrategias de Inicio
+    cell_est_inicio = mom_table.cell(1, 1)
+    cell_est_inicio.text = ""
+    for act in session.momentos.inicio.actividades:
+        p = cell_est_inicio.add_paragraph()
+        p.paragraph_format.space_after = Pt(4)
+        p.add_run(act)
+
+    # Evaluación de Inicio
+    cell_eval_inicio = mom_table.cell(1, 2)
+    cell_eval_inicio.text = "EVALUACIÓN FORMATIVA"
+    cell_eval_inicio.paragraphs[0].runs[0].font.size = Pt(8.5)
+    cell_eval_inicio.paragraphs[0].runs[0].bold = True
+    set_cell_background(cell_eval_inicio, "F8FAFC")
+
+    # ── Filas de Desarrollo (Fila 2 a 2 + cant_procesos - 1) ──
+    start_row_des = 2
+    cell_mom_des = mom_table.cell(start_row_des, 0)
+    set_cell_background(cell_mom_des, "F8FAFC")
+    p_mom_des = cell_mom_des.paragraphs[0]
+    run_mom_des = p_mom_des.add_run("DESARROLLO:\n")
+    run_mom_des.bold = True
+    run_mom_des.font.size = Pt(9.5)
+    
+    p_sub_des = cell_mom_des.add_paragraph()
+    p_sub_des.paragraph_format.space_before = Pt(4)
+    p_sub_des.add_run("Gestión y Acompañamiento del Desarrollo de las Competencias (Procesos didácticos del Área)").font.size = Pt(8)
+    
+    p_time_des = cell_mom_des.add_paragraph()
+    p_time_des.paragraph_format.space_before = Pt(6)
+    run_time_des = p_time_des.add_run(f"TIEMPO: {session.momentos.desarrollo.tiempo_total or ''} min" if session.momentos.desarrollo.tiempo_total else "")
+    run_time_des.bold = True
+    run_time_des.font.size = Pt(8.5)
+
+    # Evaluación de Desarrollo
+    cell_eval_des = mom_table.cell(start_row_des, 2)
+    cell_eval_des.text = "EVALUACIÓN FORMATIVA\n\n(Monitoreo activo y retroalimentación)"
+    cell_eval_des.paragraphs[0].runs[0].font.size = Pt(8.5)
+    cell_eval_des.paragraphs[0].runs[0].bold = True
+    set_cell_background(cell_eval_des, "F8FAFC")
+
+    # Escribir procesos
+    for idx in range(cant_procesos):
+        row_num = start_row_des + idx
+        cell_est_des = mom_table.cell(row_num, 1)
+        cell_est_des.text = ""
+        
+        if procesos_des:
+            proc = procesos_des[idx]
+            p_title = cell_est_des.add_paragraph()
+            p_title.paragraph_format.space_after = Pt(4)
+            run_proc_t = p_title.add_run(f"{proc.titulo.upper()}")
+            run_proc_t.bold = True
+            run_proc_t.font.color.rgb = RGBColor(192, 57, 43) # C0392B
+            run_proc_t.font.size = Pt(9)
+            
+            for parrafo in proc.contenido:
+                p = cell_est_des.add_paragraph()
+                p.paragraph_format.space_after = Pt(4)
+                p.add_run(parrafo)
+        else:
+            cell_est_des.text = "Gestión y Acompañamiento del Desarrollo de Competencias..."
+
+    # Fusión de columnas de momentos y evaluación
+    if cant_procesos > 1:
+        end_row_des = start_row_des + cant_procesos - 1
+        cell_mom_des.merge(mom_table.cell(end_row_des, 0))
+        cell_eval_des.merge(mom_table.cell(end_row_des, 2))
+
+    # ── Fila de Cierre ──
+    row_cierre_idx = total_filas - 1
+    cell_mom_cie = mom_table.cell(row_cierre_idx, 0)
+    set_cell_background(cell_mom_cie, "F8FAFC")
+    p_mom_cie = cell_mom_cie.paragraphs[0]
+    run_mom_cie = p_mom_cie.add_run("CIERRE:\n")
+    run_mom_cie.bold = True
+    run_mom_cie.font.size = Pt(9.5)
+    
+    p_sub_cie = cell_mom_cie.add_paragraph()
+    p_sub_cie.paragraph_format.space_before = Pt(4)
+    p_sub_cie.add_run("• Metacognición\n• Evaluación formativa\n• Actividades de extensión").font.size = Pt(8)
+    
+    p_time_cie = cell_mom_cie.add_paragraph()
+    p_time_cie.paragraph_format.space_before = Pt(6)
+    run_time_cie = p_time_cie.add_run(f"TIEMPO: {session.momentos.cierre.tiempo_total or ''} min" if session.momentos.cierre.tiempo_total else "")
+    run_time_cie.bold = True
+    run_time_cie.font.size = Pt(8.5)
+
+    # Estrategias de Cierre
+    cell_est_cierre = mom_table.cell(row_cierre_idx, 1)
+    cell_est_cierre.text = ""
+    
+    if session.momentos.cierre.metacognicion:
+        p = cell_est_cierre.add_paragraph()
+        run = p.add_run("Metacognición:")
+        run.bold = True
+        for met in session.momentos.cierre.metacognicion:
+            p_item = cell_est_cierre.add_paragraph(style='List Bullet')
+            p_item.paragraph_format.space_after = Pt(2)
+            p_item.add_run(met)
+            
+    if session.momentos.cierre.evaluacion:
+        p = cell_est_cierre.add_paragraph()
+        p.paragraph_format.space_before = Pt(4)
+        run = p.add_run("Evaluación formativa:")
+        run.bold = True
+        for ev in session.momentos.cierre.evaluacion:
+            p_item = cell_est_cierre.add_paragraph(style='List Bullet')
+            p_item.paragraph_format.space_after = Pt(2)
+            p_item.add_run(ev)
+            
+    if session.momentos.cierre.extension:
+        p = cell_est_cierre.add_paragraph()
+        p.paragraph_format.space_before = Pt(4)
+        run = p.add_run("Extensión para casa:")
+        run.bold = True
+        for ext in session.momentos.cierre.extension:
+            p_item = cell_est_cierre.add_paragraph(style='List Bullet')
+            p_item.paragraph_format.space_after = Pt(2)
+            p_item.add_run(ext)
+
+    # Evaluación de Cierre
+    cell_eval_cie = mom_table.cell(row_cierre_idx, 2)
+    cell_eval_cie.text = "EVALUACIÓN FORMATIVA"
+    cell_eval_cie.paragraphs[0].runs[0].font.size = Pt(8.5)
+    cell_eval_cie.paragraphs[0].runs[0].bold = True
+    set_cell_background(cell_eval_cie, "F8FAFC")
+
+    for row in mom_table.rows:
+        for cell in row.cells:
+            set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+            for p in cell.paragraphs:
+                p.paragraph_format.line_spacing = 1.15
+
+    # ─── FIRMAS DE LA SESIÓN ───
+    doc.add_paragraph().paragraph_format.space_before = Pt(40)
+    firmas_table = doc.add_table(rows=1, cols=2)
+    firmas_table.autofit = True
+    
+    # Quitar bordes a la tabla de firmas
+    for cell in firmas_table.rows[0].cells:
+        tcPr = cell._tc.get_or_add_tcPr()
+        tcBorders = OxmlElement('w:tcBorders')
+        for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+            border = OxmlElement(f'w:{edge}')
+            border.set(qn('w:val'), 'nil')
+            tcBorders.append(border)
+        tcPr.append(tcBorders)
+
+    # Firma Docente
+    p_f_doc = firmas_table.cell(0, 0).paragraphs[0]
+    p_f_doc.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_f_doc.add_run("_______________________________\n").bold = True
+    run_n_doc = p_f_doc.add_run(session.metadata.docente or "Docente de la Sesión")
+    run_n_doc.bold = True
+    run_n_doc.font.size = Pt(9.5)
+    p_f_doc.add_paragraph("Docente de la Sesión").alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_f_doc.paragraphs[-1].runs[0].font.size = Pt(8.5)
+    p_f_doc.paragraphs[-1].runs[0].font.color.rgb = RGBColor(100, 116, 139)
+
+    # Firma Director
+    p_f_dir = firmas_table.cell(0, 1).paragraphs[0]
+    p_f_dir.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_f_dir.add_run("_______________________________\n").bold = True
+    run_n_dir = p_f_dir.add_run(session.metadata.director or "Director(a) / Subdirector(a)")
+    run_n_dir.bold = True
+    run_n_dir.font.size = Pt(9.5)
+    p_f_dir.add_paragraph("Director(a) / Subdirector(a)").alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_f_dir.paragraphs[-1].runs[0].font.size = Pt(8.5)
+    p_f_dir.paragraphs[-1].runs[0].font.color.rgb = RGBColor(100, 116, 139)
+
+    # ─── FICHA DE TRABAJO (SI EXISTE) ───
+    if session.ficha_trabajo:
+        doc.add_page_break()
+        
+        p_ft_title_box = doc.add_paragraph()
+        p_ft_title_box.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_ft_title_box.paragraph_format.space_before = Pt(20)
+        p_ft_title_box.paragraph_format.space_after = Pt(12)
+        run_ft_t = p_ft_title_box.add_run("FICHA DE TRABAJO INDEPENDIENTE PARA EL ESTUDIANTE")
+        run_ft_t.bold = True
+        run_ft_t.font.size = Pt(12)
+        
+        # Datos del Estudiante
+        ft_table = doc.add_table(rows=1, cols=2)
+        ft_table.autofit = True
+        for cell in ft_table.rows[0].cells:
+            set_cell_margins(cell, top=60, bottom=60, left=100, right=100)
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcBorders = OxmlElement('w:tcBorders')
+            bottom_b = OxmlElement('w:bottom')
+            bottom_b.set(qn('w:val'), 'single')
+            bottom_b.set(qn('w:sz'), '8')
+            bottom_b.set(qn('w:color'), '3498DB') # Azul
+            tcBorders.append(bottom_b)
+            tcPr.append(tcBorders)
+
+        ft_table.cell(0, 0).text = "Nombre: __________________________________________________"
+        ft_table.cell(0, 0).paragraphs[0].runs[0].bold = True
+        ft_table.cell(0, 0).paragraphs[0].runs[0].font.size = Pt(10)
+        ft_table.cell(0, 0).paragraphs[0].runs[0].font.color.rgb = RGBColor(44, 62, 80)
+        
+        ft_table.cell(0, 1).text = "Grado y Sección: ________________"
+        ft_table.cell(0, 1).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        ft_table.cell(0, 1).paragraphs[0].runs[0].bold = True
+        ft_table.cell(0, 1).paragraphs[0].runs[0].font.size = Pt(10)
+        ft_table.cell(0, 1).paragraphs[0].runs[0].font.color.rgb = RGBColor(44, 62, 80)
+
+        # Actividad e Indicaciones
+        doc.add_paragraph().paragraph_format.space_before = Pt(14)
+        p_ft_act = doc.add_paragraph()
+        run_ft_act = p_ft_act.add_run(f"🎨 Actividad: {session.ficha_trabajo.titulo or 'Mi Ficha Práctica'}")
+        run_ft_act.bold = True
+        run_ft_act.font.size = Pt(12)
+        run_ft_act.font.color.rgb = RGBColor(41, 128, 185)
+        
+        p_ft_ind = doc.add_paragraph()
+        p_ft_ind.paragraph_format.space_before = Pt(6)
+        p_ft_ind.paragraph_format.space_after = Pt(14)
+        run_ft_ind_l = p_ft_ind.add_run("Indicaciones: ")
+        run_ft_ind_l.bold = True
+        run_ft_ind_l.font.size = Pt(9.5)
+        run_ft_ind_val = p_ft_ind.add_run(session.ficha_trabajo.indicaciones or "Realiza la actividad según las indicaciones.")
+        run_ft_ind_val.italic = True
+        run_ft_ind_val.font.size = Pt(9.5)
+
+        # Contenido de las Actividades
+        p_ft_cont = doc.add_paragraph()
+        p_ft_cont.paragraph_format.left_indent = Inches(0.1)
+        content_txt = session.ficha_trabajo.actividades or ""
+        content_txt = re.sub(r'<[^>]*>', '', content_txt)
+        p_ft_cont.add_run(content_txt)
+
+    stream = io.BytesIO()
+    doc.save(stream)
+    stream.seek(0)
+    return stream
+
+
+@app.post("/exportar-docx-json")
+async def exportar_docx_json(payload: SesionAprendizajeRequest):
+    """
+    Exporta una sesión de aprendizaje completa desde JSON a un archivo Word (.docx) nativo premium.
+    Requiere token de conexión.
+    """
+    if payload.token != CONNECTION_TOKEN:
+        raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
+
+    try:
+        titulo = payload.metadata.titulo or "Sesion_de_Aprendizaje"
+        filename = re.sub(r'[^a-zA-Z0-9-_\s]', '', titulo).replace(' ', '_')
+        nombre_archivo = f"{filename}.docx"
+
+        # Compilar archivo DOCX desde JSON nativo
+        docx_stream = build_docx_from_json(payload)
+
+        if console:
+            console.print(f"[green]✓ [WORD PREMIUM EXPORTADO] Generado nativamente con éxito: {nombre_archivo}[/green]")
+
+        return StreamingResponse(
+            docx_stream,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={nombre_archivo}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    except Exception as e:
+        print("[ERROR DOCX JSON]", str(e))
+        raise HTTPException(status_code=500, detail=f"Fallo al compilar archivo de Word (.docx) nativo: {str(e)}")
+
+
 # ────────────────────────────────────────────────────────────────────────
 # INICIALIZACIÓN, COMPROBACIÓN DE CHROMIUM Y ARRANQUE
 # ────────────────────────────────────────────────────────────────────────
