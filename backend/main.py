@@ -525,8 +525,8 @@ async def startup_event():
     target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
 
     rprint(f"\n[bold green]🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://127.0.0.1:8000[/bold green]")
-    rprint(f"[bold cyan]🔗 [ENLACE SEGURO] Copia y pega esta URL en tu navegador para vincular el motor local con la web:[/bold cyan]")
-    rprint(f"[underline blue]{target_url}[/underline blue]\n")
+    rprint(f"[bold cyan]🔗 [ENLACE SEGURO] Presiona [bold red]Ctrl+Clic[/bold red] sobre el enlace de abajo para abrirlo directamente en tu navegador:[/bold cyan]")
+    rprint(f"[link={target_url}][underline blue]{target_url}[/link][/underline blue]\n")
 
 
 def print_banner():
@@ -583,7 +583,7 @@ if __name__ == "__main__":
             descargar_chromium_nativo()
 
         # 3. Arrancar Uvicorn
-        uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="warning")
+        uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
     except SystemExit as se:
         if se.code != 0:
             rprint(f"\n[bold red]❌ [ERROR DE SISTEMA] El proceso terminó de forma inesperada (Código de salida: {se.code}).[/bold red]")
