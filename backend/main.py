@@ -1524,7 +1524,8 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     # Tabla Matriz de Propósitos (Competencias, Capacidades, Criterios, Evidencia, Instrumento)
     doc.add_paragraph().paragraph_format.space_before = Pt(6)
     matriz_table = doc.add_table(rows=2, cols=5)
-    matriz_table.autofit = True
+    matriz_table.autofit = False
+    matriz_table.allow_autofit = False
     add_table_borders(matriz_table)
     
     # Encabezados
@@ -1561,9 +1562,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     matriz_table.cell(1, 3).text = session.proposito.producto_evidencia or ""
     matriz_table.cell(1, 4).text = session.proposito.instrumento or ""
 
+    # Fijar anchos de celda (Suma: 6.9 pulgadas) e incrementar padding (120 dxa = 6pt, 140 dxa = 7pt)
+    anchos_matriz = [Inches(1.4), Inches(1.4), Inches(1.6), Inches(1.3), Inches(1.2)]
     for row_idx, row in enumerate(matriz_table.rows):
-        for cell in row.cells:
-            set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+        for col_idx, cell in enumerate(row.cells):
+            cell.width = anchos_matriz[col_idx]
+            set_cell_margins(cell, top=120, bottom=120, left=140, right=140)
             for p in cell.paragraphs:
                 p.paragraph_format.line_spacing = 1.15
                 if row_idx > 0:
@@ -1573,14 +1577,14 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     if session.competencias_transversales:
         doc.add_paragraph().paragraph_format.space_before = Pt(10)
         ct_table = doc.add_table(rows=1 + len(session.competencias_transversales), cols=2)
-        ct_table.autofit = True
+        ct_table.autofit = False
+        ct_table.allow_autofit = False
         add_table_borders(ct_table)
         
         # Headers
         ct_table.cell(0, 0).text = "COMPETENCIAS TRANSVERSALES"
         set_cell_background(ct_table.cell(0, 0), "E2E8F0")
         ct_table.cell(0, 0).paragraphs[0].runs[0].bold = True
-        ct_table.cell(0, 0).width = Inches(2.5)
         
         ct_table.cell(0, 1).text = "DESEMPEÑOS PRECISADOS / PRODUCTO / INSTRUMENTOS"
         set_cell_background(ct_table.cell(0, 1), "E2E8F0")
@@ -1598,9 +1602,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
                 p.paragraph_format.space_after = Pt(2)
                 p.add_run(des)
 
+        # Fijar anchos de celda (Suma: 6.9 pulgadas) e incrementar padding
+        anchos_ct = [Inches(2.5), Inches(4.4)]
         for row in ct_table.rows:
-            for cell in row.cells:
-                set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+            for col_idx, cell in enumerate(row.cells):
+                cell.width = anchos_ct[col_idx]
+                set_cell_margins(cell, top=120, bottom=120, left=140, right=140)
                 for p in cell.paragraphs:
                     p.paragraph_format.line_spacing = 1.15
 
@@ -1608,7 +1615,8 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     if session.enfoques_transversales:
         doc.add_paragraph().paragraph_format.space_before = Pt(10)
         enf_table = doc.add_table(rows=1 + len(session.enfoques_transversales), cols=3)
-        enf_table.autofit = True
+        enf_table.autofit = False
+        enf_table.allow_autofit = False
         add_table_borders(enf_table)
         
         headers_enf = ["ENFOQUES TRANSVERSALES", "VALORES", "ACTITUDES O ACCIONES OBSERVABLES"]
@@ -1618,18 +1626,18 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             set_cell_background(cell, "E2E8F0")
             cell.paragraphs[0].runs[0].bold = True
             
-        enf_table.cell(0, 0).width = Inches(2.2)
-        enf_table.cell(0, 1).width = Inches(1.8)
-        
         for idx, enf in enumerate(session.enfoques_transversales):
             enf_table.cell(idx + 1, 0).text = enf.nombre
             enf_table.cell(idx + 1, 0).paragraphs[0].runs[0].bold = True
             enf_table.cell(idx + 1, 1).text = enf.valor
             enf_table.cell(idx + 1, 2).text = enf.actitudes
 
+        # Fijar anchos de celda (Suma: 6.9 pulgadas) e incrementar padding
+        anchos_enf = [Inches(2.0), Inches(1.8), Inches(3.1)]
         for row in enf_table.rows:
-            for cell in row.cells:
-                set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+            for col_idx, cell in enumerate(row.cells):
+                cell.width = anchos_enf[col_idx]
+                set_cell_margins(cell, top=120, bottom=120, left=140, right=140)
                 for p in cell.paragraphs:
                     p.paragraph_format.line_spacing = 1.15
 
@@ -1669,7 +1677,8 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     total_filas = 1 + 1 + cant_procesos + 1
     
     mom_table = doc.add_table(rows=total_filas, cols=3)
-    mom_table.autofit = True
+    mom_table.autofit = False
+    mom_table.allow_autofit = False
     add_table_borders(mom_table)
     
     # Headers
@@ -1679,9 +1688,6 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         cell.text = text
         set_cell_background(cell, "E2E8F0")
         cell.paragraphs[0].runs[0].bold = True
-        
-    mom_table.cell(0, 0).width = Inches(1.8)
-    mom_table.cell(0, 2).width = Inches(1.2)
 
     # ── Fila de Inicio (Fila 1) ──
     cell_mom_inicio = mom_table.cell(1, 0)
@@ -1829,9 +1835,11 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     cell_eval_cie.paragraphs[0].runs[0].bold = True
     set_cell_background(cell_eval_cie, "F8FAFC")
 
+    anchos_mom = [Inches(1.2), Inches(4.5), Inches(1.2)]
     for row in mom_table.rows:
-        for cell in row.cells:
-            set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+        for col_idx, cell in enumerate(row.cells):
+            cell.width = anchos_mom[col_idx]
+            set_cell_margins(cell, top=120, bottom=120, left=140, right=140)
             for p in cell.paragraphs:
                 p.paragraph_format.line_spacing = 1.15
 
