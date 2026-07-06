@@ -1301,9 +1301,9 @@ def get_image_stream(url: str):
 def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     doc = Document()
     
-    # Configuración de márgenes a 0.8 pulgadas (2 cm aprox) para optimizar espacio
+    # Configuración de márgenes estándar (1.1 pulgadas arriba para membrete institucional, 0.8 en los lados)
     for s in doc.sections:
-        s.top_margin = Inches(0.8)
+        s.top_margin = Inches(1.1)
         s.bottom_margin = Inches(0.8)
         s.left_margin = Inches(0.8)
         s.right_margin = Inches(0.8)
@@ -1314,9 +1314,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     style_normal.font.size = Pt(10)
     style_normal.font.color.rgb = RGBColor(30, 41, 59) # Slate-800
 
-    # ─── CABECERA INSTITUCIONAL ───
+    # ─── CABECERA INSTITUCIONAL EN EL HEADER NATIVO DE WORD ───
+    section = doc.sections[0]
+    header = section.header
+    
     # Tabla sin bordes de 3 columnas para logos y textos oficiales
-    header_table = doc.add_table(rows=1, cols=3)
+    header_table = header.add_table(rows=1, cols=3)
     header_table.autofit = True
     
     # Quitar bordes a la tabla de cabecera
@@ -1370,10 +1373,10 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         except Exception:
             pass
 
-    # Línea divisoria debajo de la cabecera
-    p_divider = doc.add_paragraph()
-    p_divider.paragraph_format.space_before = Pt(6)
-    p_divider.paragraph_format.space_after = Pt(12)
+    # Línea divisoria debajo de la cabecera en el párrafo base del header
+    p_divider = header.paragraphs[0]
+    p_divider.paragraph_format.space_before = Pt(4)
+    p_divider.paragraph_format.space_after = Pt(0)
     p_divider_border = OxmlElement('w:pBdr')
     bottom_border = OxmlElement('w:bottom')
     bottom_border.set(qn('w:val'), 'single')
