@@ -122,8 +122,9 @@ def verificar_token(token: str):
     """Verifica si el token proveído coincide con el de la sesión actual."""
     global CLIENT_CONNECTED
     if token == CONNECTION_TOKEN:
-        CLIENT_CONNECTED = True
-        print("\n⚡ [CONEXIÓN ESTABLECIDA] El navegador se ha enlazado con éxito.\n")
+        if not CLIENT_CONNECTED:
+            CLIENT_CONNECTED = True
+            print("\n⚡ [CONEXIÓN ESTABLECIDA] El navegador se ha enlazado con éxito.\n")
         return {"status": "Connected", "message": "Enlace establecido correctamente."}
     else:
         raise HTTPException(status_code=401, detail="Token de conexión inválido.")
@@ -544,6 +545,15 @@ class TerminalRedirector:
         
         try:
             self.text_widget.configure(state='normal')
+            
+            # Limitar el historial de la terminal a las últimas 300 líneas para evitar fugas de memoria
+            try:
+                line_count = int(self.text_widget.index('end-1c').split('.')[0])
+                if line_count > 300:
+                    self.text_widget.delete('1.0', '100.0') # Borra las primeras 100 líneas antiguas
+            except Exception:
+                pass
+
             # Pintar de verde si detecta éxito, rojo si es error, blanco el resto
             tag = "muted"
             if "✓" in clean_string or "ONLINE" in clean_string or "Conectado" in clean_string or "enlazado" in clean_string: tag = "green"
@@ -684,7 +694,14 @@ def start_gui():
         else:
             root.after(2000, check_connection)
 
+    # 7. Forzar recolección de basura periódica de Python para evitar crecimiento de memoria
+    import gc
+    def force_gc():
+        gc.collect()
+        root.after(30000, force_gc)
+
     root.after(2000, check_connection)
+    root.after(30000, force_gc)
     root.mainloop()
 
 if __name__ == "__main__":

@@ -1045,10 +1045,16 @@
         if (modal) modal.classList.add('hidden');
     }
 
+    let lastBackendState = null;
+
     async function checkBackendStatus() {
         const token = localStorage.getItem('connection_token');
         if (!token) {
             AppState.backendOnline = false;
+            if (lastBackendState !== false) {
+                console.log('[INFO] El motor de exportación local está inactivo o no hay token de enlace.');
+                lastBackendState = false;
+            }
             return;
         }
         try {
@@ -1057,14 +1063,21 @@
                 const data = await response.json();
                 if (data.status === 'Connected') {
                     AppState.backendOnline = true;
-                    console.log('[OK] Enlace seguro con el motor de exportación en Python confirmado.');
+                    if (lastBackendState !== true) {
+                        console.log('[OK] Enlace seguro con el motor de exportación en Python confirmado.');
+                        lastBackendState = true;
+                    }
                     return;
                 }
             }
         } catch (err) {
-            console.log('[INFO] El motor de exportación local está inactivo o el token expiró.');
+            // Silencioso para evitar inundación de logs en la consola del navegador
         }
         AppState.backendOnline = false;
+        if (lastBackendState !== false) {
+            console.log('[INFO] El motor de exportación local está inactivo o el token de enlace expiró.');
+            lastBackendState = false;
+        }
     }
 
     async function exportarAPDFBackend() {

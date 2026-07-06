@@ -3,23 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Descargas - S.Y. PABLITO_DP</title>
+    
+    <!-- Meta tags de SEO y optimización -->
+    <title>Descargas - S.Y. PABLITO_DP | Motor Local de Exportación</title>
+    <meta name="description" content="Descarga el Motor Local en Windows para habilitar la exportación Premium de PDFs en A4 y documentos de Word editables en Space Lab.">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph para redes sociales (Vista previa elegante) -->
+    <meta property="og:title" content="Descargas - S.Y. PABLITO_DP | Motor de Exportación Local">
+    <meta property="og:description" content="Activa el renderizado A4 físico de alta velocidad y Word nativo en tu navegador de forma segura.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://descargas.sypablitodp.site">
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Outfit:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     
     <style>
         :root {
             --bg: #030712;
-            --card-bg: rgba(17, 24, 39, 0.7);
-            --card-border: rgba(255, 255, 255, 0.08);
+            --card-bg: rgba(10, 15, 30, 0.65);
+            --card-border: rgba(6, 182, 212, 0.15);
             --cyan: #06b6d4;
+            --cyan-glow: rgba(6, 182, 212, 0.4);
             --blue: #3b82f6;
+            --blue-glow: rgba(59, 130, 246, 0.3);
             --yellow: #f59e0b;
             --green: #10b981;
-            --text-main: #f9fafb;
+            --text-main: #f3f4f6;
             --text-muted: #9ca3af;
+            --magenta: #d946ef;
         }
 
         * { 
@@ -38,9 +52,10 @@
             align-items: center;
             position: relative;
             overflow-x: hidden;
+            padding: 20px;
         }
 
-        /* Cuadrícula galáctica animada */
+        /* Red espacial y efecto galáctico */
         body::before {
             content: '';
             position: absolute;
@@ -48,60 +63,102 @@
             background-image: 
                 linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-            background-size: 40px 40px;
+            background-size: 50px 50px;
             z-index: 1;
+            pointer-events: none;
         }
 
-        /* Destellos de luz cósmica */
+        /* Estrellas estáticas */
+        .stars {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size: 70px 70px;
+            z-index: 1;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+
+        /* Estrellas parpadeantes animadas */
+        .stars-anim {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 130px 130px;
+            z-index: 1;
+            animation: pulseStars 8s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes pulseStars {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.9; }
+        }
+
+        /* Auroras de fondo / Orbes cósmicos */
         .glow-orb-1 {
             position: absolute;
-            top: 15%; left: 20%;
-            width: 350px; height: 350px;
-            background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+            top: 10%; left: 15%;
+            width: 450px; height: 450px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.18) 0%, transparent 70%);
             z-index: 2;
-            filter: blur(40px);
+            filter: blur(60px);
             pointer-events: none;
+            animation: driftOrb1 20s infinite ease-in-out;
         }
 
         .glow-orb-2 {
             position: absolute;
-            bottom: 15%; right: 20%;
-            width: 350px; height: 350px;
+            bottom: 10%; right: 15%;
+            width: 450px; height: 450px;
             background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
             z-index: 2;
-            filter: blur(40px);
+            filter: blur(60px);
             pointer-events: none;
+            animation: driftOrb2 25s infinite ease-in-out;
+        }
+
+        @keyframes driftOrb1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(40px, -30px) scale(1.1); }
+        }
+
+        @keyframes driftOrb2 {
+            0%, 100% { transform: translate(0, 0) scale(1.1); }
+            50% { transform: translate(-40px, 30px) scale(0.9); }
         }
 
         .container {
             position: relative;
             z-index: 10;
-            width: 90%;
-            max-width: 650px;
+            width: 100%;
+            max-width: 720px;
             padding: 40px 0;
         }
 
-        /* Tarjeta de Cristal (Glassmorphism) con borde de gradiente sutil */
+        /* Tarjeta de Cristal Glassmorphism con bordes brillantes */
         .card {
             background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--card-border);
-            border-radius: 28px;
-            padding: 50px 40px;
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 32px;
+            padding: 50px 45px;
             text-align: center;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
             position: relative;
+            overflow: hidden;
         }
 
+        /* Marco luminoso de borde sutil */
         .card::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 28px;
-            padding: 1px;
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(255, 255, 255, 0.05) 100%);
+            border-radius: 32px;
+            padding: 1.5px;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.35) 0%, rgba(59, 130, 246, 0.1) 40%, rgba(255, 255, 255, 0.03) 70%, rgba(6, 182, 212, 0.15) 100%);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
@@ -110,17 +167,23 @@
 
         h1 {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 2.6rem;
+            font-size: 3rem;
             font-weight: 700;
             margin-bottom: 8px;
             letter-spacing: -0.04em;
-            background: linear-gradient(90deg, var(--cyan), #38bdf8, var(--blue));
+            background: linear-gradient(90deg, #22d3ee, #06b6d4, #3b82f6, #6366f1);
+            background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            animation: shineText 6s linear infinite;
+        }
+
+        @keyframes shineText {
+            to { background-position: 200% center; }
         }
 
         .version {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--cyan);
             font-family: 'Fira Code', monospace;
             margin-bottom: 25px;
@@ -128,54 +191,130 @@
             background: rgba(6, 182, 212, 0.08);
             padding: 6px 14px;
             border-radius: 20px;
-            border: 1px solid rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.08);
         }
 
         p { 
             color: #d1d5db; 
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             line-height: 1.7; 
             margin-bottom: 35px; 
+            font-weight: 300;
         }
-        
-        /* Botón estilo Consola Hacker */
+
+        /* Botón de Descarga Ultra-Premium */
         .btn-download {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
             font-family: 'Fira Code', monospace;
-            color: var(--cyan);
+            color: #ffffff;
             text-decoration: none;
             font-size: 1.15rem;
             font-weight: 600;
-            padding: 16px 32px;
-            background: rgba(6, 182, 212, 0.03);
-            border: 1px dashed rgba(6, 182, 212, 0.4);
-            border-radius: 12px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 18px 36px;
+            background: linear-gradient(135deg, #0891b2 0%, #0284c7 50%, #2563eb 100%);
+            background-size: 200% auto;
+            border: none;
+            border-radius: 16px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             cursor: pointer;
+            box-shadow: 0 10px 30px rgba(6, 182, 212, 0.3),
+                        0 0 0 1px rgba(255, 255, 255, 0.1);
             position: relative;
         }
 
         .btn-download:hover {
-            color: #ffffff;
-            background: rgba(6, 182, 212, 0.12);
-            border-style: solid;
-            border-color: var(--cyan);
-            box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
-            transform: translateY(-2px);
+            background-position: right center;
+            box-shadow: 0 15px 40px rgba(6, 182, 212, 0.55),
+                        0 0 0 2px var(--cyan);
+            transform: translateY(-3px);
         }
 
         .btn-download:active {
-            transform: translateY(1px);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(6, 182, 212, 0.4);
         }
 
-        /* Línea de división */
+        .download-icon {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .btn-download:hover .download-icon {
+            animation: bounceIcon 0.8s infinite alternate;
+        }
+
+        @keyframes bounceIcon {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
+
+        /* Mockup de la Consola Hacker */
+        .mockup-terminal {
+            background: #050505;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            text-align: left;
+            margin: 35px 0;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            background: #0f111a;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            position: relative;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #f59e0b; }
+        .terminal-dot.green { background: #10b981; }
+
+        .terminal-title {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-left: 10px;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            font-family: 'Consolas', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        .terminal-body span {
+            display: block;
+        }
+        
+        .t-cyan { color: #06b6d4; }
+        .t-green { color: #22c55e; }
+        .t-yellow { color: #eab308; }
+        .t-magenta { color: #d946ef; }
+        .t-muted { color: #64748b; }
+
         .divider {
             height: 1px;
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-            margin: 40px 0 35px 0;
+            margin: 35px 0;
         }
 
-        /* Pasos de Instalación */
+        /* Pasos de Instalación Interactivos */
         .steps-container {
             text-align: left;
             margin-bottom: 35px;
@@ -183,9 +322,9 @@
 
         .steps-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             font-weight: 600;
-            color: var(--text-main);
+            color: #ffffff;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
@@ -195,37 +334,51 @@
         .install-steps {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 14px;
         }
 
         .install-step {
             display: flex;
-            gap: 15px;
-            background: rgba(255, 255, 255, 0.02);
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.015);
             border: 1px solid rgba(255, 255, 255, 0.03);
-            padding: 14px 18px;
-            border-radius: 12px;
+            padding: 16px 20px;
+            border-radius: 14px;
             align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .install-step:hover {
+            background: rgba(6, 182, 212, 0.03);
+            border-color: rgba(6, 182, 212, 0.25);
+            transform: translateX(6px);
         }
 
         .step-num {
             font-family: 'Fira Code', monospace;
             background: rgba(6, 182, 212, 0.1);
             color: var(--cyan);
-            border: 1px solid rgba(6, 182, 212, 0.2);
-            width: 32px;
-            height: 32px;
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .install-step:hover .step-num {
+            background: var(--cyan);
+            color: #030712;
+            box-shadow: 0 0 15px var(--cyan-glow);
         }
 
         .step-text {
-            font-size: 0.95rem;
-            color: #d1d5db;
+            font-size: 0.98rem;
+            color: #cbd5e1;
             line-height: 1.5;
         }
 
@@ -233,19 +386,26 @@
             color: #ffffff;
         }
         
-        /* Panel de Advertencia SmartScreen */
+        /* Panel de Advertencia SmartScreen con estilo */
         .warning-box {
             background: rgba(245, 158, 11, 0.02);
-            border: 1px solid rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.15);
             border-radius: 16px;
             padding: 24px;
             text-align: left;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+        }
+
+        .warning-box:hover {
+            border-color: rgba(245, 158, 11, 0.35);
         }
 
         .warning-title {
             color: var(--yellow);
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 0.98rem;
             margin-bottom: 12px;
             display: flex;
             align-items: center;
@@ -254,36 +414,65 @@
         }
 
         .warning-steps-list {
-            font-size: 0.9rem;
+            font-size: 0.92rem;
             color: #9ca3af;
             list-style: none;
         }
 
         .warning-steps-list li {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             position: relative;
             padding-left: 20px;
-            line-height: 1.5;
+            line-height: 1.6;
+        }
+
+        .warning-steps-list li:last-child {
+            margin-bottom: 0;
         }
 
         .warning-steps-list li::before {
             content: '›';
             position: absolute;
             left: 0; color: var(--yellow);
-            font-size: 1.3rem; top: -3px;
+            font-size: 1.4rem; top: -4px;
             font-weight: 700;
+        }
+
+        /* Ajustes Responsivos */
+        @media (max-width: 640px) {
+            .card {
+                padding: 40px 20px;
+                border-radius: 24px;
+            }
+            h1 {
+                font-size: 2.3rem;
+            }
+            p {
+                font-size: 1rem;
+            }
+            .btn-download {
+                width: 100%;
+                font-size: 1rem;
+                padding: 16px 20px;
+            }
+            .mockup-terminal {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
 <body>
 
+    <div class="stars"></div>
+    <div class="stars-anim"></div>
+    
     <div class="glow-orb-1"></div>
     <div class="glow-orb-2"></div>
 
     <div class="container">
         <div class="card">
             <h1>S.Y. PABLITO_DP</h1>
-            <div class="version">&gt; Motor de Exportación Local v1.2.0-Beta</div>
+            <div class="version">> Motor de Exportación Local v1.2.0-Beta</div>
             
             <p>
                 Activa el motor de renderizado local en Windows para habilitar la exportación Premium desde la web. Genera al instante PDFs con diseño físico A4 impecable y documentos de Word (.docx) nativos y 100% editables.
@@ -291,8 +480,30 @@
 
             <!-- URL directa de descarga apuntando al archivo en releases de GitHub -->
             <a href="https://github.com/dppablito4-oss/DESCARGAS.EXE/releases/download/v1.2.0-beta/pablitopyhost.exe" class="btn-download">
-                [ 💾 DESCARGAR MOTOR PARA WINDOWS ]
+                <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                <span>DESCARGAR MOTOR DE EXPORTACIÓN</span>
             </a>
+
+            <!-- Terminal Mockup de la Consola Hacker -->
+            <div class="mockup-terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <span class="terminal-title">pablitopyhost.exe</span>
+                </div>
+                <div class="terminal-body">
+                    <span class="t-cyan">S.Y. PABLITO_DP - Servidor Local v1.2.0</span>
+                    <span class="t-muted">Escaneando motor de renderizado Chromium...</span>
+                    <span class="t-green">✓ Motor Chromium extraído y listo para usar en ./bin/chrome-win/</span>
+                    <span class="t-muted">Iniciando servidor local en el puerto 8000...</span>
+                    <span class="t-magenta">🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://localhost:8000</span>
+                    <span class="t-yellow">⚠️ [IMPORTANTE] Mantén esta ventana abierta en segundo plano.</span>
+                    <span class="t-green">✓ [CONECTADO] El enlace de seguridad fue establecido con la web.</span>
+                </div>
+            </div>
 
             <div class="divider"></div>
 
@@ -303,15 +514,15 @@
                 <div class="install-steps">
                     <div class="install-step">
                         <div class="step-num">1</div>
-                        <div class="step-text">Descarga el archivo <strong>pablitopyhost.exe</strong>.</div>
+                        <div class="step-text">Descarga el archivo <strong>pablitopyhost.exe</strong> desde el botón superior.</div>
                     </div>
                     <div class="install-step">
                         <div class="step-num">2</div>
-                        <div class="step-text">Ábrelo en tu PC. Verás levantarse la consola hacker en negro.</div>
+                        <div class="step-text">Ejecuta el archivo. Verás iniciarse la terminal hacker de color negro profundo.</div>
                     </div>
                     <div class="install-step">
                         <div class="step-num">3</div>
-                        <div class="step-text">Haz clic en <strong>[ CLIC AQUÍ PARA VINCULAR ]</strong> para sincronizar la web.</div>
+                        <div class="step-text">Haz clic en el enlace <strong>[ CLIC AQUÍ PARA VINCULAR ]</strong> dentro de la consola para emparejar tu navegador.</div>
                     </div>
                 </div>
             </div>
@@ -319,9 +530,9 @@
             <div class="warning-box">
                 <div class="warning-title">⚠️ NOTA DE SEGURIDAD (Windows SmartScreen):</div>
                 <ul class="warning-steps-list">
-                    <li>Al ser una aplicación de desarrollo independiente (no firmada), Windows podría advertirte del bloqueo.</li>
-                    <li>No te preocupes, es 100% segura. Haz clic en <strong>"Más información"</strong> en la pantalla azul.</li>
-                    <li>Luego presiona el botón <strong>"Ejecutar de todas formas"</strong> para iniciar el puente de exportación.</li>
+                    <li>Al ser una aplicación de desarrollo independiente (no firmada digitalmente), Windows podría lanzar una advertencia.</li>
+                    <li>El puente es 100% seguro. Haz clic en <strong>"Más información"</strong> en la pantalla azul protectora.</li>
+                    <li>Presiona el botón <strong>"Ejecutar de todas formas"</strong> para iniciar el puente de exportación local.</li>
                 </ul>
             </div>
         </div>
