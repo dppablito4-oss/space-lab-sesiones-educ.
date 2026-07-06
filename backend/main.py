@@ -7,7 +7,11 @@ import asyncio
 import webbrowser
 import threading
 import subprocess
+import warnings
 from pathlib import Path
+
+# Desactivar advertencias molestas en la consola (como DeprecationWarnings de FastAPI/Lifespan)
+warnings.filterwarnings("ignore")
 
 # Configurar consola en Windows para UTF-8 de forma forzada para evitar fallos con emojis/bloques
 if sys.platform.startswith('win'):
@@ -449,7 +453,7 @@ def install_playwright_chromium_cli():
     rprint("\n[bold yellow]⚠️  [MOTOR INCOMPLETO] No se detectó Chromium. Iniciando instalación...[/bold yellow]")
     
     cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", bufsize=1)
     
     with Progress(
         SpinnerColumn(),
@@ -507,14 +511,19 @@ def print_banner():
 if __name__ == "__main__":
     import uvicorn
     
-    # 1. Imprimir banner
-    print_banner()
+    try:
+        # 1. Imprimir banner
+        print_banner()
 
-    # 2. Comprobar navegadores de Playwright
-    loop = asyncio.get_event_loop()
-    has_browsers = loop.run_until_complete(check_playwright_browsers())
-    if not has_browsers:
-        install_playwright_chromium_cli()
+        # 2. Comprobar navegadores de Playwright
+        loop = asyncio.get_event_loop()
+        has_browsers = loop.run_until_complete(check_playwright_browsers())
+        if not has_browsers:
+            install_playwright_chromium_cli()
 
-    # 3. Arrancar Uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="warning")
+        # 3. Arrancar Uvicorn
+        uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="warning")
+    except Exception as e:
+        rprint(f"\n[bold red]❌ [ERROR CRÍTICO] El servidor no se pudo iniciar:[/bold red]")
+        rprint(f"[red]{str(e)}[/red]\n")
+        input("Presiona Enter para salir...")
