@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargas - S.Y. PABLITO_DP</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Outfit:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #030712;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --cyan: #06b6d4;
+            --blue: #3b82f6;
+            --yellow: #f59e0b;
+            --green: #10b981;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Cuadrícula galáctica animada */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 1;
+        }
+
+        /* Destellos de luz cósmica */
+        .glow-orb-1 {
+            position: absolute;
+            top: 15%; left: 20%;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+            z-index: 2;
+            filter: blur(40px);
+            pointer-events: none;
+        }
+
+        .glow-orb-2 {
+            position: absolute;
+            bottom: 15%; right: 20%;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            z-index: 2;
+            filter: blur(40px);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 650px;
+            padding: 40px 0;
+        }
+
+        /* Tarjeta de Cristal (Glassmorphism) con borde de gradiente sutil */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 28px;
+            padding: 50px 40px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 28px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(255, 255, 255, 0.05) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.04em;
+            background: linear-gradient(90deg, var(--cyan), #38bdf8, var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .version {
+            font-size: 0.9rem;
+            color: var(--cyan);
+            font-family: 'Fira Code', monospace;
+            margin-bottom: 25px;
+            display: inline-block;
+            background: rgba(6, 182, 212, 0.08);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
+        }
+
+        p { 
+            color: #d1d5db; 
+            font-size: 1.05rem;
+            line-height: 1.7; 
+            margin-bottom: 35px; 
+        }
+        
+        /* Botón estilo Consola Hacker */
+        .btn-download {
+            display: inline-block;
+            font-family: 'Fira Code', monospace;
+            color: var(--cyan);
+            text-decoration: none;
+            font-size: 1.15rem;
+            font-weight: 600;
+            padding: 16px 32px;
+            background: rgba(6, 182, 212, 0.03);
+            border: 1px dashed rgba(6, 182, 212, 0.4);
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .btn-download:hover {
+            color: #ffffff;
+            background: rgba(6, 182, 212, 0.12);
+            border-style: solid;
+            border-color: var(--cyan);
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .btn-download:active {
+            transform: translateY(1px);
+        }
+
+        /* Línea de división */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+            margin: 40px 0 35px 0;
+        }
+
+        /* Pasos de Instalación */
+        .steps-container {
+            text-align: left;
+            margin-bottom: 35px;
+        }
+
+        .steps-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .install-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .install-step {
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 14px 18px;
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .step-num {
+            font-family: 'Fira Code', monospace;
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--cyan);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 0.95rem;
+            color: #d1d5db;
+            line-height: 1.5;
+        }
+
+        .step-text strong {
+            color: #ffffff;
+        }
+        
+        /* Panel de Advertencia SmartScreen */
+        .warning-box {
+            background: rgba(245, 158, 11, 0.02);
+            border: 1px solid rgba(245, 158, 11, 0.12);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+        }
+
+        .warning-title {
+            color: var(--yellow);
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.03em;
+        }
+
+        .warning-steps-list {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            list-style: none;
+        }
+
+        .warning-steps-list li {
+            margin-bottom: 8px;
+            position: relative;
+            padding-left: 20px;
+            line-height: 1.5;
+        }
+
+        .warning-steps-list li::before {
+            content: '›';
+            position: absolute;
+            left: 0; color: var(--yellow);
+            font-size: 1.3rem; top: -3px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow-orb-1"></div>
+    <div class="glow-orb-2"></div>
+
+    <div class="container">
+        <div class="card">
+            <h1>S.Y. PABLITO_DP</h1>
+            <div class="version">&gt; Motor de Exportación Local v1.2.0-Beta</div>
+            
+            <p>
+                Activa el motor de renderizado local en Windows para habilitar la exportación Premium desde la web. Genera al instante PDFs con diseño físico A4 impecable y documentos de Word (.docx) nativos y 100% editables.
+            </p>
+
+            <!-- URL directa de descarga apuntando al archivo en releases de GitHub -->
+            <a href="https://github.com/dppablito4-oss/space-lab-sesiones-educ/releases/download/v1.2.0-beta/pablitopyhost.exe" class="btn-download">
+                [ 💾 DESCARGAR MOTOR PARA WINDOWS ]
+            </a>
+
+            <div class="divider"></div>
+
+            <div class="steps-container">
+                <div class="steps-title">
+                    <span>⚡</span> GUÍA DE INICIO RÁPIDO:
+                </div>
+                <div class="install-steps">
+                    <div class="install-step">
+                        <div class="step-num">1</div>
+                        <div class="step-text">Descarga el archivo <strong>pablitopyhost.exe</strong>.</div>
+                    </div>
+                    <div class="install-step">
+                        <div class="step-num">2</div>
+                        <div class="step-text">Ábrelo en tu PC. Verás levantarse la consola hacker en negro.</div>
+                    </div>
+                    <div class="install-step">
+                        <div class="step-num">3</div>
+                        <div class="step-text">Haz clic en <strong>[ CLIC AQUÍ PARA VINCULAR ]</strong> para sincronizar la web.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <div class="warning-title">⚠️ NOTA DE SEGURIDAD (Windows SmartScreen):</div>
+                <ul class="warning-steps-list">
+                    <li>Al ser una aplicación de desarrollo independiente (no firmada), Windows podría advertirte del bloqueo.</li>
+                    <li>No te preocupes, es 100% segura. Haz clic en <strong>"Más información"</strong> en la pantalla azul.</li>
+                    <li>Luego presiona el botón <strong>"Ejecutar de todas formas"</strong> para iniciar el puente de exportación.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

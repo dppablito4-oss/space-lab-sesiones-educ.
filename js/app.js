@@ -1225,6 +1225,10 @@
             return;
         }
 
+        if (typeof Toast !== 'undefined') {
+            Toast.info('Generando Word estándar. Para obtener un archivo Word (.docx) nativo con formato profesional, descarga y ejecuta el Motor Local.');
+        }
+
         const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
         const filename = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.docx`;
 
