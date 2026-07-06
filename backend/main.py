@@ -1444,38 +1444,45 @@ def preprocess_session_latex(session):
         session.recursos.refuerzo = format_latex_to_unicode(session.recursos.refuerzo)
 
     # Momentos
-    if session.momentos:
+    if getattr(session, 'momentos', None):
+        momentos = session.momentos
         # Inicio
-        if session.momentos.inicio:
-            if session.momentos.inicio.actividades:
-                session.momentos.inicio.actividades = [format_latex_to_unicode(a) for a in session.momentos.inicio.actividades]
+        if getattr(momentos, 'inicio', None) and getattr(momentos.inicio, 'actividades', None):
+            momentos.inicio.actividades = [format_latex_to_unicode(a) for a in momentos.inicio.actividades]
         # Desarrollo
-        if session.momentos.desarrollo:
-            if session.momentos.desarrollo.procesos:
-                for proc in session.momentos.desarrollo.procesos:
+        if getattr(momentos, 'desarrollo', None) and getattr(momentos.desarrollo, 'procesos', None):
+            for proc in momentos.desarrollo.procesos:
+                if getattr(proc, 'titulo', None):
                     proc.titulo = format_latex_to_unicode(proc.titulo)
-                    if proc.actividades:
-                        proc.actividades = [format_latex_to_unicode(a) for a in proc.actividades]
+                if getattr(proc, 'contenido', None):
+                    proc.contenido = [format_latex_to_unicode(c) for c in proc.contenido]
         # Cierre
-        if session.momentos.cierre:
-            if session.momentos.cierre.estrategias:
-                session.momentos.cierre.estrategias = [format_latex_to_unicode(e) for e in session.momentos.cierre.estrategias]
-            if session.momentos.cierre.evaluacion:
-                session.momentos.cierre.evaluacion = [format_latex_to_unicode(ev) for ev in session.momentos.cierre.evaluacion]
-            if session.momentos.cierre.extension:
-                session.momentos.cierre.extension = [format_latex_to_unicode(ex) for ex in session.momentos.cierre.extension]
+        if getattr(momentos, 'cierre', None):
+            cierre = momentos.cierre
+            if getattr(cierre, 'metacognicion', None):
+                cierre.metacognicion = [format_latex_to_unicode(m) for m in cierre.metacognicion]
+            if getattr(cierre, 'evaluacion', None):
+                cierre.evaluacion = [format_latex_to_unicode(ev) for ev in cierre.evaluacion]
+            if getattr(cierre, 'extension', None):
+                cierre.extension = [format_latex_to_unicode(ex) for ex in cierre.extension]
 
     # Ficha de trabajo
-    if session.ficha_trabajo:
-        session.ficha_trabajo.titulo = format_latex_to_unicode(session.ficha_trabajo.titulo)
-        session.ficha_trabajo.indicaciones = format_latex_to_unicode(session.ficha_trabajo.indicaciones)
-        session.ficha_trabajo.actividades = format_latex_to_unicode(session.ficha_trabajo.actividades)
+    if getattr(session, 'ficha_trabajo', None):
+        ficha = session.ficha_trabajo
+        if getattr(ficha, 'titulo', None):
+            ficha.titulo = format_latex_to_unicode(ficha.titulo)
+        if getattr(ficha, 'indicaciones', None):
+            ficha.indicaciones = format_latex_to_unicode(ficha.indicaciones)
+        if getattr(ficha, 'actividades', None):
+            ficha.actividades = format_latex_to_unicode(ficha.actividades)
 
-    # Firmas
-    if session.firmas:
+    # Firmas (si existieran dinámicamente)
+    if getattr(session, 'firmas', None):
         for f in session.firmas:
-            f.nombre = format_latex_to_unicode(f.nombre)
-            f.cargo = format_latex_to_unicode(f.cargo)
+            if getattr(f, 'nombre', None):
+                f.nombre = format_latex_to_unicode(f.nombre)
+            if getattr(f, 'cargo', None):
+                f.cargo = format_latex_to_unicode(f.cargo)
 
 
 def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
@@ -2355,7 +2362,7 @@ def start_gui():
     
     # Separador y créditos
     terminal.insert("end", "\n" + "─" * 80 + "\n", "muted")
-    terminal.insert("end", "  [ MOTOR DE EXPORTACIÓN LOCAL ]", "green")
+    terminal.insert("end", "  [ MOTOR DE EXPORTACIÓN REFINADO  ]", "green")
     terminal.insert("end", " | Desarrollado por: Samuel Pablo C.\n", "muted")
     terminal.insert("end", "─" * 80 + "\n\n", "muted")
 
@@ -2394,8 +2401,8 @@ def start_gui():
     def check_connection():
         if CLIENT_CONNECTED:
             terminal.configure(state='normal')
-            terminal.insert('end', "\n✓ [CONECTADO] El enlace de seguridad fue establecido con la web.\n", "green")
-            terminal.insert('end', "⚠️  [IMPORTANTE] Mantén esta ventana abierta en segundo plano. Si la cierras, se desconectará del navegador.\n\n", "yellow")
+            terminal.insert('end', "\n✓ [CONECTADO] El enlace de seguridad fue establecido con la web sesiones.sypablitodp.site.\n", "green")
+            terminal.insert('end', "⚠️  [IMPORTANTE] Mantén esta ventana abierta en segundo plano. Si la cierras, se desconectará del navegador y no podra exportar sus sesiones a menso que abre otra ves el programa.\n\n", "yellow")
             terminal.configure(state='disabled')
             terminal.see('end')
         else:
