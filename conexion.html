@@ -364,11 +364,19 @@
                 btnConnect.disabled = true;
                 btnText.textContent = 'Comprobando conexión...';
 
+                let response = null;
+                let fetchError = null;
+
                 try {
-                    // Hacer la validación al endpoint de localhost local
-                    response = await fetch(`http://localhost:8000/verificar-token?token=${token}`);
-                } catch (e) {
-                    fetchError = e;
+                    // 1. Intentar primero con la IP loopback directa (Evita problemas de DNS)
+                    response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`);
+                } catch (e1) {
+                    try {
+                        // 2. Si falla (por ejemplo por políticas de origen numéricas), intentar con localhost
+                        response = await fetch(`http://localhost:8000/verificar-token?token=${token}`);
+                    } catch (e2) {
+                        fetchError = e2;
+                    }
                 }
 
                 try {
