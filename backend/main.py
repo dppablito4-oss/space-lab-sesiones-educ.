@@ -310,6 +310,670 @@ async def exportar_pdf(payload: ExportPDFRequest):
         raise HTTPException(status_code=500, detail=f"Fallo al compilar PDF: {str(e)}")
 
 
+def escape_html(text: str) -> str:
+    """Escapa caracteres HTML básicos."""
+    if not text:
+        return ""
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#x27;"))
+
+
+def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
+    # 1. Cabecera con logos si existen
+    logo_left_html = ""
+    if session.metadata.logo_left_url:
+        logo_left_html = f'<img src="{session.metadata.logo_left_url}" class="header-logo-img" />'
+
+    logo_right_html = ""
+    if session.metadata.logo_regional_url:
+        logo_right_html = f'<img src="{session.metadata.logo_regional_url}" class="header-logo-img" />'
+
+    # 2. Listas de propósitos
+    capacidades_html = "".join([f"<li>{escape_html(c)}</li>" for c in session.proposito.capacidades])
+    criterios_html = "".join([f"<li>{escape_html(c)}</li>" for c in session.proposito.criterios])
+
+    # 3. Competencias transversales
+    ct_rows_html = ""
+    if session.competencias_transversales:
+        for ct in session.competencias_transversales:
+            desempenos_li = "".join([f"<li>{escape_html(d)}</li>" for d in ct.desempenos])
+            ct_rows_html += f"""
+            <tr>
+                <td style="font-weight: 600;">{escape_html(ct.titulo)}</td>
+                <td><ul class="session-list">{desempenos_li}</ul></td>
+            </tr>
+            """
+
+    # 4. Enfoques transversales
+    enfoques_rows_html = ""
+    if session.enfoques_transversales:
+        for enf in session.enfoques_transversales:
+            enfoques_rows_html += f"""
+            <tr>
+                <td style="font-weight: 600;">{escape_html(enf.nombre)}</td>
+                <td>{escape_html(enf.valor)}</td>
+                <td>{escape_html(enf.actitudes)}</td>
+            </tr>
+            """
+
+    # 5. Momentos Didácticos (Fusión inteligente con rowspan en HTML)
+    procesos_des = session.momentos.desarrollo.processes if hasattr(session.momentos.desarrollo, 'processes') else session.momentos.desarrollo.procesos
+    cant_procesos = len(procesos_des) if procesos_des else 1
+
+    # Inicio
+    inicio_actividades_html = "".join([f"<p class='proceso-parrafo'>{escape_html(act)}</p>" for act in session.momentos.inicio.actividades])
+    
+    # Desarrollo (Primer proceso y siguientes)
+    desarrollo_primero_html = ""
+    desarrollo_siguientes_html = ""
+    
+    if procesos_des:
+        p_primero = procesos_des[0]
+        p_primero_cont = "".join([f"<p class='proceso-parrafo'>{escape_html(par)}</p>" for par in p_primero.contenido])
+        desarrollo_primero_html = f"""
+        <div class="proceso-titulo">{escape_html(p_primero.titulo)}</div>
+        {p_primero_cont}
+        """
+        
+        for idx in range(1, cant_procesos):
+            p_sig = procesos_des[idx]
+            p_sig_cont = "".join([f"<p class='proceso-parrafo'>{escape_html(par)}</p>" for par in p_sig.contenido])
+            desarrollo_siguientes_html += f"""
+            <tr>
+                <td>
+                    <div class="proceso-titulo">{escape_html(p_sig.titulo)}</div>
+                    {p_sig_cont}
+                </td>
+            </tr>
+            """
+    else:
+        desarrollo_primero_html = "<p class='proceso-parrafo'>Gestión y Acompañamiento del Desarrollo de Competencias...</p>"
+
+    # Cierre
+    cierre_estrategias_html = ""
+    if session.momentos.cierre.metacognicion:
+        cierre_estrategias_html += "<p class='proceso-parrafo'><strong>Metacognición:</strong></p><ul class='session-list'>"
+        cierre_estrategias_html += "".join([f"<li>{escape_html(m)}</li>" for m in session.momentos.cierre.metacognicion])
+        cierre_estrategias_html += "</ul>"
+    if session.momentos.cierre.evaluacion:
+        cierre_estrategias_html += "<p class='proceso-parrafo' style='margin-top:8px;'><strong>Evaluación formativa:</strong></p><ul class='session-list'>"
+        cierre_estrategias_html += "".join([f"<li>{escape_html(e)}</li>" for e in session.momentos.cierre.evaluacion])
+        cierre_estrategias_html += "</ul>"
+    if session.momentos.cierre.extension:
+        cierre_estrategias_html += "<p class='proceso-parrafo' style='margin-top:8px;'><strong>Extensión para casa:</strong></p><ul class='session-list'>"
+        cierre_estrategias_html += "".join([f"<li>{escape_html(ext)}</li>" for ext in session.momentos.cierre.extension])
+        cierre_estrategias_html += "</ul>"
+
+    # Ficha de Trabajo
+    ficha_html = ""
+    if session.ficha_trabajo:
+        ficha_actividades_txt = session.ficha_trabajo.actividades or ""
+        ficha_actividades_txt = re.sub(r'<[^>]*>', '', ficha_actividades_txt) # Limpiar tags HTML residuales
+        ficha_actividades_p = "".join([f"<p class='proceso-parrafo'>{escape_html(p)}</p>" for p in ficha_actividades_txt.split("\n") if p.strip()])
+        
+        ficha_html = f"""
+        <div class="hoja-a4" style="page-break-before: always; break-before: page;">
+            <div class="ficha-title">FICHA DE TRABAJO INDEPENDIENTE PARA EL ESTUDIANTE</div>
+            
+            <table class="ficha-header-table">
+                <tr>
+                    <td>Nombre: __________________________________________________</td>
+                    <td style="text-align: right;">Grado y Sección: ________________</td>
+                </tr>
+            </table>
+            
+            <div class="ficha-act-title">🎨 Actividad: {escape_html(session.ficha_trabajo.titulo or 'Mi Ficha Práctica')}</div>
+            <div class="ficha-indicaciones">
+                <strong>Indicaciones: </strong><span>{escape_html(session.ficha_trabajo.indicaciones or 'Realiza la actividad según las indicaciones.')}</span>
+            </div>
+            
+            <div class="ficha-contenido">
+                {ficha_actividades_p}
+            </div>
+        </div>
+        """
+
+    # 6. HTML final unificado
+    html_content = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+            
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body {{
+                font-family: 'Inter', Arial, sans-serif;
+                background: #ffffff;
+                color: #1e293b;
+                font-size: 10pt;
+                line-height: 1.4;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }}
+
+            .hoja-a4 {{
+                width: 210mm;
+                min-height: 297mm;
+                padding: 18mm 12mm;
+                box-sizing: border-box;
+                background: #ffffff;
+                position: relative;
+                page-break-after: always;
+                break-after: page;
+            }}
+
+            /* Cabecera */
+            .header-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 8px;
+            }}
+            .header-table td {{
+                border: none !important;
+                padding: 0;
+                vertical-align: middle;
+            }}
+            .header-logos {{
+                width: 70px;
+            }}
+            .header-logo-img {{
+                max-width: 65px;
+                max-height: 65px;
+                object-fit: contain;
+            }}
+            .header-text {{
+                text-align: center;
+                font-size: 7.5pt;
+                line-height: 1.25;
+                color: #334155;
+            }}
+            .header-text .minedu {{
+                font-weight: 700;
+                font-size: 8pt;
+                color: #0f172a;
+            }}
+            .header-text .dre, .header-text .ugel {{
+                font-weight: 600;
+                font-size: 8pt;
+            }}
+            .header-text .agp {{
+                font-style: italic;
+                color: #64748b;
+            }}
+
+            .divider {{
+                border-bottom: 2px solid #0f172a;
+                margin-top: 4px;
+                margin-bottom: 12px;
+            }}
+
+            .title-box {{
+                text-align: center;
+                margin-bottom: 12px;
+            }}
+            .title-box h1 {{
+                font-size: 13pt;
+                font-weight: 700;
+                margin: 0;
+                color: #0f172a;
+                text-transform: uppercase;
+            }}
+            .title-box h2 {{
+                font-size: 10.5pt;
+                font-weight: 600;
+                font-style: italic;
+                margin: 2px 0 0 0;
+                color: #334155;
+            }}
+
+            /* Tablas */
+            table.content-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 10px;
+                page-break-inside: auto;
+            }}
+            table.content-table tr {{
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }}
+            table.content-table th, table.content-table td {{
+                border: 1px solid #cbd5e1;
+                padding: 5px 7px;
+                font-size: 9pt;
+                vertical-align: top;
+            }}
+            table.content-table th {{
+                background-color: #f1f5f9;
+                font-weight: 600;
+                text-align: left;
+                color: #0f172a;
+            }}
+            table.content-table td.label-cell {{
+                background-color: #f8fafc;
+                font-weight: 600;
+                color: #334155;
+                width: 140px;
+            }}
+
+            .section-title {{
+                font-size: 10.5pt;
+                font-weight: 700;
+                color: #0f172a;
+                margin: 12px 0 4px 0;
+                text-transform: uppercase;
+                border-left: 3px solid #3b82f6;
+                padding-left: 6px;
+            }}
+
+            .section-content {{
+                font-size: 9.5pt;
+                color: #334155;
+                padding-left: 4px;
+                margin-bottom: 10px;
+            }}
+
+            /* Listas */
+            ul.session-list {{
+                margin: 0;
+                padding-left: 14px;
+            }}
+            ul.session-list li {{
+                margin-bottom: 2px;
+            }}
+
+            /* Momentos didácticos */
+            .momentos-table th {{
+                background-color: #e2e8f0 !important;
+                font-size: 8.5pt !important;
+                text-align: center !important;
+            }}
+            .momento-label-cell {{
+                background-color: #f8fafc;
+                font-weight: 700;
+                font-size: 9pt;
+                color: #0f172a;
+                width: 120px;
+            }}
+            .momento-time {{
+                font-size: 7.5pt;
+                color: #64748b;
+                margin-top: 4px;
+                font-weight: 600;
+            }}
+            .momento-eval-cell {{
+                background-color: #f8fafc;
+                font-weight: 600;
+                font-size: 8pt;
+                color: #475569;
+                width: 95px;
+            }}
+            .proceso-titulo {{
+                font-weight: 700;
+                color: #b91c1c; /* C0392B */
+                font-size: 8.5pt;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+            }}
+            .proceso-parrafo {{
+                margin: 0 0 4px 0;
+                font-size: 9pt;
+            }}
+
+            /* Firmas */
+            .firmas-container {{
+                display: flex;
+                justify-content: space-between;
+                margin-top: 35px;
+                padding: 0 30px;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }}
+            .firma-box {{
+                text-align: center;
+                width: 180px;
+            }}
+            .firma-linea {{
+                border-top: 1px solid #475569;
+                margin-bottom: 4px;
+            }}
+            .firma-nombre {{
+                font-weight: 600;
+                font-size: 8.5pt;
+                color: #0f172a;
+            }}
+            .firma-cargo {{
+                font-size: 7.5pt;
+                color: #64748b;
+            }}
+
+            /* Ficha de trabajo */
+            .ficha-title {{
+                text-align: center;
+                font-size: 11pt;
+                font-weight: 700;
+                color: #0f172a;
+                margin-top: 5px;
+                margin-bottom: 15px;
+                text-transform: uppercase;
+            }}
+            .ficha-header-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 12px;
+            }}
+            .ficha-header-table td {{
+                border-bottom: 2px solid #3498db;
+                padding: 5px 0;
+                font-weight: 600;
+                font-size: 9pt;
+                color: #2c3e50;
+            }}
+            .ficha-act-title {{
+                font-size: 10.5pt;
+                font-weight: 700;
+                color: #2980b9;
+                margin-top: 12px;
+                margin-bottom: 4px;
+            }}
+            .ficha-indicaciones {{
+                font-size: 9pt;
+                margin-bottom: 10px;
+            }}
+            .ficha-indicaciones strong {{
+                color: #0f172a;
+            }}
+            .ficha-indicaciones span {{
+                font-style: italic;
+                color: #555;
+            }}
+            .ficha-contenido {{
+                font-size: 9pt;
+                color: #334155;
+                white-space: pre-wrap;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="hoja-a4">
+            <!-- ════════ CABECERA INSTITUCIONAL ════════ -->
+            <table class="header-table">
+                <tr>
+                    <td class="header-logos" style="text-align: left;">
+                        {logo_left_html}
+                    </td>
+                    <td class="header-text">
+                        <span class="minedu">MINISTERIO DE EDUCACIÓN</span><br>
+                        <span class="dre">{escape_html(session.metadata.dre) or 'DIRECCIÓN REGIONAL DE EDUCACIÓN'}</span><br>
+                        <span class="ugel">{escape_html(session.metadata.ugel) or 'UNIDAD DE GESTIÓN EDUCATIVA LOCAL'}</span><br>
+                        <span class="agp">ÁREA DE GESTIÓN PEDAGÓGICA</span>
+                    </td>
+                    <td class="header-logos" style="text-align: right;">
+                        {logo_right_html}
+                    </td>
+                </tr>
+            </table>
+            
+            <div class="divider"></div>
+            
+            <!-- ════════ TÍTULO PRINCIPAL ════════ -->
+            <div class="title-box">
+                <h1>SESIÓN DE APRENDIZAJE N° {escape_html(session.metadata.numero_sesion) or '01'}</h1>
+                <h2>"{escape_html(session.metadata.titulo) or 'Título de la Sesión'}"</h2>
+            </div>
+            
+            <!-- ════════ DATOS GENERALES ════════ -->
+            <table class="content-table">
+                <tr>
+                    <td class="label-cell">Institución Educativa</td>
+                    <td colspan="3">{escape_html(session.metadata.institucion)}</td>
+                    <td class="label-cell">Nivel</td>
+                    <td>{escape_html(session.metadata.nivel)}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Docente</td>
+                    <td colspan="3">{escape_html(session.metadata.docente)}</td>
+                    <td class="label-cell">Área</td>
+                    <td>{escape_html(session.metadata.area)}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Grado</td>
+                    <td>{escape_html(session.metadata.grado)}</td>
+                    <td class="label-cell" style="width: 80px;">Sección</td>
+                    <td>{escape_html(session.metadata.seccion)}</td>
+                    <td class="label-cell">Unidad / Proyecto</td>
+                    <td>{escape_html(session.metadata.unidad)}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Fecha</td>
+                    <td colspan="3">{escape_html(session.metadata.fecha)}</td>
+                    <td class="label-cell">Duración</td>
+                    <td>{escape_html(session.metadata.duracion)} min</td>
+                </tr>
+            </table>
+            
+            <!-- ════════ I. PROPÓSITO ════════ -->
+            <div class="section-title">I. Propósito de la Sesión</div>
+            <div class="section-content">
+                {escape_html(session.proposito.proposito_texto)}
+            </div>
+            
+            <!-- ════════ II. CONOCIMIENTOS ════════ -->
+            <div class="section-title">II. Conocimientos</div>
+            <div class="section-content">
+                {escape_html(session.proposito.conocimientos)}
+            </div>
+            
+            <!-- ════════ III. PROPÓSITOS DE APRENDIZAJE ════════ -->
+            <div class="section-title">III. Propósitos de Aprendizaje</div>
+            
+            <table class="content-table" style="margin-top: 4px;">
+                <tr>
+                    <td class="label-cell" style="width: 140px;">Competencia</td>
+                    <td><strong>{escape_html(session.proposito.competencia)}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Estándar de aprendizaje</td>
+                    <td style="font-size: 8.5pt; color: #475569;">{escape_html(session.proposito.estandar)}</td>
+                </tr>
+            </table>
+            
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>COMPETENCIAS</th>
+                        <th>CAPACIDADES</th>
+                        <th>CRITERIOS DE EVALUACIÓN</th>
+                        <th>PRODUCTO / EVIDENCIA</th>
+                        <th>INSTRUMENTOS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-weight: 600;">{escape_html(session.proposito.competencia)}</td>
+                        <td><ul class="session-list">{capacidades_html}</ul></td>
+                        <td><ul class="session-list">{criterios_html}</ul></td>
+                        <td>{escape_html(session.proposito.producto_evidencia)}</td>
+                        <td>{escape_html(session.proposito.instrumento)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- ════════ COMPETENCIAS TRANSVERSALES ════════ -->
+            {"<table class='content-table'><thead><tr><th style='width: 35%'>COMPETENCIAS TRANSVERSALES</th><th>DESEMPEÑOS PRECISADOS / PRODUCTO / INSTRUMENTOS</th></tr></thead><tbody>" + ct_rows_html + "</tbody></table>" if ct_rows_html else ""}
+            
+            <!-- ════════ ENFOQUES TRANSVERSALES ════════ -->
+            {"<table class='content-table'><thead><tr><th style='width: 30%'>ENFOQUES TRANSVERSALES</th><th style='width: 30%'>VALORES</th><th>ACTITUDES OBSERVABLES</th></tr></thead><tbody>" + enfoques_rows_html + "</tbody></table>" if enfoques_rows_html else ""}
+            
+            <!-- ════════ RECURSOS ════════ -->
+            <table class="content-table" style="margin-top: 8px;">
+                <tr>
+                    <td class="label-cell" style="width: 200px;">Páginas de Texto, otros textos de consulta/Enlaces</td>
+                    <td>{escape_html(session.recursos.enlaces)}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Materiales y recursos</td>
+                    <td>{escape_html(session.recursos.materiales)}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Actividades de Refuerzo Escolar</td>
+                    <td>{escape_html(session.recursos.refuerzo)}</td>
+                </tr>
+            </table>
+            
+            <!-- ════════ IV. SECUENCIA DIDÁCTICA ════════ -->
+            <div class="section-title">IV. Secuencia Didáctica (Momentos)</div>
+            
+            <table class="content-table momentos-table" style="margin-top: 4px;">
+                <thead>
+                    <tr>
+                        <th>MOMENTOS DE LA SESIÓN</th>
+                        <th>ESTRATEGIAS / ACTIVIDADES</th>
+                        <th>EVALUACIÓN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Inicio -->
+                    <tr>
+                        <td class="momento-label-cell">
+                            INICIO
+                            <div class="momento-time">TIEMPO: {escape_html(session.momentos.inicio.tiempo_total)} min</div>
+                        </td>
+                        <td>
+                            {inicio_actividades_html}
+                        </td>
+                        <td class="momento-eval-cell" rowspan="1">
+                            EVALUACIÓN FORMATIVA
+                        </td>
+                    </tr>
+                    
+                    <!-- Desarrollo (Primer Proceso) -->
+                    <tr>
+                        <td class="momento-label-cell" rowspan="{cant_procesos}">
+                            DESARROLLO
+                            <div class="momento-time">TIEMPO: {escape_html(session.momentos.desarrollo.tiempo_total)} min</div>
+                        </td>
+                        <td>
+                            {desarrollo_primero_html}
+                        </td>
+                        <td class="momento-eval-cell" rowspan="{cant_procesos}">
+                            EVALUACIÓN FORMATIVA<br><br>
+                            <span style="font-size: 7.5pt; font-weight: normal; color: #64748b;">(Monitoreo activo y retroalimentación)</span>
+                        </td>
+                    </tr>
+                    
+                    <!-- Desarrollo (Procesos Siguientes) -->
+                    {desarrollo_siguientes_html}
+                    
+                    <!-- Cierre -->
+                    <tr>
+                        <td class="momento-label-cell">
+                            CIERRE
+                            <div class="momento-time">TIEMPO: {escape_html(session.momentos.cierre.tiempo_total)} min</div>
+                        </td>
+                        <td>
+                            {cierre_estrategias_html}
+                        </td>
+                        <td class="momento-eval-cell">
+                            EVALUACIÓN FORMATIVA
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- ════════ FIRMAS ════════ -->
+            <div class="firmas-container">
+                <div class="firma-box">
+                    <div class="firma-linea"></div>
+                    <div class="firma-nombre">{escape_html(session.metadata.docente) or 'Docente de la Sesión'}</div>
+                    <div class="firma-cargo">Docente de la Sesión</div>
+                </div>
+                <div class="firma-box">
+                    <div class="firma-linea"></div>
+                    <div class="firma-nombre">{escape_html(session.metadata.director) or 'Director(a) / Subdirector(a)'}</div>
+                    <div class="firma-cargo">Director(a) / Subdirector(a)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ════════ V. FICHA DE TRABAJO ════════ -->
+        {ficha_html}
+    </body>
+    </html>
+    """
+    return html_content
+
+
+@app.post("/exportar-pdf-json")
+async def exportar_pdf_json(payload: SesionAprendizajeRequest):
+    """
+    Genera un archivo PDF a partir del JSON estructurado de la sesión de aprendizaje,
+    utilizando una plantilla HTML estática (Jinja2-like) y Playwright.
+    """
+    if payload.token != CONNECTION_TOKEN:
+        raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
+
+    try:
+        titulo = payload.metadata.titulo or "Sesion_de_Aprendizaje"
+        filename = re.sub(r'[^a-zA-Z0-9-_\s]', '', titulo).replace(' ', '_')
+        nombre_archivo = f"{filename}.pdf"
+
+        # Generar HTML completo
+        documento_html = build_pdf_html_from_json(payload)
+
+        async with async_playwright() as p:
+            ruta_motor = buscar_navegador_compatible()
+            launch_args = {"headless": True}
+            if ruta_motor:
+                launch_args["executable_path"] = ruta_motor
+            browser = await p.chromium.launch(**launch_args)
+            context = await browser.new_context()
+            page = await context.new_page()
+            
+            await page.set_content(documento_html, wait_until="networkidle")
+            
+            # Captura a PDF con Playwright aplicando prefer_css_page_size
+            pdf_bytes = await page.pdf(
+                print_background=True,
+                prefer_css_page_size=True,
+                margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+                display_header_footer=True,
+                header_template=f"""
+                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-bottom: 1px solid #f1f5f9;">
+                        <span>S.Y. PABLITO_DP &bull; Motor de Exportación Premium</span>
+                        <span>{escape_html(titulo)}</span>
+                    </div>
+                """,
+                footer_template="""
+                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+                        <span>Sesión de Aprendizaje Oficial &bull; Space Lab</span>
+                        <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+                    </div>
+                """
+            )
+            await browser.close()
+
+        if console:
+            console.print(f"[green]✓ [PDF PREMIUM EXPORTADO] Generado nativamente con éxito: {nombre_archivo}[/green]")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={nombre_archivo}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    except Exception as e:
+        print("[ERROR PDF JSON]", str(e))
+        raise HTTPException(status_code=500, detail=f"Fallo al compilar PDF Premium: {str(e)}")
+
+
 # ────────────────────────────────────────────────────────────────────────
 # UTILIDADES PARA CONSTRUCCIÓN DE WORD (.docx) NATIVO
 # ────────────────────────────────────────────────────────────────────────
