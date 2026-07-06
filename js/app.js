@@ -1096,7 +1096,7 @@
     async function checkBackendStatus() {
         // 1. Verificar si el servidor local está respondiendo (ping básico al puerto 8000)
         try {
-            const pingResponse = await fetch('http://127.0.0.1:8000/', { method: 'GET' });
+            const pingResponse = await fetch('http://localhost:8000/', { method: 'GET' });
             if (pingResponse.ok) {
                 AppState.backendRunning = true;
             } else {
@@ -1124,7 +1124,7 @@
         }
 
         try {
-            const response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`, { method: 'GET' });
+            const response = await fetch(`http://localhost:8000/verificar-token?token=${token}`, { method: 'GET' });
             if (response.ok) {
                 const data = await response.json();
                 if (data.status === 'Connected') {
@@ -1416,7 +1416,7 @@
             const sessionPayload = getFormDataJSON();
             const titulo = sessionPayload.metadata.titulo || 'Sesion-de-Aprendizaje';
             
-            const response = await fetch('http://127.0.0.1:8000/exportar-pdf-json', {
+            const response = await fetch('http://localhost:8000/exportar-pdf-json', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sessionPayload)
@@ -1459,7 +1459,7 @@
             const sessionPayload = getFormDataJSON();
             const titulo = sessionPayload.metadata.titulo || 'Sesion-de-Aprendizaje';
             
-            const response = await fetch('http://127.0.0.1:8000/exportar-docx-json', {
+            const response = await fetch('http://localhost:8000/exportar-docx-json', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sessionPayload)

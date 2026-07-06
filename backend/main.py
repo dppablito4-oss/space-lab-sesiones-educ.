@@ -2244,7 +2244,7 @@ def descargar_chromium_nativo():
 async def startup_event():
     """Evento que se dispara al iniciar FastAPI para mostrar la URL de conexión segura en los logs."""
     target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
-    print(f"🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://127.0.0.1:8000")
+    print(f"🌐 [MOTOR ONLINE] Servidor de exportación corriendo en http://localhost:8000")
     print(f"🔗 [ENLACE SEGURO] URL de vinculación segura:\n{target_url}\n")
 
 
@@ -2391,7 +2391,7 @@ def start_gui():
             
             print("Iniciando servidor local en el puerto 8000...")
             import uvicorn
-            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning", log_config=None)
+            uvicorn.run(app, host="localhost", port=8000, log_level="warning", log_config=None)
         except Exception as e:
             print(f"\n❌ [ERROR CRÍTICO]: {str(e)}")
 
