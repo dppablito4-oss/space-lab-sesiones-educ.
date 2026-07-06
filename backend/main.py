@@ -540,11 +540,11 @@ class ConsoleRedirector:
 
 
 def start_gui():
-    """Inicia la interfaz gráfica del motor local, desacoplada del CMD."""
+    """Inicia la interfaz gráfica del motor local, con estética idéntica a la consola CMD de Windows."""
     root = tk.Tk()
     root.title("S.Y. PABLITO - Motor de Exportación Local")
-    root.geometry("680x500")
-    root.configure(bg="#0f172a")
+    root.geometry("720x480")
+    root.configure(bg="#000000")
     root.resizable(False, False)
 
     # Intentar cargar icono del programa
@@ -557,63 +557,51 @@ def start_gui():
         except Exception:
             pass
 
-    # Cabecera
-    header_frame = tk.Frame(root, bg="#0f172a")
-    header_frame.pack(fill="x", padx=20, pady=(15, 5))
+    # Cabecera / Status en formato consola
+    status_frame = tk.Frame(root, bg="#000000")
+    status_frame.pack(fill="x", padx=10, pady=(10, 5))
 
-    title_label = tk.Label(header_frame, text="S.Y. PABLITO - Motor de Exportación local", font=("Arial", 14, "bold"), fg="#38bdf8", bg="#0f172a")
-    title_label.pack(anchor="w")
+    status_label = tk.Label(
+        status_frame, 
+        text="[ESTADO] Esperando vinculación de la web...", 
+        font=("Consolas", 10, "bold"), 
+        fg="#eab308", 
+        bg="#000000"
+    )
+    status_label.pack(side="left")
 
-    subtitle_label = tk.Label(header_frame, text="v1.2.0-Beta (Privada) | Puerto Local: 8000", font=("Arial", 9, "italic"), fg="#94a3b8", bg="#0f172a")
-    subtitle_label.pack(anchor="w")
-
-    # Indicador de Estado
-    status_frame = tk.Frame(root, bg="#1e293b", bd=1, relief="solid")
-    status_frame.pack(fill="x", padx=20, pady=10)
-
-    status_dot = tk.Label(status_frame, text="●", font=("Arial", 12), fg="#f97316", bg="#1e293b")
-    status_dot.pack(side="left", padx=(10, 5), pady=8)
-
-    status_label = tk.Label(status_frame, text="Desconectado - Esperando vinculación", font=("Arial", 10, "bold"), fg="#f8fafc", bg="#1e293b")
-    status_label.pack(side="left", pady=8)
-
-    # Botón de vinculación directa
     target_url = f"https://sesiones.sypablitodp.site/conexion.html?token={CONNECTION_TOKEN}"
     
     def open_browser():
         webbrowser.open(target_url)
 
     btn_link = tk.Button(
-        root, 
-        text="🔗 Vincular en el Navegador", 
-        font=("Arial", 11, "bold"), 
-        bg="#0ea5e9", 
-        fg="#ffffff", 
-        activebackground="#0284c7", 
-        activeforeground="#ffffff", 
+        status_frame, 
+        text="[ CLIC AQUÍ PARA VINCULAR ]", 
+        font=("Consolas", 10, "bold"), 
+        bg="#000000", 
+        fg="#0ea5e9", 
+        activebackground="#000000", 
+        activeforeground="#38bdf8", 
         relief="flat", 
         bd=0, 
-        padx=20, 
-        pady=10, 
         cursor="hand2",
         command=open_browser
     )
-    btn_link.pack(fill="x", padx=20, pady=5)
+    btn_link.pack(side="right")
 
-    # Efectos hover para el botón
-    def on_enter(e):
-        btn_link['background'] = '#38bdf8'
-    def on_leave(e):
-        btn_link['background'] = '#0ea5e9'
-    btn_link.bind("<Enter>", on_enter)
-    btn_link.bind("<Leave>", on_leave)
-
-    # Consola de Registros
-    log_label = tk.Label(root, text="Consola de Registro Local:", font=("Arial", 9, "bold"), fg="#64748b", bg="#0f172a")
-    log_label.pack(anchor="w", padx=20, pady=(10, 2))
-
-    log_area = scrolledtext.ScrolledText(root, bg="#020617", fg="#f8fafc", font=("Consolas", 9), relief="flat", bd=0, insertbackground="white")
-    log_area.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+    # Consola de Registros (CMD clásico)
+    log_area = scrolledtext.ScrolledText(
+        root, 
+        bg="#000000", 
+        fg="#CCCCCC", 
+        font=("Consolas", 10), 
+        relief="flat", 
+        bd=0, 
+        insertbackground="#CCCCCC",
+        highlightthickness=0
+    )
+    log_area.pack(fill="both", expand=True, padx=10, pady=(0, 10))
     log_area.configure(state='disabled')
 
     # Redirigir stdout y stderr
@@ -623,16 +611,18 @@ def start_gui():
     # Loop de verificación del estado del enlace
     def update_status_loop():
         if CLIENT_CONNECTED:
-            status_dot.config(fg="#22c55e")
-            status_label.config(text="Conectado con la web (Enlace Seguro Activo)", fg="#22c55e")
+            status_label.config(text="[ESTADO] Conectado con la web (Enlace Seguro Activo)", fg="#22c55e")
+            btn_link.pack_forget() # Ocultar el botón una vez conectado
         else:
-            status_dot.config(fg="#f97316")
-            status_label.config(text="Desconectado - Esperando vinculación de la web", fg="#f8fafc")
+            status_label.config(text="[ESTADO] Esperando vinculación de la web...", fg="#eab308")
+            btn_link.pack(side="right")
         root.after(1000, update_status_loop)
 
     root.after(1000, update_status_loop)
 
     # Imprimir banner y detalles iniciales
+    print("Microsoft Windows [Versión 10.0.22631]")
+    print("(c) Microsoft Corporation. Todos los derechos reservados.\n")
     print("====================================================")
     print("      SYPABLITODP PEDAGOGICAL EXPORT ENGINE         ")
     print("      Versión 1.2.0-Beta - Puerto local: 8000       ")
@@ -650,10 +640,10 @@ def start_gui():
             else:
                 print(f"✓ Navegador compatible detectado en: {motor_valido}")
             
-            # 2. Iniciar servidor FastAPI con Uvicorn
+            # 2. Iniciar servidor FastAPI con Uvicorn (usando log_config=None para evitar el error de formatters en PyInstaller)
             print("Iniciando servidor local de exportación...")
             import uvicorn
-            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
+            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning", log_config=None)
         except SystemExit as se:
             if se.code != 0:
                 print(f"\n❌ [ERROR DE SISTEMA] El puerto 8000 ya está siendo utilizado por otra aplicación.")
