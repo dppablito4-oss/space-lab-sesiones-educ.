@@ -348,6 +348,9 @@
                     const response = await fetch(`http://127.0.0.1:8000/verificar-token?token=${token}`);
                     
                     if (!response.ok) {
+                        if (response.status === 401) {
+                            throw new Error('TOKEN_EXPIRED');
+                        }
                         const err = await response.json();
                         throw new Error(err.detail || 'Fallo de autenticación.');
                     }
@@ -383,7 +386,11 @@
                     btnText.textContent = 'Vincular con Motor Local';
                     
                     statusMessage.className = 'status-alert alert-error';
-                    statusMessage.textContent = 'No se pudo establecer conexión. Verifica que pablitopyhost.exe esté abierto.';
+                    if (error.message === 'TOKEN_EXPIRED') {
+                        statusMessage.textContent = '❌ El token de enlace está vencido. Haz clic en "[ CLIC AQUÍ PARA VINCULAR ]" en la ventana de pablitopyhost.exe para abrir la pestaña correcta.';
+                    } else {
+                        statusMessage.textContent = '❌ No se pudo establecer conexión. Verifica que pablitopyhost.exe esté abierto.';
+                    }
                 }
             });
         });

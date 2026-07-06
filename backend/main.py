@@ -107,8 +107,7 @@ def verificar_token(token: str):
     global CLIENT_CONNECTED
     if token == CONNECTION_TOKEN:
         CLIENT_CONNECTED = True
-        if console:
-            console.print("\n[bold green]⚡ [CONEXIÓN ESTABLECIDA] El navegador se ha enlazado con éxito.[/bold green]")
+        print("\n⚡ [CONEXIÓN ESTABLECIDA] El navegador se ha enlazado con éxito.\n")
         return {"status": "Connected", "message": "Enlace establecido correctamente."}
     else:
         raise HTTPException(status_code=401, detail="Token de conexión inválido.")
