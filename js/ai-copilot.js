@@ -350,9 +350,11 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
                     requestModel = 'deepseek/deepseek-chat';
                 }
             } else if (provider === 'gemini') {
-                if (CONFIG.apiKey.startsWith('sk-') || CONFIG.apiKey.startsWith('AIza')) {
+                // Solo usar la API de Google directa si la clave es de Google (empieza por AIza)
+                if (CONFIG.apiKey.startsWith('AIza')) {
                     requestEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${CONFIG.apiKey}`;
                 } else {
+                    // Si empieza por sk- (OpenAI/OpenRouter) pero seleccionó Gemini, enrutar a OpenRouter usando el modelo Gemini
                     requestEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
                     requestModel = 'google/gemini-2.5-flash';
                 }
@@ -362,11 +364,22 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
             
             let response;
             if (provider === 'gemini' && requestEndpoint.includes('generativelanguage.googleapis.com')) {
+                // Inyectar el archivo multimodal en la llamada directa de Gemini si existe
+                const parts = [{ text: userPrompt }];
+                if (metadata.sourceFile && metadata.sourceFile.base64 && metadata.sourceFile.type) {
+                    parts.push({
+                        inlineData: {
+                            mimeType: metadata.sourceFile.type,
+                            data: metadata.sourceFile.base64
+                        }
+                    });
+                }
+                
                 response = await fetch(requestEndpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: userPrompt }] }],
+                        contents: [{ parts: parts }],
                         generationConfig: { responseMimeType: "application/json" },
                         systemInstruction: { parts: [{ text: dynamicSystemPrompt }] }
                     })
