@@ -44,6 +44,7 @@
         btnLoad: $('#btn-load'),
         btnNew: $('#btn-new'),
         btnCleanFormat: $('#btn-clean-format'),
+        btnCloseSession: $('#btn-close-session'),
         btnMenuMobile: $('#btn-menu-mobile'),
         btnCloseSidebar: $('#btn-close-sidebar'),
         btnCloseLoad: $('#btn-close-load'),
@@ -341,6 +342,7 @@
         DOM.btnLoad.addEventListener('click', handleShowLoadModal);
         DOM.btnNew.addEventListener('click', handleNew);
         DOM.btnCleanFormat.addEventListener('click', handleCleanFormat);
+        if (DOM.btnCloseSession) DOM.btnCloseSession.addEventListener('click', handleCloseSession);
 
         // CNEB Curriculum dropdowns
         DOM.inputArea.addEventListener('change', handleAreaChange);
@@ -2270,7 +2272,10 @@
             });
             if (!confirmed) return;
         }
+        await forceNewSession();
+    }
 
+    async function forceNewSession() {
         // Reset
         AppState.currentSession = null;
         DOM.form.querySelectorAll('input, textarea, select').forEach(el => {
@@ -2298,6 +2303,29 @@
         Storage.clearCurrentSession();
         await loadProfileDefaults();
         Toast.info('Nueva sesión iniciada');
+    }
+
+    async function handleCloseSession() {
+        if (!AppState.currentSession) {
+            Toast.info('El editor ya está vacío y listo para una nueva sesión.');
+            return;
+        }
+
+        const choice = await ConfirmDialog.show({
+            title: '¿Cerrar sesión del editor?',
+            message: '¿Deseas guardar los cambios de la sesión actual antes de cerrarla y comenzar otra?',
+            showDenyButton: true,
+            confirmText: 'Sí, guardar',
+            denyText: 'No guardar',
+            cancelText: 'Cancelar'
+        });
+
+        if (choice === 'confirm') {
+            handleSave();
+            await forceNewSession();
+        } else if (choice === 'deny') {
+            await forceNewSession();
+        }
     }
 
     // ═══════════════════════════════════════

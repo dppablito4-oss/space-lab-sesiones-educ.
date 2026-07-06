@@ -9,8 +9,10 @@ const ConfirmDialog = (() => {
     let messageEl = null;
     let cancelBtn = null;
     let acceptBtn = null;
+    let denyBtn = null;
     let initialized = false;
     let _resolve = null;
+    let _hasDenyButton = false;
 
     function init() {
         if (initialized) return;
@@ -21,20 +23,22 @@ const ConfirmDialog = (() => {
         messageEl = document.getElementById('confirm-message');
         cancelBtn = document.getElementById('confirm-cancel');
         acceptBtn = document.getElementById('confirm-accept');
+        denyBtn = document.getElementById('confirm-deny');
 
         // Event listeners
-        if (cancelBtn) cancelBtn.addEventListener('click', () => close(false));
-        if (acceptBtn) acceptBtn.addEventListener('click', () => close(true));
+        if (cancelBtn) cancelBtn.addEventListener('click', () => close(_hasDenyButton ? 'cancel' : false));
+        if (acceptBtn) acceptBtn.addEventListener('click', () => close(_hasDenyButton ? 'confirm' : true));
+        if (denyBtn) denyBtn.addEventListener('click', () => close('deny'));
 
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) close(false);
+            if (e.target === overlay) close(_hasDenyButton ? 'cancel' : false);
         });
 
         // Close on Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) {
-                close(false);
+                close(_hasDenyButton ? 'cancel' : false);
             }
         });
 
@@ -48,9 +52,11 @@ const ConfirmDialog = (() => {
      * @param {string} options.message - Dialog message
      * @param {string} options.confirmText - Accept button text
      * @param {string} options.cancelText - Cancel button text
-     * @returns {Promise<boolean>} - True if confirmed, false otherwise
+     * @param {boolean} options.showDenyButton - If true, displays a third option button
+     * @param {string} options.denyText - Deny button text
+     * @returns {Promise<boolean|string>} - Resolved choice
      */
-    function show({ title = '¿Estás seguro?', message = 'Esta acción no se puede deshacer.', confirmText = 'Confirmar', cancelText = 'Cancelar' } = {}) {
+    function show({ title = '¿Estás seguro?', message = 'Esta acción no se puede deshacer.', confirmText = 'Confirmar', cancelText = 'Cancelar', showDenyButton = false, denyText = 'No guardar' } = {}) {
         init();
         if (!initialized) {
             // Fallback for pages without the dialog markup
@@ -58,10 +64,21 @@ const ConfirmDialog = (() => {
             return Promise.resolve(confirmed);
         }
 
+        _hasDenyButton = showDenyButton;
+
         titleEl.textContent = title;
         messageEl.textContent = message;
         acceptBtn.textContent = confirmText;
         cancelBtn.textContent = cancelText;
+
+        if (denyBtn) {
+            if (showDenyButton) {
+                denyBtn.textContent = denyText;
+                denyBtn.classList.remove('hidden');
+            } else {
+                denyBtn.classList.add('hidden');
+            }
+        }
 
         overlay.classList.remove('hidden');
 
