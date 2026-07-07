@@ -1408,53 +1408,76 @@
         if (momTable) {
             const rows = Array.from(momTable.querySelectorAll('tbody > tr'));
             
-            // Fila 1: Inicio
-            if (rows[0]) {
-                const cellMom = rows[0].querySelectorAll('td')[0];
-                const cellAct = rows[0].querySelectorAll('td')[1];
+            let currentMoment = 'inicio';
+            let inicioRows = [];
+            let desarrolloRows = [];
+            let cierreRows = [];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 1) {
+                    const labelText = cells[0].textContent.toUpperCase();
+                    if (labelText.includes('INICIO')) {
+                        currentMoment = 'inicio';
+                    } else if (labelText.includes('DESARROLLO')) {
+                        currentMoment = 'desarrollo';
+                    } else if (labelText.includes('CIERRE')) {
+                        currentMoment = 'cierre';
+                    }
+                }
+                
+                if (currentMoment === 'inicio') {
+                    inicioRows.push(row);
+                } else if (currentMoment === 'desarrollo') {
+                    desarrolloRows.push(row);
+                } else if (currentMoment === 'cierre') {
+                    cierreRows.push(row);
+                }
+            });
+
+            // --- INICIO ---
+            if (inicioRows[0]) {
+                const cellMom = inicioRows[0].querySelectorAll('td')[0];
                 if (cellMom) {
                     const timeMatch = cellMom.textContent.match(/TIEMPO:\s*(\d+)/i);
                     if (timeMatch) inicio_tiempo = timeMatch[1];
                 }
+            }
+            inicioRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const cellAct = (cells.length === 3) ? cells[1] : cells[0];
                 if (cellAct) {
-                    inicio_actividades = Array.from(cellAct.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t.length > 0);
+                    const ps = Array.from(cellAct.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t.length > 0);
+                    if (ps.length > 0) {
+                        inicio_actividades.push(...ps);
+                    } else {
+                        const rawText = cellAct.textContent.trim();
+                        const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        inicio_actividades.push(...lines);
+                    }
                 }
-            }
+            });
 
-            // Filas de Desarrollo
-            let filasDesarrollo = [];
-            let filaCierreIdx = rows.length - 1;
-            
-            for (let i = 1; i < rows.length; i++) {
-                const cellMom = rows[i].querySelectorAll('td')[0];
-                if (cellMom && cellMom.textContent.includes('CIERRE')) {
-                    filaCierreIdx = i;
-                    break;
-                }
-                filasDesarrollo.push(rows[i]);
-            }
-
-            if (filasDesarrollo[0]) {
-                const cellMom = filasDesarrollo[0].querySelectorAll('td')[0];
+            // --- DESARROLLO ---
+            if (desarrolloRows[0]) {
+                const cellMom = desarrolloRows[0].querySelectorAll('td')[0];
                 if (cellMom) {
                     const timeMatch = cellMom.textContent.match(/TIEMPO:\s*(\d+)/i);
                     if (timeMatch) desarrollo_tiempo = timeMatch[1];
                 }
             }
-
-            filasDesarrollo.forEach(row => {
+            desarrolloRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                let cellAct = null;
-                if (cells.length === 3) {
-                    cellAct = cells[1];
-                } else if (cells.length === 1) {
-                    cellAct = cells[0];
-                }
-                
+                const cellAct = (cells.length === 3) ? cells[1] : cells[0];
                 if (cellAct) {
                     const titleEl = cellAct.querySelector('.proceso-titulo') || cellAct.querySelector('strong');
                     const titulo = titleEl ? titleEl.textContent.trim() : 'Proceso Didáctico';
-                    const contenido = Array.from(cellAct.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t !== titulo && t.length > 0);
+                    
+                    let contenido = Array.from(cellAct.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t !== titulo && t.length > 0);
+                    if (contenido.length === 0) {
+                        const rawText = cellAct.textContent.trim();
+                        contenido = rawText.split('\n').map(l => l.trim()).filter(t => t !== titulo && t.length > 0);
+                    }
                     
                     desarrollo_procesos.push({
                         clave: titulo.toLowerCase().replace(/[^a-z0-9]/g, '_'),
@@ -1464,20 +1487,51 @@
                 }
             });
 
-            // Fila de Cierre
-            const rowCierre = rows[filaCierreIdx];
-            if (rowCierre) {
-                const cellMom = rowCierre.querySelectorAll('td')[0];
-                const cellAct = rowCierre.querySelectorAll('td')[1];
+            // --- CIERRE ---
+            if (cierreRows[0]) {
+                const cellMom = cierreRows[0].querySelectorAll('td')[0];
+                const cellAct = (cierreRows[0].querySelectorAll('td').length === 3) ? cierreRows[0].querySelectorAll('td')[1] : cierreRows[0].querySelectorAll('td')[0];
                 if (cellMom) {
                     const timeMatch = cellMom.textContent.match(/TIEMPO:\s*(\d+)/i);
                     if (timeMatch) cierre_tiempo = timeMatch[1];
                 }
                 if (cellAct) {
                     const uls = cellAct.querySelectorAll('ul.session-list');
-                    if (uls[0]) cierre_metacognicion = Array.from(uls[0].querySelectorAll('li')).map(li => li.textContent.trim());
-                    if (uls[1]) cierre_evaluacion = Array.from(uls[1].querySelectorAll('li')).map(li => li.textContent.trim());
-                    if (uls[2]) cierre_extension = Array.from(uls[2].querySelectorAll('li')).map(li => li.textContent.trim());
+                    if (uls.length >= 3) {
+                        if (uls[0]) cierre_metacognicion = Array.from(uls[0].querySelectorAll('li')).map(li => li.textContent.trim());
+                        if (uls[1]) cierre_evaluacion = Array.from(uls[1].querySelectorAll('li')).map(li => li.textContent.trim());
+                        if (uls[2]) cierre_extension = Array.from(uls[2].querySelectorAll('li')).map(li => li.textContent.trim());
+                    } else {
+                        const rawText = cellAct.textContent.trim();
+                        const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        let currentSection = 'metacognicion';
+                        lines.forEach(line => {
+                            const lLower = line.toLowerCase();
+                            if (lLower.includes('metacognición') || lLower.includes('metacognicion')) {
+                                currentSection = 'metacognicion';
+                                const rest = line.replace(/^[•\-\s]*metacognici[oó]n:\s*/i, '').trim();
+                                if (rest) cierre_metacognicion.push(rest);
+                            } else if (lLower.includes('evaluación formativa') || lLower.includes('evaluacion formativa') || lLower.includes('evaluación')) {
+                                currentSection = 'evaluacion';
+                                const rest = line.replace(/^[•\-\s]*evaluaci[oó]n[^:]*:\s*/i, '').trim();
+                                if (rest) cierre_evaluacion.push(rest);
+                            } else if (lLower.includes('extensión') || lLower.includes('extension')) {
+                                currentSection = 'extension';
+                                const rest = line.replace(/^[•\-\s]*extensi[oó]n[^:]*:\s*/i, '').trim();
+                                if (rest) cierre_extension.push(rest);
+                            } else if (line.length > 0) {
+                                const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+                                if (cleanLine) {
+                                    if (currentSection === 'metacognicion') cierre_metacognicion.push(cleanLine);
+                                    else if (currentSection === 'evaluacion') cierre_evaluacion.push(cleanLine);
+                                    else if (currentSection === 'extension') cierre_extension.push(cleanLine);
+                                }
+                            }
+                        });
+                        if (cierre_metacognicion.length === 0 && cierre_evaluacion.length === 0 && cierre_extension.length === 0 && rawText.length > 0) {
+                            cierre_metacognicion = lines.filter(l => l.length > 0);
+                        }
+                    }
                 }
             }
         }

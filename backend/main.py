@@ -2200,6 +2200,8 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     cell_cie.text = ""
 
     cierre = session.momentos.cierre
+    cierre_has_content = bool(cierre.metacognicion or cierre.evaluacion or cierre.extension)
+
     if cierre.metacognicion:
         plbl = cell_cie.add_paragraph()
         rlbl = plbl.add_run("Metacognicion:")
@@ -2229,6 +2231,33 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             pi = cell_cie.add_paragraph(style='List Bullet')
             pi.paragraph_format.space_after = Pt(2)
             pi.add_run(ext).font.size = Pt(9.5)
+
+    # Fallback: si no llegaron datos estructurados, escribir texto por defecto
+    if not cierre_has_content:
+        default_sections = [
+            ("Metacognicion:", [
+                "Que aprendimos hoy? Como lo aprendimos? Para que nos sirve?",
+                "Que fue lo mas dificil? Como lo superamos?"
+            ]),
+            ("Evaluacion formativa:", [
+                "Revision de los criterios de evaluacion con los estudiantes.",
+                "Retroalimentacion sobre el desempeno de la sesion."
+            ]),
+            ("Extension para casa:", [
+                "Actividad de refuerzo o aplicacion a nuevas situaciones.",
+                "Resolucion de ejercicios complementarios."
+            ]),
+        ]
+        for lbl, items in default_sections:
+            plbl = cell_cie.add_paragraph()
+            plbl.paragraph_format.space_before = Pt(4)
+            rlbl = plbl.add_run(lbl)
+            rlbl.bold = True
+            rlbl.font.size = Pt(9.5)
+            for item in items:
+                pi = cell_cie.add_paragraph(style='List Bullet')
+                pi.paragraph_format.space_after = Pt(2)
+                pi.add_run(item).font.size = Pt(9.5)
 
     # Set exact width for 4 columns of Moments table
     anchos_mom = [Inches(1.2), Inches(0.35), Inches(4.87), Inches(0.35)]
