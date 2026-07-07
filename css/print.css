@@ -57,7 +57,26 @@
     /* ─── Page setup ─── */
     @page {
         size: A4 portrait;
-        margin: 15mm 12mm 15mm 12mm;
+        margin: 0 !important;
+    }
+
+    .hoja-a4 {
+        width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+        padding: 18mm 12mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        position: relative !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     /* ─── Layout reset ─── */

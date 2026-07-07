@@ -277,19 +277,7 @@ async def exportar_pdf(payload: ExportPDFRequest):
                 print_background=True,
                 prefer_css_page_size=True,
                 margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
-                display_header_footer=True,
-                header_template=f"""
-                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-bottom: 1px solid #f1f5f9;">
-                        <span>S.Y. PABLITO_DP &bull; Motor de Exportación</span>
-                        <span>{payload.titulo}</span>
-                    </div>
-                """,
-                footer_template="""
-                    <div style="font-family: 'Arial', sans-serif; font-size: 8px; width: 100%; display: flex; justify-content: space-between; padding: 0 12mm; color: #94a3b8; border-top: 1px solid #f1f5f9;">
-                        <span>Sesión de Aprendizaje Oficial &bull; Space Lab</span>
-                        <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
-                    </div>
-                """
+                display_header_footer=False
             )
             await browser.close()
 
