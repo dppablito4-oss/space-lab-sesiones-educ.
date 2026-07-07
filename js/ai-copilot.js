@@ -112,7 +112,7 @@ Asegúrate de estructurar el JSON del desarrollo usando exactamente estas llaves
 REGLAS DE FORMATO Y CONTENIDO:
 1. Responde ÚNICAMENTE en formato JSON válido. No envíes explicaciones, código markdown ni backticks \`\`\`.
 2. Las actividades de los momentos (inicio, desarrollo, cierre) deben contener marcado HTML básico (como <strong>, <ul>, <li>, <p>, <br>) para estructurar el texto, listas y preguntas con excelente visualización. No uses etiquetas como <html>, <body>, ni clases CSS complejas.
-3. El desarrollo de la sesión debe dividirse rigurosamente en sub-procesos didácticos separados en claves independientes de JSON (proceso_1, proceso_2, etc.), describiendo detalladamente la interacción en el aula.
+3. El desarrollo de la sesión debe dividirse rigurosamente en sub-procesos didácticos separados en claves independientes de JSON (proceso_1, proceso_2, etc.). Explaya detalladamente las interacciones pedagógicas, preguntas clave y dinámicas en cada proceso didáctico. No escatimes en la longitud del contenido, el formato de destino soporta textos extensos.
 4. Genera múltiples capacidades y criterios de evaluación adecuados a la competencia.
 5. Adapta la complejidad y tono de las actividades al Grado, Nivel (Inicial, Primaria, Secundaria) y Área curricular indicados.
 

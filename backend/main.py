@@ -929,8 +929,9 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
 @app.post("/exportar-pdf-json")
 async def exportar_pdf_json(payload: SesionAprendizajeRequest):
     """
-    Genera un archivo PDF a partir del JSON estructurado de la sesión de aprendizaje,
-    utilizando una plantilla HTML estática (Jinja2-like) y Playwright.
+    Genera un archivo PDF a partir del JSON estructurado de la sesión de aprendizaje.
+    Intenta utilizar la conversión nativa de Word (docx2pdf) si está disponible en Windows,
+    y si falla o no está disponible, cae de vuelta al renderizado con Playwright.
     """
     if payload.token != CONNECTION_TOKEN:
         raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
@@ -940,7 +941,57 @@ async def exportar_pdf_json(payload: SesionAprendizajeRequest):
         filename = re.sub(r'[^a-zA-Z0-9-_\s]', '', titulo).replace(' ', '_')
         nombre_archivo = f"{filename}.pdf"
 
-        # Generar HTML completo
+        # 1. Intentar conversión nativa Word-to-PDF si estamos en Windows
+        if sys.platform.startswith('win'):
+            try:
+                from docx2pdf import convert
+                
+                # Generamos primero el Word perfecto usando la función premium
+                docx_stream = build_docx_from_json(payload)
+                
+                # Crear archivos temporales
+                temp_docx = LOCAL_BIN_DIR / f"temp_{secrets.token_hex(4)}_{filename}.docx"
+                temp_pdf = LOCAL_BIN_DIR / f"temp_{secrets.token_hex(4)}_{filename}.pdf"
+                
+                LOCAL_BIN_DIR.mkdir(exist_ok=True)
+                with open(temp_docx, "wb") as f:
+                    f.write(docx_stream.read())
+                    
+                if console:
+                    console.print(f"[yellow]⚡ Intentando conversión nativa Word-to-PDF para {nombre_archivo}...[/yellow]")
+                
+                # Ejecutar la conversión de Word en un hilo separado
+                await asyncio.to_thread(convert, str(temp_docx), str(temp_pdf))
+                
+                # Leer los bytes del PDF resultante
+                with open(temp_pdf, "rb") as f:
+                    pdf_bytes = f.read()
+                    
+                # Limpieza de archivos temporales
+                try:
+                    os.remove(temp_docx)
+                    os.remove(temp_pdf)
+                except Exception:
+                    pass
+                    
+                if console:
+                    console.print(f"[green]✓ [PDF PREMIUM CONVERTIDO] Generado vía Word con éxito: {nombre_archivo}[/green]")
+                    
+                return Response(
+                    content=pdf_bytes,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f"attachment; filename={nombre_archivo}",
+                        "Access-Control-Expose-Headers": "Content-Disposition"
+                    }
+                )
+            except Exception as word_err:
+                if console:
+                    console.print(f"[yellow]⚠️ Falló conversión vía Word: {str(word_err)}. Usando fallback de Chromium...[/yellow]")
+                else:
+                    print(f"[WARN WORD PDF] Falló conversión: {word_err}. Usando fallback...")
+
+        # 2. Fallback: Renderizado HTML con Playwright (Chromium headless)
         documento_html = build_pdf_html_from_json(payload)
 
         async with async_playwright() as p:
@@ -982,7 +1033,7 @@ async def exportar_pdf_json(payload: SesionAprendizajeRequest):
             await browser.close()
 
         if console:
-            console.print(f"[green]✓ [PDF PREMIUM EXPORTADO] Generado nativamente con éxito: {nombre_archivo}[/green]")
+            console.print(f"[green]✓ [PDF PREMIUM EXPORTADO] Generado vía Chromium con éxito: {nombre_archivo}[/green]")
 
         return Response(
             content=pdf_bytes,
@@ -1506,7 +1557,8 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
 
     # ─── CABECERA INSTITUCIONAL EN EL HEADER NATIVO DE WORD ───
     section = doc.sections[0]
-    header = section.header
+    section.different_first_page_header_footer = True
+    header = section.first_page_header
     
     # Tabla sin bordes de 3 columnas para logos y textos oficiales
     header_table = header.add_table(rows=1, cols=3, width=Inches(6.9))
@@ -1520,10 +1572,20 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             cell.width = anchos_header[col_idx]
             tcPr = cell._tc.get_or_add_tcPr()
             tcBorders = OxmlElement('w:tcBorders')
-            for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+            # Establecer bordes nil para todos menos el inferior
+            for edge in ('top', 'left', 'right', 'insideH', 'insideV'):
                 border = OxmlElement(f'w:{edge}')
                 border.set(qn('w:val'), 'nil')
                 tcBorders.append(border)
+            
+            # Borde inferior directo en las celdas para que se mueva en bloque con los logos
+            bottom_border = OxmlElement('w:bottom')
+            bottom_border.set(qn('w:val'), 'single')
+            bottom_border.set(qn('w:sz'), '12') # 1.5 pt
+            bottom_border.set(qn('w:space'), '1')
+            bottom_border.set(qn('w:color'), '000000')
+            tcBorders.append(bottom_border)
+            
             tcPr.append(tcBorders)
 
     # Llenar columna 1: Logo Izquierdo
@@ -1566,18 +1628,10 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         except Exception:
             pass
 
-    # Línea divisoria debajo de la cabecera en el párrafo base del header
+    # Configurar el espacio en el párrafo base del header para evitar espacios residuales
     p_divider = header.paragraphs[0]
-    p_divider.paragraph_format.space_before = Pt(4)
+    p_divider.paragraph_format.space_before = Pt(0)
     p_divider.paragraph_format.space_after = Pt(0)
-    p_divider_border = OxmlElement('w:pBdr')
-    bottom_border = OxmlElement('w:bottom')
-    bottom_border.set(qn('w:val'), 'single')
-    bottom_border.set(qn('w:sz'), '12') # 1.5 pt
-    bottom_border.set(qn('w:space'), '1')
-    bottom_border.set(qn('w:color'), '000000')
-    p_divider_border.append(bottom_border)
-    p_divider._p.get_or_add_pPr().append(p_divider_border)
 
     # ─── TÍTULO PRINCIPAL ───
     p_title = doc.add_paragraph()
