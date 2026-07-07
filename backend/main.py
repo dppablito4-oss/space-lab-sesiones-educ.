@@ -1663,17 +1663,19 @@ def preprocess_session_latex(session):
 
 
 def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
-    # Preprocesar LaTeX a Unicode para asegurar compatibilidad matematica y estetica en Word
+    # Preprocesar LaTeX a Unicode para asegurar compatibilidad matemática y estética en Word
     preprocess_session_latex(session)
     
     doc = Document()
     
-    # Margenes: superior amplio para membrete en header nativo
+    # Margenes exactos A4 y A4 page size
     for s in doc.sections:
-        s.top_margin    = Inches(1.4)
-        s.bottom_margin = Inches(0.8)
-        s.left_margin   = Inches(0.8)
-        s.right_margin  = Inches(0.8)
+        s.page_width = Inches(8.27)
+        s.page_height = Inches(11.69)
+        s.top_margin = Inches(0.1)
+        s.bottom_margin = Inches(0.1)
+        s.left_margin = Inches(0.75)
+        s.right_margin = Inches(0.75)
 
     # Estilo Normal
     style_normal = doc.styles['Normal']
@@ -1681,9 +1683,14 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     style_normal.font.size = Pt(10)
     style_normal.font.color.rgb = RGBColor(30, 41, 59)
 
-    # Helpers internos
-    PEACH = 'F8CBAD'
-    BLUE_HDR = 'B4C6E7'
+    # Colores exactos de la plantilla XML
+    PEACH = 'F7CAAC'
+    BLUE_HDR = 'BDD6EE'
+    YELLOW_HDR = 'FFE599'
+    GRAY_VAL = 'F2F2F2'
+    PEACH_MOM = 'FBE5D5'
+    GRAY_MOM = 'EDEDED'
+    YELLOW_VAL = 'FFF2CC'
     BULLET_COLORS = ['2980B9', 'C0392B', '27AE60', '8E44AD', '16A085']
 
     def _label(cell, text):
@@ -1696,7 +1703,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         r.font.size = Pt(9)
 
     def _val(cell, text):
-        set_cell_background(cell, 'FFFFFF')
+        set_cell_background(cell, GRAY_VAL)
         set_cell_margins(cell, top=60, bottom=60, left=100, right=100)
         p = cell.paragraphs[0]
         p.paragraph_format.line_spacing = 1.1
@@ -1723,8 +1730,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rb.font.color.rgb = RGBColor(int(bc[0:2], 16), int(bc[2:4], 16), int(bc[4:6], 16))
             p.add_run(item).font.size = Pt(9)
 
+    def make_vertical_text(text: str) -> str:
+        # Stack characters vertically separated by double newlines to match template
+        return "\n" + "\n\n".join(list(text)) + "\n"
+
     def _write_momento_cell(cell, nombre, sub_bullets, tiempo):
-        set_cell_background(cell, 'F8FAFC')
+        set_cell_background(cell, GRAY_MOM)
         set_cell_margins(cell, top=120, bottom=120, left=140, right=140)
         p_main = cell.paragraphs[0]
         rm = p_main.add_run(nombre)
@@ -1744,6 +1755,18 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rt.font.size = Pt(8.5)
             rt.font.color.rgb = RGBColor(192, 57, 43)
 
+    def _write_vertical_cell(cell, txt):
+        set_cell_background(cell, PEACH_MOM)
+        set_cell_margins(cell, top=120, bottom=120, left=40, right=40)
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.line_spacing = 1.0
+        p.paragraph_format.space_after = Pt(0)
+        r = p.add_run(make_vertical_text(txt))
+        r.bold = True
+        r.font.size = Pt(8.5)
+        r.font.color.rgb = RGBColor(120, 60, 20) # Cafe oscuro / oxidado
+
     # ===============================================================
     # CABECERA INSTITUCIONAL EN EL HEADER NATIVO (TODAS LAS PAGINAS)
     # ===============================================================
@@ -1751,11 +1774,11 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     section.different_first_page_header_footer = False
     header = section.header
 
-    hdr_tbl = header.add_table(rows=1, cols=7, width=Inches(6.9))
+    hdr_tbl = header.add_table(rows=1, cols=7, width=Inches(6.77))
     hdr_tbl.autofit = False
     hdr_tbl.allow_autofit = False
 
-    anchos_hdr  = [Inches(0.85), Inches(0.5), Inches(1.25), Inches(1.2), Inches(1.2), Inches(1.05), Inches(0.85)]
+    anchos_hdr  = [Inches(0.85), Inches(0.5), Inches(1.2), Inches(1.15), Inches(1.15), Inches(1.05), Inches(0.87)]
     colores_hdr = [None, 'C00000', '262626', '595959', '7F7F7F', '8FAADC', None]
 
     for col_idx, hcell in enumerate(hdr_tbl.rows[0].cells):
@@ -1880,21 +1903,21 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     inner.allow_autofit = False
 
     ci_ph = inner.cell(0, 0)
-    ci_ph.width = Inches(4.5)
+    ci_ph.width = Inches(4.4)
     _hdr(ci_ph, "PROPOSITO DE LA SESION:", bg=BLUE_HDR, sz=9)
 
     ci_ch = inner.cell(0, 1)
-    ci_ch.width = Inches(2.4)
+    ci_ch.width = Inches(2.37)
     _hdr(ci_ch, "CONOCIMIENTOS:", bg=PEACH, sz=9)
 
     ci_pv = inner.cell(1, 0)
-    ci_pv.width = Inches(4.5)
+    ci_pv.width = Inches(4.4)
     set_cell_background(ci_pv, 'FFFFFF')
     set_cell_margins(ci_pv, top=80, bottom=80, left=140, right=140)
     ci_pv.paragraphs[0].add_run(session.proposito.proposito_texto or "")
 
     ci_cv = inner.cell(1, 1)
-    ci_cv.width = Inches(2.4)
+    ci_cv.width = Inches(2.37)
     set_cell_background(ci_cv, 'FFFFFF')
     set_cell_margins(ci_cv, top=80, bottom=80, left=140, right=140)
     ci_cv.paragraphs[0].add_run(session.proposito.conocimientos or "")
@@ -1909,34 +1932,61 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     r1.bold = True
     r1.font.size = Pt(11)
 
-    dg = doc.add_table(rows=4, cols=6)
-    dg.autofit = True
+    dg = doc.add_table(rows=3, cols=13)
+    dg.autofit = False
+    dg.allow_autofit = False
     add_table_borders_black(dg)
 
-    _label(dg.cell(0, 0), "Institucion Educativa")
-    _val(dg.cell(0, 1), session.metadata.institucion)
-    dg.cell(0, 1).merge(dg.cell(0, 3))
-    _label(dg.cell(0, 4), "Nivel")
-    _val(dg.cell(0, 5), session.metadata.nivel)
+    # Row 0 cells: label(sp=3 IE), val(sp=4), label(sp=2 Nivel), val(sp=4)
+    c_ie_lbl = dg.cell(0, 0).merge(dg.cell(0, 2))
+    c_ie_val = dg.cell(0, 3).merge(dg.cell(0, 6))
+    c_niv_lbl = dg.cell(0, 7).merge(dg.cell(0, 8))
+    c_niv_val = dg.cell(0, 9).merge(dg.cell(0, 12))
+    
+    _label(c_ie_lbl, "Institución Educativa")
+    _val(c_ie_val, session.metadata.institucion)
+    _label(c_niv_lbl, "Nivel")
+    _val(c_niv_val, session.metadata.nivel)
 
-    _label(dg.cell(1, 0), "Docente")
-    _val(dg.cell(1, 1), session.metadata.docente)
-    dg.cell(1, 1).merge(dg.cell(1, 3))
-    _label(dg.cell(1, 4), "Area")
-    _val(dg.cell(1, 5), session.metadata.area)
+    # Row 1 cells: label(sp=1 Docente), val(sp=6), label(sp=2 Area), val(sp=2), label(sp=1 Unidad), val(sp=1)
+    c_doc_lbl = dg.cell(1, 0)
+    c_doc_val = dg.cell(1, 1).merge(dg.cell(1, 6))
+    c_are_lbl = dg.cell(1, 7).merge(dg.cell(1, 8))
+    c_are_val = dg.cell(1, 9).merge(dg.cell(1, 10))
+    c_uni_lbl = dg.cell(1, 11)
+    c_uni_val = dg.cell(1, 12)
 
-    _label(dg.cell(2, 0), "Grado")
-    _val(dg.cell(2, 1), session.metadata.grado)
-    _label(dg.cell(2, 2), "Seccion")
-    _val(dg.cell(2, 3), session.metadata.seccion)
-    _label(dg.cell(2, 4), "Unidad / Proyecto")
-    _val(dg.cell(2, 5), session.metadata.unidad)
+    _label(c_doc_lbl, "Docente")
+    _val(c_doc_val, session.metadata.docente)
+    _label(c_are_lbl, "Área")
+    _val(c_are_val, session.metadata.area)
+    _label(c_uni_lbl, "Unidad/ Proyecto")
+    _val(c_uni_val, session.metadata.unidad)
 
-    _label(dg.cell(3, 0), "Fecha")
-    _val(dg.cell(3, 1), session.metadata.fecha)
-    dg.cell(3, 1).merge(dg.cell(3, 3))
-    _label(dg.cell(3, 4), "Duracion")
-    _val(dg.cell(3, 5), (session.metadata.duracion + " min") if session.metadata.duracion else "")
+    # Row 2 cells: label(sp=1 Grado), val(sp=1), label(sp=2 Seccion), val(sp=1), label(sp=1 Fecha), val(sp=2), label(sp=2 Duracion), val(sp=3)
+    c_gra_lbl = dg.cell(2, 0)
+    c_gra_val = dg.cell(2, 1)
+    c_sec_lbl = dg.cell(2, 2).merge(dg.cell(2, 3))
+    c_sec_val = dg.cell(2, 4)
+    c_fec_lbl = dg.cell(2, 5)
+    c_fec_val = dg.cell(2, 6).merge(dg.cell(2, 7))
+    c_dur_lbl = dg.cell(2, 8).merge(dg.cell(2, 9))
+    c_dur_val = dg.cell(2, 10).merge(dg.cell(2, 12))
+
+    _label(c_gra_lbl, "Grado")
+    _val(c_gra_val, session.metadata.grado)
+    _label(c_sec_lbl, "Sección")
+    _val(c_sec_val, session.metadata.seccion)
+    _label(c_fec_lbl, "Fecha")
+    _val(c_fec_val, session.metadata.fecha)
+    _label(c_dur_lbl, "Duración")
+    _val(c_dur_val, (session.metadata.duracion + " min") if session.metadata.duracion else "")
+
+    # Set exact column widths for the 13 columns of the general data table
+    anchos_dg = [Inches(0.6), Inches(0.4), Inches(0.4), Inches(0.55), Inches(0.55), Inches(0.55), Inches(0.55), Inches(0.45), Inches(0.45), Inches(0.55), Inches(0.55), Inches(0.55), Inches(0.52)]
+    for row in dg.rows:
+        for ci, cell in enumerate(row.cells):
+            cell.width = anchos_dg[ci]
 
     # ===============================================================
     # II. PROPOSITOS DE APRENDIZAJE
@@ -1979,7 +2029,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
 
     for row in mx.rows:
         for ci, cell in enumerate(row.cells):
-            cell.width = [Inches(1.4), Inches(1.5), Inches(1.7), Inches(1.3), Inches(1.0)][ci]
+            cell.width = [Inches(1.35), Inches(1.4), Inches(1.6), Inches(1.3), Inches(1.12)][ci]
             for p in cell.paragraphs:
                 p.paragraph_format.line_spacing = 1.15
 
@@ -2002,7 +2052,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             _bullet_cell(ct_tbl.cell(i + 1, 1), ct.desempenos)
         for row in ct_tbl.rows:
             for ci, cell in enumerate(row.cells):
-                cell.width = [Inches(2.5), Inches(4.4)][ci]
+                cell.width = [Inches(2.4), Inches(4.37)][ci]
 
     # Enfoques Transversales
     if session.enfoques_transversales:
@@ -2027,7 +2077,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
                 cv.add_paragraph().add_run(val or "").font.size = Pt(9)
         for row in et_tbl.rows:
             for ci, cell in enumerate(row.cells):
-                cell.width = [Inches(2.0), Inches(1.8), Inches(3.1)][ci]
+                cell.width = [Inches(1.9), Inches(1.7), Inches(3.17)][ci]
 
     # Recursos y Materiales
     doc.add_paragraph().paragraph_format.space_before = Pt(8)
@@ -2044,7 +2094,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         _val(rec.cell(i, 1), val or "")
 
     # ===============================================================
-    # III. SECUENCIA DIDACTICA (MOMENTOS) - 2 COLUMNAS
+    # III. SECUENCIA DIDACTICA (MOMENTOS) - 4 COLUMNAS PREMIUM
     # ===============================================================
     doc.add_paragraph().paragraph_format.space_before = Pt(12)
     h3 = doc.add_paragraph()
@@ -2057,19 +2107,27 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     n_proc = len(procs) if procs else 1
     n_rows = 1 + 1 + n_proc + 1  # header + inicio + desarrollo(s) + cierre
 
-    mt = doc.add_table(rows=n_rows, cols=2)
+    # Tabla de 4 columnas: Momentos | Motivacion | Contenido | Evaluacion
+    mt = doc.add_table(rows=n_rows, cols=4)
     mt.autofit = False
     mt.allow_autofit = False
     add_table_borders_black(mt)
 
-    for i, ht in enumerate(["MOMENTOS DE LA SESION", "ESTRATEGIAS / ACTIVIDADES"]):
-        _hdr(mt.cell(0, i), ht, bg=BLUE_HDR, sz=9.5)
+    # Cabeceras
+    _hdr(mt.cell(0, 0), "MOMENTOS DE LA SESION", bg=BLUE_HDR, sz=9.5)
+    
+    # Combinar columnas 1, 2 y 3 para la cabecera "ESTRATEGIAS / ACTIVIDADES"
+    cell_est_hdr = mt.cell(0, 1).merge(mt.cell(0, 3))
+    _hdr(cell_est_hdr, "ESTRATEGIAS / ACTIVIDADES", bg=BLUE_HDR, sz=9.5)
 
-    # Fila INICIO
+    # Fila 1: INICIO
     _write_momento_cell(mt.cell(1, 0), "INICIO",
-        "Saberes Previos / Problematizacion / Motivacion",
+        "Saberes Previos\nProblematizacion\nMotivacion",
         session.momentos.inicio.tiempo_total or "")
-    cell_ini = mt.cell(1, 1)
+    _write_vertical_cell(mt.cell(1, 1), "MOTIVACION")
+    _write_vertical_cell(mt.cell(1, 3), "EVALUACION")
+    
+    cell_ini = mt.cell(1, 2)
     set_cell_margins(cell_ini, top=120, bottom=120, left=140, right=140)
     cell_ini.text = ""
     for act in session.momentos.inicio.actividades:
@@ -2078,13 +2136,16 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         p.paragraph_format.line_spacing = 1.15
         p.add_run(act).font.size = Pt(9.5)
 
-    # Filas DESARROLLO
+    # Filas 2 a 2+n_proc-1: DESARROLLO
     _write_momento_cell(mt.cell(2, 0), "DESARROLLO",
         "Gestion y Acompanamiento del Desarrollo de las Competencias\n(Procesos didacticos del Area)",
         session.momentos.desarrollo.tiempo_total or "")
+    _write_vertical_cell(mt.cell(2, 1), "MOTIVACION")
+    _write_vertical_cell(mt.cell(2, 3), "EVALUACION")
+
     for idx in range(n_proc):
         rn = 2 + idx
-        cell_des = mt.cell(rn, 1)
+        cell_des = mt.cell(rn, 2)
         set_cell_margins(cell_des, top=120, bottom=120, left=140, right=140)
         cell_des.text = ""
         if procs:
@@ -2103,15 +2164,26 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         else:
             cell_des.add_paragraph().add_run("Gestion y Acompanamiento del Desarrollo de Competencias...").font.size = Pt(9.5)
 
+        # Para las filas adicionales, darles formato de fondo en las celdas de Motivacion y Evaluacion
+        if idx > 0:
+            _write_vertical_cell(mt.cell(rn, 1), "MOTIVACION")
+            _write_vertical_cell(mt.cell(rn, 3), "EVALUACION")
+
     if n_proc > 1:
+        # Fusionar verticalmente columnas 0, 1 y 3 en la seccion Desarrollo
         mt.cell(2, 0).merge(mt.cell(2 + n_proc - 1, 0))
+        mt.cell(2, 1).merge(mt.cell(2 + n_proc - 1, 1))
+        mt.cell(2, 3).merge(mt.cell(2 + n_proc - 1, 3))
 
     # Fila CIERRE
     rc = n_rows - 1
     _write_momento_cell(mt.cell(rc, 0), "CIERRE",
-        "Metacognicion / Evaluacion formativa / Actividades de extension",
+        "Evaluacion (Reflexion sobre lo aprendido)\nAcciones de reforzamiento o indagacion",
         session.momentos.cierre.tiempo_total or "")
-    cell_cie = mt.cell(rc, 1)
+    _write_vertical_cell(mt.cell(rc, 1), "MOTIVACION")
+    _write_vertical_cell(mt.cell(rc, 3), "EVALUACION")
+
+    cell_cie = mt.cell(rc, 2)
     set_cell_margins(cell_cie, top=120, bottom=120, left=140, right=140)
     cell_cie.text = ""
 
@@ -2146,9 +2218,11 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             pi.paragraph_format.space_after = Pt(2)
             pi.add_run(ext).font.size = Pt(9.5)
 
+    # Set exact width for 4 columns of Moments table
+    anchos_mom = [Inches(1.2), Inches(0.35), Inches(4.87), Inches(0.35)]
     for row in mt.rows:
         for ci, cell in enumerate(row.cells):
-            cell.width = [Inches(1.5), Inches(5.4)][ci]
+            cell.width = anchos_mom[ci]
 
     # ===============================================================
     # FIRMAS DE LA SESION
@@ -2333,8 +2407,6 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     doc.save(stream)
     stream.seek(0)
     return stream
-    return stream
-
 
 @app.post("/exportar-docx-json")
 async def exportar_docx_json(payload: SesionAprendizajeRequest):
