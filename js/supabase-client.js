@@ -373,6 +373,70 @@ window.SupabaseClient = (() => {
         }
     }
 
+    /**
+     * Obtiene la lista de alumnos registrados para un nivel, grado y sección.
+     */
+    async function getAlumnos(nivel, grado, seccion) {
+        if (!supabase) return [];
+        const user = await getCurrentUser();
+        if (!user) return [];
+        try {
+            const { data, error } = await supabase
+                .from('alumnos')
+                .select('nombre_completo')
+                .eq('user_id', user.id)
+                .eq('nivel', nivel)
+                .eq('grado', grado)
+                .eq('seccion', seccion)
+                .order('nombre_completo', { ascending: true });
+            if (error) throw error;
+            return (data || []).map(r => r.nombre_completo);
+        } catch (e) {
+            console.error('[Supabase] Error al obtener alumnos:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Reemplaza la lista de alumnos para un nivel, grado y sección.
+     */
+    async function saveAlumnos(nivel, grado, seccion, nombresArray) {
+        if (!supabase) return false;
+        const user = await getCurrentUser();
+        if (!user) throw new Error('Debes iniciar sesión para guardar alumnos');
+        try {
+            // 1. Eliminar anteriores
+            const { error: deleteError } = await supabase
+                .from('alumnos')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('nivel', nivel)
+                .eq('grado', grado)
+                .eq('seccion', seccion);
+            if (deleteError) throw deleteError;
+
+            if (nombresArray.length === 0) return true;
+
+            // 2. Insertar nuevos
+            const inserts = nombresArray.map(nombre => ({
+                user_id: user.id,
+                nombre_completo: nombre.trim(),
+                nivel: nivel,
+                grado: grado,
+                seccion: seccion
+            }));
+
+            const { error: insertError } = await supabase
+                .from('alumnos')
+                .insert(inserts);
+            if (insertError) throw insertError;
+            return true;
+        } catch (e) {
+            console.error('[Supabase] Error al guardar alumnos:', e);
+            throw e;
+        }
+    }
+
     return {
         get client() { return supabase; },
         signUp,
@@ -389,6 +453,8 @@ window.SupabaseClient = (() => {
         getUserProfile,
         updateUserProfile,
         uploadLogo,
-        listLogos
+        listLogos,
+        getAlumnos,
+        saveAlumnos
     };
 })();

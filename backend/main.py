@@ -188,6 +188,7 @@ class SesionAprendizajeRequest(BaseModel):
     recursos: RecursosData
     momentos: MomentosData
     ficha_trabajo: Optional[FichaTrabajoData] = None
+    alumnos: Optional[List[str]] = []
     token: str
 
 
@@ -423,6 +424,70 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
             </div>
         </div>
         """
+
+    # 5.5. Construir la Lista de Cotejo dinámica basada en la lista de alumnos
+    alumnos_list = session.alumnos if session.alumnos else []
+    if not alumnos_list:
+        alumnos_list = [f"Estudiante {i+1}" for i in range(30)]
+
+    criterios = session.proposito.criterios if session.proposito.criterios else []
+    if not criterios:
+        criterios = [
+            "Expresa con diversas representaciones la comprensión sobre el tema.",
+            "Ordena y organiza conceptos clave para resolver problemas.",
+            "Emplea estrategias y procedimientos diversos para realizar las tareas.",
+            "Halla y valida soluciones utilizando criterios y conocimientos del área."
+        ]
+
+    criterios_headers_html = "".join([
+        f"<th colspan='2' style='font-size: 7.5pt; font-weight: bold; background: #e2e8f0; border: 1px solid #000; padding: 4px; text-align: center; vertical-align: top; max-width: 150px;'>{escape_html(c)}</th>"
+        for c in criterios
+    ])
+
+    criterios_subheaders_html = "".join([
+        "<th style='width: 30px; text-align: center; background: #f1f5f9; border: 1px solid #000; font-size: 8pt; font-weight: bold;'>SI</th><th style='width: 30px; text-align: center; background: #f1f5f9; border: 1px solid #000; font-size: 8pt; font-weight: bold;'>NO</th>"
+        for _ in criterios
+    ])
+
+    rows_html = ""
+    for idx, stud in enumerate(alumnos_list):
+        display_name = "" if stud.startswith("Estudiante ") else stud
+        criterios_cells_html = "".join([
+            "<td style='border: 1px solid #000;'></td><td style='border: 1px solid #000;'></td>"
+            for _ in criterios
+        ])
+        rows_html += f"""
+        <tr>
+            <td style="text-align: center; font-weight: 700; height: 26px; border: 1px solid #000; font-size: 8.5pt;">{idx + 1}</td>
+            <td style="text-align: left; padding-left: 6px; font-weight: 600; border: 1px solid #000; font-size: 8.5pt;">{escape_html(display_name)}</td>
+            {criterios_cells_html}
+        </tr>
+        """
+
+    lista_cotejo_html = f"""
+    <div class="hoja-a4" style="page-break-before: always; break-before: page; padding: 18mm 12mm;">
+        <div class="section-title" style="text-align: center; font-size: 11pt; font-weight: 800; text-transform: uppercase;">Instrumento de Evaluación</div>
+        <div class="section-title" style="text-align: center; font-size: 9.5pt; font-weight: 700; background: #f1f5f9; color: #000; margin-top: 4px;">
+            LISTA DE COTEJO {escape_html(session.metadata.grado or '2°')} {escape_html(session.metadata.seccion or 'A')}
+        </div>
+        
+        <table class="content-table momentos-table" style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 30px; text-align: center; background: #e2e8f0; border: 1px solid #000; font-size: 8.5pt;">N°</th>
+                    <th rowspan="2" style="text-align: left; padding-left: 6px; background: #e2e8f0; border: 1px solid #000; font-size: 8.5pt;">ESTUDIANTES</th>
+                    {criterios_headers_html}
+                </tr>
+                <tr>
+                    {criterios_subheaders_html}
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+    </div>
+    """
 
     # 6. HTML final unificado
     html_content = f"""<!DOCTYPE html>
@@ -916,6 +981,9 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
         
         <!-- ════════ V. FICHA DE TRABAJO ════════ -->
         {ficha_html}
+        
+        <!-- ════════ VI. LISTA DE COTEJO ════════ -->
+        {lista_cotejo_html}
     </body>
     </html>
     """
@@ -1044,6 +1112,14 @@ def set_cell_background(cell, hex_color: str):
     shading_elm.set(qn('w:color'), 'auto')
     shading_elm.set(qn('w:fill'), hex_color)
     cell._tc.get_or_add_tcPr().append(shading_elm)
+
+
+def set_cell_text_direction_vertical(cell):
+    """Establece la dirección del texto vertical (abajo a arriba, de izquierda a derecha) en una celda en Word."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    textDirection = OxmlElement('w:textDirection')
+    textDirection.set(qn('w:val'), 'btLr')
+    tcPr.append(textDirection)
 
 
 def set_cell_margins(cell, top=120, bottom=120, left=180, right=180):
@@ -1923,6 +1999,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     # ── Fila de Inicio (Fila 1) ──
     cell_mom_inicio = mom_table.cell(1, 0)
     set_cell_background(cell_mom_inicio, "F8FAFC")
+    set_cell_text_direction_vertical(cell_mom_inicio)
     p_mom_ini = cell_mom_inicio.paragraphs[0]
     run_mom_ini = p_mom_ini.add_run("INICIO:\n")
     run_mom_ini.bold = True
@@ -1952,11 +2029,13 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     cell_eval_inicio.paragraphs[0].runs[0].font.size = Pt(8.5)
     cell_eval_inicio.paragraphs[0].runs[0].bold = True
     set_cell_background(cell_eval_inicio, "F8FAFC")
+    set_cell_text_direction_vertical(cell_eval_inicio)
 
     # ── Filas de Desarrollo (Fila 2 a 2 + cant_procesos - 1) ──
     start_row_des = 2
     cell_mom_des = mom_table.cell(start_row_des, 0)
     set_cell_background(cell_mom_des, "F8FAFC")
+    set_cell_text_direction_vertical(cell_mom_des)
     p_mom_des = cell_mom_des.paragraphs[0]
     run_mom_des = p_mom_des.add_run("DESARROLLO:\n")
     run_mom_des.bold = True
@@ -1978,6 +2057,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     cell_eval_des.paragraphs[0].runs[0].font.size = Pt(8.5)
     cell_eval_des.paragraphs[0].runs[0].bold = True
     set_cell_background(cell_eval_des, "F8FAFC")
+    set_cell_text_direction_vertical(cell_eval_des)
 
     # Escribir procesos
     for idx in range(cant_procesos):
@@ -2011,6 +2091,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     row_cierre_idx = total_filas - 1
     cell_mom_cie = mom_table.cell(row_cierre_idx, 0)
     set_cell_background(cell_mom_cie, "F8FAFC")
+    set_cell_text_direction_vertical(cell_mom_cie)
     p_mom_cie = cell_mom_cie.paragraphs[0]
     run_mom_cie = p_mom_cie.add_run("CIERRE:\n")
     run_mom_cie.bold = True
@@ -2065,6 +2146,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     cell_eval_cie.paragraphs[0].runs[0].font.size = Pt(8.5)
     cell_eval_cie.paragraphs[0].runs[0].bold = True
     set_cell_background(cell_eval_cie, "F8FAFC")
+    set_cell_text_direction_vertical(cell_eval_cie)
 
     anchos_mom = [Inches(1.2), Inches(4.5), Inches(1.2)]
     for row in mom_table.rows:
@@ -2172,6 +2254,138 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         content_txt = session.ficha_trabajo.actividades or ""
         content_txt = re.sub(r'<[^>]*>', '', content_txt)
         p_ft_cont.add_run(content_txt)
+
+    # ─── LISTA DE COTEJO EN WORD ───
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    
+    doc.add_page_break()
+    
+    p_lc_title = doc.add_paragraph()
+    p_lc_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_lc_title = p_lc_title.add_run("INSTRUMENTO DE EVALUACIÓN")
+    run_lc_title.bold = True
+    run_lc_title.font.size = Pt(12)
+    run_lc_title.font.color.rgb = RGBColor(30, 41, 59)
+    
+    p_lc_subtitle = doc.add_paragraph()
+    p_lc_subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_lc_subtitle.paragraph_format.space_after = Pt(14)
+    run_lc_sub = p_lc_subtitle.add_run(f"LISTA DE COTEJO - {session.metadata.grado or '2°'} {session.metadata.seccion or 'A'}")
+    run_lc_sub.bold = True
+    run_lc_sub.font.size = Pt(10.5)
+    run_lc_sub.font.color.rgb = RGBColor(100, 116, 139)
+    
+    # Obtener alumnos y criterios
+    alumnos_list = session.alumnos if session.alumnos else []
+    if not alumnos_list:
+        alumnos_list = [f"Estudiante {i+1}" for i in range(30)]
+        
+    criterios = session.proposito.criterios if session.proposito.criterios else []
+    if not criterios:
+        criterios = [
+            "Expresa con diversas representaciones la comprensión sobre el tema.",
+            "Ordena y organiza conceptos clave para resolver problemas.",
+            "Emplea estrategias y procedimientos diversos para realizar las tareas.",
+            "Halla y valida soluciones utilizando criterios y conocimientos del área."
+        ]
+        
+    num_cols = 2 + len(criterios) * 2
+    lc_table = doc.add_table(rows=2 + len(alumnos_list), cols=num_cols)
+    lc_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    lc_table.autofit = False
+    
+    # Fila 0 y Fila 1 son para cabeceras
+    # Combinar celda N° (0,0 y 1,0) y Estudiantes (0,1 y 1,1)
+    lc_table.cell(0, 0).merge(lc_table.cell(1, 0))
+    lc_table.cell(0, 1).merge(lc_table.cell(1, 1))
+    
+    lc_table.cell(0, 0).text = "N°"
+    lc_table.cell(0, 1).text = "ESTUDIANTES"
+    
+    # Rellenar criterios cabeceras (Fila 0 combina col, col+1)
+    for c_idx, crit in enumerate(criterios):
+        start_col = 2 + c_idx * 2
+        cell_crit = lc_table.cell(0, start_col).merge(lc_table.cell(0, start_col + 1))
+        cell_crit.text = crit
+        
+        # Fila 1 subheaders
+        lc_table.cell(1, start_col).text = "SI"
+        lc_table.cell(1, start_col + 1).text = "NO"
+        
+    # Formatear cabeceras
+    header_bg_color = "E2E8F0"
+    sub_bg_color = "F1F5F9"
+        
+    def format_cell(cell, width_in, font_size_pt, bold=False, align_center=False, bg_color=None):
+        cell.width = Inches(width_in)
+        tcPr = cell._tc.get_or_add_tcPr()
+        
+        # Center vertical
+        vAlign = OxmlElement('w:vAlign')
+        vAlign.set(qn('w:val'), 'center')
+        tcPr.append(vAlign)
+        
+        # Bordes negros delgados
+        tcBorders = OxmlElement('w:tcBorders')
+        for border_name in ('top', 'left', 'bottom', 'right'):
+            border = OxmlElement(f'w:{border_name}')
+            border.set(qn('w:val'), 'single')
+            border.set(qn('w:sz'), '4') # 0.5 pt
+            border.set(qn('w:space'), '0')
+            border.set(qn('w:color'), '000000')
+            tcBorders.append(border)
+        tcPr.append(tcBorders)
+        
+        if bg_color:
+            set_cell_background(cell, bg_color)
+            
+        p = cell.paragraphs[0]
+        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_after = Pt(2)
+        if align_center:
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        else:
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            
+        if p.runs:
+            run = p.runs[0]
+            run.font.name = 'Arial'
+            run.font.size = Pt(font_size_pt)
+            run.bold = bold
+        else:
+            run = p.add_run(cell.text)
+            cell.text = ""
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER if align_center else WD_ALIGN_PARAGRAPH.LEFT
+            p.add_run(run.text)
+            run.font.name = 'Arial'
+            run.font.size = Pt(font_size_pt)
+            run.bold = bold
+            
+    # Formatear Cabeceras fila 0 y fila 1
+    format_cell(lc_table.cell(0, 0), 0.35, 8.5, bold=True, align_center=True, bg_color=header_bg_color)
+    format_cell(lc_table.cell(0, 1), 2.2, 8.5, bold=True, align_center=False, bg_color=header_bg_color)
+    
+    for c_idx, crit in enumerate(criterios):
+        start_col = 2 + c_idx * 2
+        format_cell(lc_table.cell(0, start_col), 0.7, 7.5, bold=True, align_center=True, bg_color=header_bg_color)
+        format_cell(lc_table.cell(1, start_col), 0.35, 8, bold=True, align_center=True, bg_color=sub_bg_color)
+        format_cell(lc_table.cell(1, start_col + 1), 0.35, 8, bold=True, align_center=True, bg_color=sub_bg_color)
+
+    # Rellenar y formatear filas de estudiantes
+    for row_idx, stud in enumerate(alumnos_list):
+        r_num = 2 + row_idx
+        display_name = "" if stud.startswith("Estudiante ") else stud
+        
+        lc_table.cell(r_num, 0).text = str(row_idx + 1)
+        lc_table.cell(r_num, 1).text = display_name
+        
+        format_cell(lc_table.cell(r_num, 0), 0.35, 8.5, bold=True, align_center=True)
+        format_cell(lc_table.cell(r_num, 1), 2.2, 8.5, bold=False, align_center=False)
+        
+        for c_idx in range(len(criterios)):
+            start_col = 2 + c_idx * 2
+            format_cell(lc_table.cell(r_num, start_col), 0.35, 8, align_center=True)
+            format_cell(lc_table.cell(r_num, start_col + 1), 0.35, 8, align_center=True)
 
     stream = io.BytesIO()
     doc.save(stream)

@@ -181,6 +181,10 @@
                         <span class="tab-icon">🗺️</span>
                         <span class="tab-text">Propósitos</span>
                     </button>
+                    <button type="button" class="sidebar-tab" data-tab="tab-alumnos">
+                        <span class="tab-icon">👥</span>
+                        <span class="tab-text">Alumnos</span>
+                    </button>
                 </div>
 
                 <form id="session-form" class="session-form" autocomplete="off">
@@ -484,6 +488,24 @@
                                 <option value="#fee2e2">Rojo Suave</option>
                                 <option value="#fef3c7">Amarillo Suave</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- PANE 5: REGISTRO DE ALUMNOS -->
+                    <div id="tab-alumnos" class="tab-pane">
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 class="saved-title" style="margin-bottom: 8px;">👥 Registro de Estudiantes</h3>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Registra la lista de alumnos para el grado y sección actual (configurados en Datos) para rellenar la Lista de Cotejo de forma automática.</p>
+                            
+                            <div class="form-group">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                                    <label class="form-label" style="margin: 0;">Lista de Alumnos (un nombre por línea)</label>
+                                    <button type="button" id="btn-save-alumnos" class="btn btn-primary btn-sm" style="font-size:0.7rem; padding:4px 10px; background:linear-gradient(135deg, #00d4ff 0%, #0072ff 100%); color:#fff; border:none; border-radius:4px; cursor:pointer;">Guardar Alumnos</button>
+                                </div>
+                                <textarea id="textarea-alumnos" class="form-textarea" placeholder="Pega los nombres aquí, uno por línea. Ejemplo:
+ACOSTA MURGA, CLIFEER AMELEX
+AGUILAR JAVIER, FARID OMAR" style="min-height: 250px; font-family: monospace; font-size: 0.8rem; line-height: 1.4; border-radius:6px; padding:10px; background:rgba(0,0,0,0.2); color:#fff; width:100%; border:1px solid rgba(255,255,255,0.1);"></textarea>
+                            </div>
                         </div>
                     </div>
 

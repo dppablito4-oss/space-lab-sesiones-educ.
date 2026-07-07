@@ -66,9 +66,9 @@ const Templates = (() => {
             case 'refuerzo':
                 return renderRefuerzo(m, p, momentos, evalData, ce);
             case 'inicial':
-                return renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, data.juego_libre_sectores, data.ficha_trabajo, ce);
+                return renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, data.juego_libre_sectores, data.ficha_trabajo, data.alumnos, ce);
             default:
-                return renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, data.ficha_trabajo, ce);
+                return renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, data.ficha_trabajo, data.alumnos, ce);
         }
     }
 
@@ -76,7 +76,78 @@ const Templates = (() => {
     // SESIÓN ESTÁNDAR MINEDU (Formato PDF Oficial)
     // ═══════════════════════════════════════
 
-    function renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, fichaTrabajo, ce) {
+    function buildListaCotejoHtml(m, p, alumnos, ce) {
+        let criterios = [];
+        if (Array.isArray(p.criterios_evaluacion)) {
+            criterios = p.criterios_evaluacion;
+        } else if (p.desempeno) {
+            criterios = p.desempeno
+                .split('\n')
+                .map(line => line.replace(/^[•\s\-\*\d\.\)]+\s*/, '').trim())
+                .filter(line => line.length > 0);
+        }
+        if (criterios.length === 0) {
+            criterios = [
+                'Expresa con diversas representaciones la comprensión sobre el tema.',
+                'Ordena y organiza conceptos clave para resolver problemas.',
+                'Emplea estrategias y procedimientos diversos para realizar las tareas.',
+                'Halla y valida soluciones utilizando criterios y conocimientos del área.'
+            ];
+        }
+
+        const alumnosList = (alumnos && alumnos.length > 0) ? alumnos : Array.from({ length: 30 }, (_, idx) => `Estudiante ${idx + 1}`);
+
+        let rowsHtml = '';
+        alumnosList.forEach((stud, idx) => {
+            const displayStudentName = stud.startsWith('Estudiante ') ? '' : stud;
+            rowsHtml += `
+                <tr>
+                    <td style="text-align: center; font-weight: 700; height: 32px; border: 1px solid #000;">${idx + 1}</td>
+                    <td style="text-align: left; padding-left: 8px; font-weight: 600; border: 1px solid #000;">${esc(displayStudentName)}</td>
+                    ${criterios.map(() => `<td style="border: 1px solid #000; width: 35px;"></td><td style="border: 1px solid #000; width: 35px;"></td>`).join('')}
+                </tr>
+            `;
+        });
+
+        const criteriaHeadersHtml = criterios.map(crit => `
+            <th colspan="2" style="font-size: 8px; font-weight: bold; background: #e2e8f0; border: 1px solid #000; padding: 4px; text-align: center; vertical-align: top; max-width: 150px;">
+                ${esc(crit)}
+            </th>
+        `).join('');
+
+        const subHeadersHtml = criterios.map(() => `
+            <th style="width: 35px; text-align: center; background: #f1f5f9; border: 1px solid #000; font-size: 8px; font-weight: bold;">SI</th>
+            <th style="width: 35px; text-align: center; background: #f1f5f9; border: 1px solid #000; font-size: 8px; font-weight: bold;">NO</th>
+        `).join('');
+
+        return `
+            <div class="html2pdf__page-break" style="break-before: page; margin-top: 30px;"></div>
+            <div class="session-title-bar-official" style="margin-top: 20px;">
+                <span>Instrumento de evaluación</span>
+            </div>
+            <div class="session-title-bar-official" style="font-size: 11px; margin-top: 4px; background: #f1f5f9; color: #000;">
+                <span>LISTA DE COTEJO ${esc(m.grado || '2°')} ${esc(m.seccion || 'A')}</span>
+            </div>
+            
+            <table class="session-header-table eval-table momentos-table" style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #000;">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 30px; text-align: center; background: #e2e8f0; border: 1px solid #000; font-size: 9px;">N°</th>
+                        <th rowspan="2" style="text-align: left; padding-left: 8px; background: #e2e8f0; border: 1px solid #000; font-size: 9px;">ESTUDIANTES</th>
+                        ${criteriaHeadersHtml}
+                    </tr>
+                    <tr>
+                        ${subHeadersHtml}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function renderEstandar(m, p, momentos, evalData, ct, enfoques, recursos, fichaTrabajo, alumnos, ce) {
 
         // Build enfoques rows (at least 2)
         let enfoquesRows = '';
@@ -644,6 +715,7 @@ const Templates = (() => {
                 </tbody>
             </table>
             ${fichaTrabajoHtml}
+            ${buildListaCotejoHtml(m, p, alumnos, ce)}
         `;
     }
 
@@ -1212,7 +1284,7 @@ const Templates = (() => {
         }).join('<br><br>');
     }
 
-    function renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, juegoLibre, fichaTrabajo, ce) {
+    function renderInicial(m, p, momentos, evalData, ct, enfoques, recursos, juegoLibre, fichaTrabajo, alumnos, ce) {
         // 1. Build enfoques rows
         let enfoquesRows = '';
         enfoques.forEach(enf => {
@@ -1563,7 +1635,7 @@ const Templates = (() => {
 
         // 9. Build Instrumento de Evaluacion grid
         let checklistRows = '';
-        const studentsList = [
+        const studentsList = (alumnos && alumnos.length > 0) ? alumnos : [
             'ACOSTA MURGA, CLIFEER AMELEX',
             'AGUILAR JAVIER, FARID OMAR',
             'DURAND PLÁCIDO, JENS BRYAN STAM',
@@ -1577,10 +1649,11 @@ const Templates = (() => {
             'VALENCIA ROMERO, KIARA ALESSIA'
         ];
         studentsList.forEach((stud, idx) => {
+            const displayStudentName = stud.startsWith('Estudiante ') ? '' : stud;
             checklistRows += `
                 <tr>
-                    <td style="text-align: center; font-weight:700;">${idx + 1}</td>
-                    <td style="text-align: left; padding-left: 8px;">${esc(stud)}</td>
+                    <td style="text-align: center; font-weight:700; height: 32px;">${idx + 1}</td>
+                    <td style="text-align: left; padding-left: 8px; font-weight: 600;">${esc(displayStudentName)}</td>
                     <td></td><td></td><td></td><td></td>
                 </tr>`;
         });
