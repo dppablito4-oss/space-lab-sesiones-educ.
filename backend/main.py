@@ -1,4 +1,4 @@
-﻿import os
+import os
 import io
 import re
 import sys
@@ -92,7 +92,19 @@ async def add_private_network_header(request, call_next):
     return response
 
 # Variables globales para el enlace de sesión
-CONNECTION_TOKEN = secrets.token_hex(16)
+TOKEN_FILE = Path("connection_token.txt")
+if TOKEN_FILE.exists():
+    try:
+        CONNECTION_TOKEN = TOKEN_FILE.read_text(encoding="utf-8").strip()
+    except Exception:
+        CONNECTION_TOKEN = secrets.token_hex(16)
+        TOKEN_FILE.write_text(CONNECTION_TOKEN, encoding="utf-8")
+else:
+    CONNECTION_TOKEN = secrets.token_hex(16)
+    try:
+        TOKEN_FILE.write_text(CONNECTION_TOKEN, encoding="utf-8")
+    except Exception:
+        pass
 CLIENT_CONNECTED = False
 
 # Esquemas de Datos con Token obligatorio para mayor seguridad
