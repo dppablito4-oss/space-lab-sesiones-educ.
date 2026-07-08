@@ -1272,22 +1272,111 @@
         const logoLeft = logos[0]?.url || '';
         const logoRegional = logos[1]?.url || '';
 
-        // 2. Extraer Metadatos (desde los inputs sincronizados de la sidebar)
+        // Parse metadata directly from the A4 sheet if present, to sync user edits
+        const sheetMetadata = {};
+        if (DOM.sessionSheet) {
+            const cells = DOM.sessionSheet.querySelectorAll('td');
+            cells.forEach((cell, idx) => {
+                const text = cell.textContent.trim().replace(/:$/, '').toLowerCase();
+                const nextCell = cells[idx + 1];
+                if (nextCell) {
+                    const val = nextCell.textContent.trim();
+                    if (text === 'institución educativa' || text === 'institucion educativa') {
+                        sheetMetadata.institucion = val;
+                        DOM.inputInstitucion.value = val;
+                    } else if (text === 'docente' || text === 'practicante / docente' || text === 'practicante' || text === 'practicante / docente:') {
+                        sheetMetadata.docente = val;
+                        DOM.inputDocente.value = val;
+                    } else if (text === 'director') {
+                        sheetMetadata.director = val;
+                        DOM.inputDirector.value = val;
+                    } else if (text === 'nivel') {
+                        sheetMetadata.nivel = val;
+                        DOM.inputNivel.value = val;
+                    } else if (text === 'grado' || text === 'grado y sección' || text === 'grado y seccion') {
+                        if (text.includes('sección') || text.includes('seccion')) {
+                            const parts = val.split(/\s+/);
+                            sheetMetadata.grado = parts[0] || '';
+                            sheetMetadata.seccion = parts.slice(1).join(' ') || '';
+                            DOM.inputGrado.value = parts[0] || '';
+                            DOM.inputSeccion.value = parts.slice(1).join(' ') || '';
+                        } else {
+                            sheetMetadata.grado = val;
+                            DOM.inputGrado.value = val;
+                        }
+                    } else if (text === 'sección' || text === 'seccion') {
+                        sheetMetadata.seccion = val;
+                        DOM.inputSeccion.value = val;
+                    } else if (text === 'fecha') {
+                        sheetMetadata.fecha = val;
+                        DOM.inputFecha.value = val;
+                    } else if (text === 'área' || text === 'area') {
+                        sheetMetadata.area = val;
+                        DOM.inputArea.value = val;
+                    } else if (text === 'duración' || text === 'duracion' || text === 'duración (min)' || text === 'duracion (min)' || text === 'tiempo aprox.') {
+                        const cleanVal = val.replace(/minutos|min/gi, '').trim();
+                        sheetMetadata.duracion = cleanVal;
+                        DOM.inputDuracion.value = cleanVal;
+                    } else if (text === 'unidad' || text === 'unidad / proyecto' || text === 'unidad/proyecto' || text === 'unidad / proyecto:') {
+                        sheetMetadata.unidad = val;
+                        DOM.inputUnidad.value = val;
+                    }
+                }
+            });
+
+            // Extraer DRE, UGEL y Título
+            const dreEl = DOM.sessionSheet.querySelector('[data-key="dre"]') || DOM.sessionSheet.querySelector('.header-text-dre');
+            if (dreEl) {
+                const val = dreEl.textContent.trim().replace(/^DRE\s+/i, '');
+                sheetMetadata.dre = val;
+                DOM.inputDre.value = val;
+            }
+            const ugelEl = DOM.sessionSheet.querySelector('[data-key="ugel"]') || DOM.sessionSheet.querySelector('.header-text-ugel');
+            if (ugelEl) {
+                const val = ugelEl.textContent.trim().replace(/^UGEL\s+/i, '');
+                sheetMetadata.ugel = val;
+                DOM.inputUgel.value = val;
+            }
+
+            const titleBarEl = DOM.sessionSheet.querySelector('.session-title-bar-official span');
+            if (titleBarEl) {
+                const match = titleBarEl.textContent.match(/N°\s*(\d+)/i);
+                if (match) {
+                    sheetMetadata.numero_sesion = match[1];
+                    DOM.inputNumeroSesion.value = match[1];
+                }
+            }
+
+            const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
+            subSections.forEach(bar => {
+                const text = bar.textContent.trim().toLowerCase();
+                const contentBox = bar.nextElementSibling;
+                if (contentBox && contentBox.classList.contains('subsection-content-box')) {
+                    const val = contentBox.textContent.trim();
+                    if (text.includes('título de la sesión') || text.includes('titulo de la sesion')) {
+                        sheetMetadata.titulo = val;
+                        DOM.inputTitulo.value = val;
+                    }
+                }
+            });
+        }
+
+        // 2. Extraer Metadatos (usando los datos extraídos de la hoja o la barra lateral)
         const metadata = {
-            institucion: DOM.inputInstitucion.value || '',
-            dre: DOM.inputDre.value || '',
-            ugel: DOM.inputUgel.value || '',
-            docente: DOM.inputDocente.value || '',
-            director: DOM.inputDirector.value || '',
-            fecha: DOM.inputFecha.value || '',
-            nivel: DOM.inputNivel.value || 'SECUNDARIA',
-            numero_sesion: DOM.inputNumeroSesion.value || '',
-            grado: DOM.inputGrado.value || '',
-            seccion: DOM.inputSeccion.value || '',
-            area: DOM.inputArea.value || '',
-            duracion: DOM.inputDuracion.value || '',
-            unidad: DOM.inputUnidad.value || '',
-            titulo: DOM.inputTitulo.value || '',
+            institucion: sheetMetadata.institucion || DOM.inputInstitucion.value || '',
+            dre: sheetMetadata.dre || DOM.inputDre.value || '',
+            ugel: sheetMetadata.ugel || DOM.inputUgel.value || '',
+            docente: sheetMetadata.docente || DOM.inputDocente.value || '',
+            director: sheetMetadata.director || DOM.inputDirector.value || '',
+            fecha: sheetMetadata.fecha || DOM.inputFecha.value || '',
+            nivel: sheetMetadata.nivel || DOM.inputNivel.value || 'SECUNDARIA',
+            numero_sesion: sheetMetadata.numero_sesion || DOM.inputNumeroSesion.value || '',
+            grado: sheetMetadata.grado || DOM.inputGrado.value || '',
+            seccion: sheetMetadata.seccion || DOM.inputSeccion.value || '',
+            area: sheetMetadata.area || DOM.inputArea.value || '',
+            duracion: sheetMetadata.duracion || DOM.inputDuracion.value || '',
+            unidad: sheetMetadata.unidad || DOM.inputUnidad.value || '',
+            titulo: sheetMetadata.titulo || DOM.inputTitulo.value || '',
             logo_left_url: logoLeft,
             logo_regional_url: logoRegional
         };
@@ -1328,9 +1417,28 @@
             }
         }
 
+        // Parse purpose text and knowledge directly from sheet if present
+        let sheetPropositoTexto = '';
+        let sheetConocimientos = '';
+        if (DOM.sessionSheet) {
+            const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
+            subSections.forEach(bar => {
+                const text = bar.textContent.trim().toLowerCase();
+                const contentBox = bar.nextElementSibling;
+                if (contentBox && contentBox.classList.contains('subsection-content-box')) {
+                    const val = contentBox.textContent.trim();
+                    if (text.includes('propósito de la sesión') || text.includes('proposito de la sesion')) {
+                        sheetPropositoTexto = val;
+                    } else if (text.includes('conocimientos')) {
+                        sheetConocimientos = val;
+                    }
+                }
+            });
+        }
+
         const proposito = {
-            proposito_texto: AppState.currentSession.proposito?.proposito_texto || '',
-            conocimientos: AppState.currentSession.proposito?.conocimientos || '',
+            proposito_texto: sheetPropositoTexto || AppState.currentSession.proposito?.proposito_texto || '',
+            conocimientos: sheetConocimientos || AppState.currentSession.proposito?.conocimientos || '',
             competencia,
             estandar,
             capacidades,

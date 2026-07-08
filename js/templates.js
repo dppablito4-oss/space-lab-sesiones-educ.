@@ -525,32 +525,28 @@ const Templates = (() => {
             <!-- ════════ DATOS GENERALES ════════ -->
             <table class="session-header-table">
                 <tr>
-                    <td class="label-cell">Institución Educativa</td>
-                    <td class="value-cell" ${ce} colspan="3">${esc(m.institucion || 'I.E. N° — Nombre')}</td>
-                    <td class="label-cell">Nivel</td>
-                    <td class="value-cell" ${ce}>${esc(m.nivel || 'SECUNDARIA')}</td>
+                    <td class="label-cell" style="width: 20%;">Institución Educativa</td>
+                    <td class="value-cell" ${ce} style="width: 30%;">${esc(m.institucion || 'I.E. N° — Nombre')}</td>
+                    <td class="label-cell" style="width: 20%;">Nivel</td>
+                    <td class="value-cell" ${ce} style="width: 30%;">${esc(m.nivel || 'SECUNDARIA')}</td>
                 </tr>
                 <tr>
                     <td class="label-cell">Docente</td>
-                    <td class="value-cell" ${ce} colspan="3">${esc(m.docente || '')}</td>
+                    <td class="value-cell" ${ce}>${esc(m.docente || '')}</td>
                     <td class="label-cell">Área</td>
                     <td class="value-cell" ${ce}>${esc(m.area || '')}</td>
                 </tr>
                 <tr>
-                    <td class="label-cell">Grado</td>
-                    <td class="value-cell" ${ce}>${esc(m.grado || '')}</td>
-                    <td class="label-cell">Sección</td>
-                    <td class="value-cell" ${ce}>${esc(m.seccion || '')}</td>
-                    <td class="label-cell">Unidad/<br>Proyecto</td>
+                    <td class="label-cell">Grado y Sección</td>
+                    <td class="value-cell" ${ce}>${esc((m.grado || '') + ' ' + (m.seccion || ''))}</td>
+                    <td class="label-cell">Unidad / Proyecto</td>
                     <td class="value-cell" ${ce}>${esc(m.unidad || '')}</td>
                 </tr>
                 <tr>
-                    <td class="label-cell" colspan="4" style="text-align: left;">
-                        <strong>Fecha</strong>&nbsp;&nbsp;
-                        <span ${ce} style="font-weight:400">${esc(m.fecha || '')}</span>
-                    </td>
-                    <td class="label-cell">Duración</td>
-                    <td class="value-cell" ${ce}>${esc(m.duracion || '4 horas pedagógicas')}</td>
+                    <td class="label-cell">Fecha</td>
+                    <td class="value-cell" ${ce}>${esc(m.fecha || '')}</td>
+                    <td class="label-cell">Duración (min)</td>
+                    <td class="value-cell" ${ce}>${esc(m.duracion || '90 min')}</td>
                 </tr>
             </table>
 
@@ -1169,13 +1165,26 @@ const Templates = (() => {
             </div>
         `;
 
-        // Columna Central: Textos Oficiales (MINEDU, DRE, UGEL, AGP)
+        // Columna Central: Textos Oficiales y Bandas de Color estilo MINEDU Oficial (5 columnas)
         html += `
-            <div class="official-header-text-block">
-                <div class="header-text-minedu">MINISTERIO DE EDUCACIÓN</div>
-                <div class="header-text-dre" ${ce} data-key="dre">${esc(m.dre || 'DIRECCIÓN REGIONAL DE EDUCACIÓN UCAYALI')}</div>
-                <div class="header-text-ugel" ${ce} data-key="ugel">${esc(m.ugel || 'UNIDAD DE GESTIÓN EDUCATIVA LOCAL PADRE ABAD')}</div>
-                <div class="header-text-agp">ÁREA DE GESTIÓN PEDAGÓGICA</div>
+            <div style="background-color: #C00000; color: #FFFFFF; font-weight: bold; font-size: 7.5px; padding: 4px 6px; text-align: center; border-radius: 2px; line-height: 1.1; font-family: 'Arial', sans-serif !important; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px; min-width: 24px; height: 50px; user-select: none;">
+                <span>P</span><span>E</span><span>R</span><span>Ú</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 2px; text-align: center; font-size: 7.5px; font-family: 'Times New Roman', Georgia, serif; width: 85px; min-width: 85px; line-height: 1.1; border-right: 1px solid #ddd; padding-right: 8px;">
+                <span style="font-weight: bold; color: #555;">DRE</span>
+                <span style="font-size: 7.5px; text-transform: uppercase;" ${ce} data-key="dre">${esc(m.dre || 'UCAYALI')}</span>
+                <span style="border-top: 1px dashed #ccc; margin: 1px 0;"></span>
+                <span style="font-weight: bold; color: #555;">UGEL</span>
+                <span style="font-size: 7.5px; text-transform: uppercase;" ${ce} data-key="ugel">${esc(m.ugel || 'PADRE ABAD')}</span>
+            </div>
+
+            <div class="official-header-text-block" style="flex: 1; text-align: center; display: flex; flex-direction: column; gap: 2px; justify-content: center; font-family: 'Times New Roman', Georgia, serif !important;">
+                <div style="font-size: 7px; font-style: italic; color: #666;">"Decenio de la Igualdad de Oportunidades para mujeres y hombres"</div>
+                <div style="font-size: 7px; font-style: italic; color: #666;">"Año de la unidad, la paz y el desarrollo"</div>
+                <div style="font-size: 9px; font-weight: bold; color: #1e3a5f; text-transform: uppercase; margin-top: 2px; font-family: 'Arial', sans-serif !important;">
+                    ${esc( (m.institucion || '').toUpperCase() )} ${m.dre ? ' - ' + esc(m.dre.toUpperCase()) : ''} ${m.ugel ? ' - ' + esc(m.ugel.toUpperCase()) : ''}
+                </div>
             </div>
         `;
 
@@ -1729,7 +1738,7 @@ const Templates = (() => {
                                 </tr>
                                 <tr>
                                     <td class="label-cell">Practicante / Docente</td>
-                                    <td class="value-cell" ${ce} colspan="3">${esc(m.docente || 'Claudio Inocente Nayra Nelyda')}</td>
+                                    <td class="value-cell" ${ce} colspan="3">${esc(m.docente || '')}</td>
                                     <td class="label-cell">Fecha</td>
                                     <td class="value-cell" ${ce}>${esc(m.fecha || new Date().toLocaleDateString('es-PE'))}</td>
                                 </tr>
@@ -1820,7 +1829,7 @@ const Templates = (() => {
                                     <td style="border:none !important; background:transparent !important; padding:0 !important;"></td>
                                     <td style="width: 45%; border:none !important; text-align: center; background:transparent !important; padding:0 !important;">
                                         <div style="border-top: 1px solid #000; width: 220px; margin: 0 auto; padding-top: 5px; font-size: 9px; font-weight:700;">
-                                            ${esc(m.docente || 'Claudio Inocente Nayra Nelyda')}<br>
+                                            ${esc(m.docente || '')}<br>
                                             <span style="font-weight:normal; color:#555;">Estudiante Practicante</span>
                                         </div>
                                     </td>

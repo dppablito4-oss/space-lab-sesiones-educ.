@@ -929,15 +929,15 @@ body {
 }
 
 .session-sheet .session-header-table td {
-    padding: var(--session-cell-padding, 4px 8px) !important;
-    border: 1px solid var(--theme-border-color, #d1d5db) !important;
+    padding: var(--session-cell-padding, 6px 10px) !important;
+    border: 1px solid #000000 !important;
     vertical-align: middle;
 }
 
 .session-sheet .session-header-table .label-cell {
     font-weight: 700;
-    background: var(--theme-label-bg, #f0f4ff) !important;
-    color: #1e3a5f;
+    background: #F7CAAC !important;
+    color: #000000;
     white-space: nowrap;
     width: 130px;
     font-size: 10px;
@@ -947,7 +947,8 @@ body {
 
 .session-sheet .session-header-table .value-cell {
     font-weight: 400;
-    color: #1a1a2e;
+    background: #F2F2F2 !important;
+    color: #000000;
     min-width: 120px;
 }
 
