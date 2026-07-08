@@ -1347,18 +1347,35 @@
                 }
             }
 
-            const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
-            subSections.forEach(bar => {
-                const text = bar.textContent.trim().toLowerCase();
-                const contentBox = bar.nextElementSibling;
-                if (contentBox && contentBox.classList.contains('subsection-content-box')) {
-                    const val = contentBox.textContent.trim();
-                    if (text.includes('título de la sesión') || text.includes('titulo de la sesion')) {
-                        sheetMetadata.titulo = val;
-                        DOM.inputTitulo.value = val;
+            // Extraer Título de la Sesión desde subSections (antiguo) o pc-table (nuevo)
+            const pcTable = DOM.sessionSheet.querySelector('.pc-table');
+            if (pcTable) {
+                const tds = pcTable.querySelectorAll('td');
+                tds.forEach((td, idx) => {
+                    const text = td.textContent.trim().toLowerCase().replace(/:$/, '');
+                    const valEl = tds[idx + 1];
+                    if (valEl) {
+                        const val = valEl.textContent.trim();
+                        if (text === 'título de la sesión' || text === 'titulo de la sesion') {
+                            sheetMetadata.titulo = val;
+                            DOM.inputTitulo.value = val;
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
+                subSections.forEach(bar => {
+                    const text = bar.textContent.trim().toLowerCase();
+                    const contentBox = bar.nextElementSibling;
+                    if (contentBox && contentBox.classList.contains('subsection-content-box')) {
+                        const val = contentBox.textContent.trim();
+                        if (text.includes('título de la sesión') || text.includes('titulo de la sesion')) {
+                            sheetMetadata.titulo = val;
+                            DOM.inputTitulo.value = val;
+                        }
+                    }
+                });
+            }
         }
 
         // 2. Extraer Metadatos (usando los datos extraídos de la hoja o la barra lateral)
@@ -1417,23 +1434,40 @@
             }
         }
 
-        // Parse purpose text and knowledge directly from sheet if present
+        // Parse purpose text and knowledge directly from sheet (either from pc-table or subsection boxes)
         let sheetPropositoTexto = '';
         let sheetConocimientos = '';
         if (DOM.sessionSheet) {
-            const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
-            subSections.forEach(bar => {
-                const text = bar.textContent.trim().toLowerCase();
-                const contentBox = bar.nextElementSibling;
-                if (contentBox && contentBox.classList.contains('subsection-content-box')) {
-                    const val = contentBox.textContent.trim();
-                    if (text.includes('propósito de la sesión') || text.includes('proposito de la sesion')) {
-                        sheetPropositoTexto = val;
-                    } else if (text.includes('conocimientos')) {
-                        sheetConocimientos = val;
+            const pcTable = DOM.sessionSheet.querySelector('.pc-table');
+            if (pcTable) {
+                const tds = pcTable.querySelectorAll('td');
+                tds.forEach((td, idx) => {
+                    const text = td.textContent.trim().toLowerCase().replace(/:$/, '');
+                    const valEl = tds[idx + 1];
+                    if (valEl) {
+                        const val = valEl.textContent.trim();
+                        if (text === 'propósito de la sesión' || text === 'proposito de la sesion') {
+                            sheetPropositoTexto = val;
+                        } else if (text === 'conocimientos') {
+                            sheetConocimientos = val;
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
+                subSections.forEach(bar => {
+                    const text = bar.textContent.trim().toLowerCase();
+                    const contentBox = bar.nextElementSibling;
+                    if (contentBox && contentBox.classList.contains('subsection-content-box')) {
+                        const val = contentBox.textContent.trim();
+                        if (text.includes('propósito de la sesión') || text.includes('proposito de la sesion')) {
+                            sheetPropositoTexto = val;
+                        } else if (text.includes('conocimientos')) {
+                            sheetConocimientos = val;
+                        }
+                    }
+                });
+            }
         }
 
         const proposito = {

@@ -550,23 +550,33 @@ const Templates = (() => {
                 </tr>
             </table>
 
-            <!-- ════════ TÍTULO DE LA SESIÓN ════════ -->
-            <div class="subsection-title-bar">TÍTULO DE LA SESIÓN</div>
-            <div class="subsection-content-box" ${ce}>
-                ${esc(m.titulo || 'Título de la sesión de aprendizaje')}
-            </div>
-
-            <!-- ════════ PROPÓSITO DE LA SESIÓN ════════ -->
-            <div class="subsection-title-bar">PROPÓSITO DE LA SESIÓN</div>
-            <div class="subsection-content-box" ${ce}>
-                ${escHtml(p.proposito_texto || p.desempeno || 'Describir el propósito de la sesión...')}
-            </div>
-
-            <!-- ════════ CONOCIMIENTOS ════════ -->
-            <div class="subsection-title-bar">CONOCIMIENTOS</div>
-            <div class="subsection-content-box" ${ce}>
-                ${escHtml(p.conocimientos || 'Temas y subtemas que se abordarán...')}
-            </div>
+            <!-- ════════ TABLA TÍTULO, PROPÓSITO Y CONOCIMIENTOS ════════ -->
+            <table class="session-header-table pc-table" style="margin-top: 15px; border-collapse: collapse; width: 100%;">
+                <tr>
+                    <td class="label-cell" style="background: var(--theme-label-bg, #BDD7EE) !important; text-align: center; font-weight: bold; color: #000; text-transform: uppercase; font-size: 9.5px; border: 1px solid #000 !important; padding: 6px !important;">TÍTULO DE LA SESIÓN</td>
+                </tr>
+                <tr>
+                    <td class="value-cell" ${ce} style="background: #FFFFFF !important; text-align: center; font-weight: bold; color: #C0392B !important; font-size: 11px; border: 1px solid #000 !important; padding: 10px !important;">
+                        ${esc(m.titulo || 'Título de la sesión de aprendizaje')}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label-cell" style="background: var(--theme-label-bg, #BDD7EE) !important; text-align: center; font-weight: bold; color: #000; text-transform: uppercase; font-size: 9.5px; border: 1px solid #000 !important; padding: 6px !important;">PROPÓSITO DE LA SESIÓN:</td>
+                </tr>
+                <tr>
+                    <td class="value-cell" ${ce} style="background: #FFFFFF !important; text-align: left; font-weight: normal; color: #000; font-size: 10px; border: 1px solid #000 !important; padding: 10px !important; line-height: 1.45;">
+                        ${escHtml(p.proposito_texto || p.desempeno || 'Describir el propósito de la sesión...')}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label-cell" style="background: #F7CAAC !important; text-align: center; font-weight: bold; color: #000; text-transform: uppercase; font-size: 9.5px; border: 1px solid #000 !important; padding: 6px !important;">CONOCIMIENTOS:</td>
+                </tr>
+                <tr>
+                    <td class="value-cell" ${ce} style="background: #FFFFFF !important; text-align: left; font-weight: normal; color: #000; font-size: 10px; border: 1px solid #000 !important; padding: 10px !important; line-height: 1.45;">
+                        ${escHtml(p.conocimientos || 'Temas y subtemas que se abordarán...')}
+                    </td>
+                </tr>
+            </table>
 
             <!-- ════════ PROPÓSITOS DE APRENDIZAJE ════════ -->
             <div class="subsection-title-bar">PROPÓSITOS DE APRENDIZAJE</div>
@@ -1132,36 +1142,22 @@ const Templates = (() => {
 
     // ─── HELPER: Render the dynamic logos list for the official header ───
     // ─── HELPER: Render the dynamic logos list for the official header ───
+
+
     function buildLogosListHtml(m, ce) {
-        let logos = m.logos;
-        if (!logos || !Array.isArray(logos) || logos.length === 0) {
-            // Fallback for backward compatibility
-            logos = [
-                {
-                    id: 'header-logo-left',
-                    url: m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png',
-                    style: m.logo_left_style || 'cursor: pointer; max-height: 48px; width: auto;'
-                },
-                {
-                    id: 'header-logo-regional',
-                    url: m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png',
-                    style: m.logo_regional_style || 'cursor: pointer; max-height: 48px; width: auto;'
-                }
-            ];
-        }
+        // Usar logo genérico de la marca (assets/logo.png) para el encabezado
+        const leftLogo = {
+            id: 'header-logo-left',
+            url: 'assets/logo.png',
+            style: 'cursor: pointer; max-height: 48px; width: auto;'
+        };
 
         let html = '';
 
         // Columna Izquierda: Primer Logo
-        const leftLogo = logos[0] || {
-            id: 'header-logo-left',
-            url: m.logo_left_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Escudo_Nacional_del_Per%C3%BA.svg/130px-Escudo_Nacional_del_Per%C3%BA.svg.png',
-            style: m.logo_left_style || 'cursor: pointer; max-height: 48px; width: auto;'
-        };
         html += `
             <div class="official-logo-item" draggable="true">
-                <img id="${leftLogo.id}" src="${leftLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${leftLogo.style || 'cursor: pointer; max-height: 48px; width: auto;'}" title="Haz clic para editar" draggable="false">
-                <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+                <img id="${leftLogo.id}" src="${leftLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${leftLogo.style}" title="Logo de Marca" draggable="false">
             </div>
         `;
 
@@ -1188,36 +1184,18 @@ const Templates = (() => {
             </div>
         `;
 
-        // Columna Derecha: Segundo Logo (Regional)
-        const rightLogo = logos[1] || {
+        // Columna Derecha: Segundo Logo
+        const rightLogo = {
             id: 'header-logo-regional',
-            url: m.logo_regional_url || 'https://sesiones.sypablitodp.site/assets/logo.png',
-            style: m.logo_regional_style || 'cursor: pointer; max-height: 48px; width: auto;'
+            url: 'assets/logo.png',
+            style: 'cursor: pointer; max-height: 48px; width: auto;'
         };
         html += `
             <div class="official-logo-item" draggable="true">
-                <img id="${rightLogo.id}" src="${rightLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${rightLogo.style || 'cursor: pointer; max-height: 48px; width: auto;'}" title="Haz clic para editar" draggable="false">
-                <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
+                <img id="${rightLogo.id}" src="${rightLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${rightLogo.style}" title="Logo de Marca" draggable="false">
             </div>
         `;
 
-        // Otros logos (si existieran más de 2)
-        for (let i = 2; i < logos.length; i++) {
-            const logo = logos[i];
-            html += `
-                <div class="official-logo-item" draggable="true">
-                    <img id="${logo.id}" src="${logo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${logo.style || 'cursor: pointer; max-height: 48px; width: auto;'}" title="Haz clic para editar" draggable="false">
-                    <button type="button" class="btn-remove-logo no-print" title="Eliminar logo" onclick="this.parentElement.remove(); window.dispatchEvent(new CustomEvent('logo-removed'));">✕</button>
-                </div>
-            `;
-        }
-
-        // Placeholder para añadir logos
-        html += `
-            <div class="add-logo-placeholder no-print" id="btn-add-header-logo" title="Añadir logo">
-                <span>➕</span>
-            </div>
-        `;
         return html;
     }
 

@@ -618,9 +618,18 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     header = section.header
     header.is_linked_to_previous = False
 
-    # Descargar logos antes de construir la tabla
-    logo_left_stream = get_image_stream(session.metadata.logo_left_url)
-    logo_right_stream = get_image_stream(session.metadata.logo_regional_url)
+    # Cargar logo genérico local de la marca (assets/logo.png) para ambos lados
+    logo_left_stream = None
+    logo_right_stream = None
+    try:
+        logo_path = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+        if logo_path.exists():
+            with open(logo_path, "rb") as f:
+                logo_bytes = f.read()
+                logo_left_stream = io.BytesIO(logo_bytes)
+                logo_right_stream = io.BytesIO(logo_bytes)
+    except Exception as e:
+        print(f"[WARN] No se pudo cargar logo genérico local: {e}")
 
     # Preparar textos institucionales dinámicos
     dre_txt = (session.metadata.dre or "DRE").strip()
