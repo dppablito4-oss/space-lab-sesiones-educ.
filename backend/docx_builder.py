@@ -639,138 +639,26 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     partes_ie = [p for p in [ie_txt, dre_txt, ugel_txt] if p]
     linea_ie = " - ".join(partes_ie) if partes_ie else "Institución Educativa"
 
-    # 5 columnas: [logo_izq | PERU+MINEDU | DRE+UGEL | textos_centro | logo_der]
-    # Anchos en twips (1 inch = 1440 twips), total ≈ 9745 twips (6.77 in)
-    _HDR_TWIPS = [1008, 576, 576, 6440, 1080]  # ≈ 0.70, 0.40, 0.40, 4.47, 0.75 in
-    hdr_tbl = header.add_table(rows=1, cols=5, width=Inches(6.77))
-    hdr_tbl.autofit = False
-    # Quitar todos los bordes internos y externos
-    for row in hdr_tbl.rows:
-        for cell in row.cells:
-            set_cell_margins(cell, top=40, bottom=40, left=60, right=60)
-            tcPr = cell._tc.get_or_add_tcPr()
-            tcB = OxmlElement('w:tcBorders')
-            for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
-                b = OxmlElement(f'w:{edge}')
-                b.set(qn('w:val'), 'nil')
-                tcB.append(b)
-            tcPr.append(tcB)
-    # Forzar anchos a nivel XML para que Word los respete de verdad
-    set_table_col_widths(hdr_tbl, _HDR_TWIPS)
+    # Un solo párrafo centrado con el logo de la marca (Space Lab)
+    p_logo = header.add_paragraph()
+    p_logo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_logo.paragraph_format.space_before = Pt(0)
+    p_logo.paragraph_format.space_after = Pt(4)
 
-    # ----- Col 0: Logo Izquierdo -----
-    cell_l = hdr_tbl.cell(0, 0)
-    p_l = cell_l.paragraphs[0]
-    p_l.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_l.paragraph_format.space_before = Pt(0)
-    p_l.paragraph_format.space_after = Pt(0)
     if logo_left_stream:
         try:
-            run_l = p_l.add_run()
-            run_l.add_picture(logo_left_stream, height=Inches(0.6))
+            run_logo = p_logo.add_run()
+            run_logo.add_picture(logo_left_stream, height=Inches(0.55))
         except Exception:
-            p_l.add_run("[LOGO]").font.size = Pt(7)
+            run_lbl = p_logo.add_run("🚀 Space Lab")
+            run_lbl.bold = True
+            run_lbl.font.size = Pt(11)
+            run_lbl.font.color.rgb = RGBColor(56, 189, 248)
     else:
-        r_flag = p_l.add_run("PERÚ")
-        r_flag.bold = True
-        r_flag.font.size = Pt(9)
-        r_flag.font.color.rgb = RGBColor(192, 0, 0)
-
-    # ----- Col 1: PERÚ / MINEDU (banda de color rojo) -----
-    cell_pm = hdr_tbl.cell(0, 1)
-    set_cell_background(cell_pm, 'C00000')
-    set_cell_margins(cell_pm, top=60, bottom=60, left=80, right=80)
-    p_pe = cell_pm.paragraphs[0]
-    p_pe.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_pe.paragraph_format.space_before = Pt(0)
-    p_pe.paragraph_format.space_after = Pt(0)
-    r_pe = p_pe.add_run("P\nE\nR\nÚ")
-    r_pe.bold = True
-    r_pe.font.size = Pt(7)
-    r_pe.font.color.rgb = RGBColor(255, 255, 255)
-
-    # ----- Col 2: DRE / UGEL -----
-    cell_du = hdr_tbl.cell(0, 2)
-    p_dre_lbl = cell_du.paragraphs[0]
-    p_dre_lbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_dre_lbl.paragraph_format.space_before = Pt(4)
-    p_dre_lbl.paragraph_format.space_after = Pt(0)
-    r_d = p_dre_lbl.add_run("D\nR\nE")
-    r_d.bold = True
-    r_d.font.size = Pt(6.5)
-    r_d.font.color.rgb = RGBColor(80, 80, 80)
-    # Texto DRE
-    p_dre_val = cell_du.add_paragraph()
-    p_dre_val.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_dre_val.paragraph_format.space_before = Pt(2)
-    p_dre_val.paragraph_format.space_after = Pt(4)
-    r_dv = p_dre_val.add_run(dre_txt)
-    r_dv.font.size = Pt(5.5)
-    # Línea separadora
-    p_sep = cell_du.add_paragraph()
-    p_sep.paragraph_format.space_before = Pt(0)
-    p_sep.paragraph_format.space_after = Pt(0)
-    p_sep.add_run("─────").font.size = Pt(5)
-    # Label UGEL
-    p_ugel_lbl = cell_du.add_paragraph()
-    p_ugel_lbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_ugel_lbl.paragraph_format.space_before = Pt(2)
-    p_ugel_lbl.paragraph_format.space_after = Pt(0)
-    r_u = p_ugel_lbl.add_run("U\nG\nE\nL")
-    r_u.bold = True
-    r_u.font.size = Pt(6.5)
-    r_u.font.color.rgb = RGBColor(80, 80, 80)
-    # Texto UGEL
-    p_ugel_val = cell_du.add_paragraph()
-    p_ugel_val.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_ugel_val.paragraph_format.space_before = Pt(2)
-    r_uv = p_ugel_val.add_run(ugel_txt)
-    r_uv.font.size = Pt(5.5)
-
-    # ----- Col 3: Textos institucionales centrales -----
-    cell_txt = hdr_tbl.cell(0, 3)
-    set_cell_margins(cell_txt, top=60, bottom=60, left=140, right=140)
-    p_t1 = cell_txt.paragraphs[0]
-    p_t1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_t1.paragraph_format.space_before = Pt(2)
-    p_t1.paragraph_format.space_after = Pt(2)
-    r_t1 = p_t1.add_run('"Decenio de la Igualdad de Oportunidades para mujeres y hombres"')
-    r_t1.font.italic = True
-    r_t1.font.size = Pt(6)
-    r_t1.font.color.rgb = RGBColor(100, 100, 100)
-    p_t2 = cell_txt.add_paragraph()
-    p_t2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_t2.paragraph_format.space_before = Pt(0)
-    p_t2.paragraph_format.space_after = Pt(4)
-    r_t2 = p_t2.add_run('"Año de la unidad, la paz y el desarrollo"')
-    r_t2.font.italic = True
-    r_t2.font.size = Pt(6)
-    r_t2.font.color.rgb = RGBColor(100, 100, 100)
-    # Nombre de la institución educativa
-    p_t3 = cell_txt.add_paragraph()
-    p_t3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_t3.paragraph_format.space_before = Pt(2)
-    r_t3 = p_t3.add_run(linea_ie.upper())
-    r_t3.bold = True
-    r_t3.font.size = Pt(8)
-    r_t3.font.color.rgb = RGBColor(30, 41, 59)
-
-    # ----- Col 4: Logo Derecho -----
-    cell_r = hdr_tbl.cell(0, 4)
-    set_cell_margins(cell_r, top=40, bottom=40, left=60, right=60)
-    p_r = cell_r.paragraphs[0]
-    p_r.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_r.paragraph_format.space_before = Pt(0)
-    p_r.paragraph_format.space_after = Pt(0)
-    if logo_right_stream:
-        try:
-            run_r = p_r.add_run()
-            run_r.add_picture(logo_right_stream, height=Inches(0.6))
-        except Exception:
-            p_r.add_run("[LOGO]").font.size = Pt(7)
-    else:
-        r_r = p_r.add_run("🏫")
-        r_r.font.size = Pt(18)
+        run_lbl = p_logo.add_run("🚀 Space Lab")
+        run_lbl.bold = True
+        run_lbl.font.size = Pt(11)
+        run_lbl.font.color.rgb = RGBColor(56, 189, 248)
 
     # Línea divisoria inferior de 1.5 pt
     p_div = header.add_paragraph()

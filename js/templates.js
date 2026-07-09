@@ -504,7 +504,7 @@ const Templates = (() => {
                             <table class="official-header-table">
                                 <tr>
                                     <td class="official-header-logos-cell">
-                                        <div class="official-header-logos-list" id="official-header-logos-list">
+                                        <div class="official-header-logos-list" id="official-header-logos-list" style="justify-content: center;">
                                             ${buildLogosListHtml(m, ce)}
                                         </div>
                                     </td>
@@ -1145,58 +1145,11 @@ const Templates = (() => {
 
 
     function buildLogosListHtml(m, ce) {
-        // Usar logo genérico de la marca (assets/logo.png) para el encabezado
-        const leftLogo = {
-            id: 'header-logo-left',
-            url: 'assets/logo.png',
-            style: 'cursor: pointer; max-height: 48px; width: auto;'
-        };
-
-        let html = '';
-
-        // Columna Izquierda: Primer Logo
-        html += `
-            <div class="official-logo-item" draggable="true">
-                <img id="${leftLogo.id}" src="${leftLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${leftLogo.style}" title="Logo de Marca" draggable="false">
+        return `
+            <div class="official-logo-item" style="display: flex; justify-content: center; align-items: center;">
+                <img id="header-logo-left" src="assets/favicon.vsg.svg" class="official-logo-img" onerror="this.src='assets/logo.png';" style="max-height: 50px; width: auto;" title="Logo de Marca" draggable="false">
             </div>
         `;
-
-        // Columna Central: Textos Oficiales y Bandas de Color estilo MINEDU Oficial (5 columnas)
-        html += `
-            <div style="background-color: #C00000; color: #FFFFFF; font-weight: bold; font-size: 7.5px; padding: 4px 6px; text-align: center; border-radius: 2px; line-height: 1.1; font-family: 'Arial', sans-serif !important; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px; min-width: 24px; height: 50px; user-select: none;">
-                <span>P</span><span>E</span><span>R</span><span>Ú</span>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 2px; text-align: center; font-size: 7.5px; font-family: 'Times New Roman', Georgia, serif; width: 85px; min-width: 85px; line-height: 1.1; border-right: 1px solid #ddd; padding-right: 8px;">
-                <span style="font-weight: bold; color: #555;">DRE</span>
-                <span style="font-size: 7.5px; text-transform: uppercase;" ${ce} data-key="dre">${esc(m.dre || 'UCAYALI')}</span>
-                <span style="border-top: 1px dashed #ccc; margin: 1px 0;"></span>
-                <span style="font-weight: bold; color: #555;">UGEL</span>
-                <span style="font-size: 7.5px; text-transform: uppercase;" ${ce} data-key="ugel">${esc(m.ugel || 'PADRE ABAD')}</span>
-            </div>
-
-            <div class="official-header-text-block" style="flex: 1; text-align: center; display: flex; flex-direction: column; gap: 2px; justify-content: center; font-family: 'Times New Roman', Georgia, serif !important;">
-                <div style="font-size: 7px; font-style: italic; color: #666;">"Decenio de la Igualdad de Oportunidades para mujeres y hombres"</div>
-                <div style="font-size: 7px; font-style: italic; color: #666;">"Año de la unidad, la paz y el desarrollo"</div>
-                <div style="font-size: 9px; font-weight: bold; color: #1e3a5f; text-transform: uppercase; margin-top: 2px; font-family: 'Arial', sans-serif !important;">
-                    ${esc( (m.institucion || '').toUpperCase() )} ${m.dre ? ' - ' + esc(m.dre.toUpperCase()) : ''} ${m.ugel ? ' - ' + esc(m.ugel.toUpperCase()) : ''}
-                </div>
-            </div>
-        `;
-
-        // Columna Derecha: Segundo Logo
-        const rightLogo = {
-            id: 'header-logo-regional',
-            url: 'assets/logo.png',
-            style: 'cursor: pointer; max-height: 48px; width: auto;'
-        };
-        html += `
-            <div class="official-logo-item" draggable="true">
-                <img id="${rightLogo.id}" src="${rightLogo.url}" class="official-logo-img" onerror="this.src='assets/logo.png'; this.onerror=function(){this.style.display='none';};" style="${rightLogo.style}" title="Logo de Marca" draggable="false">
-            </div>
-        `;
-
-        return html;
     }
 
 
