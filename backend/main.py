@@ -91,7 +91,8 @@ async def add_private_network_header(request, call_next):
     return response
 
 # Variables globales para el enlace de sesión
-TOKEN_FILE = Path("connection_token.txt")
+TOKEN_FILE = BASE_DIR / "connection_token.txt"
+
 if TOKEN_FILE.exists():
     try:
         CONNECTION_TOKEN = TOKEN_FILE.read_text(encoding="utf-8").strip()
