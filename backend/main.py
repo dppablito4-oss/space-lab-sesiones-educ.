@@ -1319,6 +1319,7 @@ def start_gui():
     def on_closing():
         if messagebox.askokcancel("Confirmar Salida", "¿Deseas cerrar el motor de exportación?\n\nSi lo cierras, se desconectará del navegador y no podrás exportar PDFs ni archivos de Word."):
             root.destroy()
+            os._exit(0) # Terminar el proceso completo para liberar el puerto 8000
             
     root.protocol("WM_DELETE_WINDOW", on_closing)
 
