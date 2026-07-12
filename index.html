@@ -53,26 +53,14 @@
         <div class="pdf-guide-card glass-card">
             <button id="pdf-guide-close" class="pdf-guide-close" title="Cerrar">&times;</button>
             <div class="pdf-guide-icon">📄</div>
-            <h3 class="pdf-guide-title">Exportar Sesión como PDF Oficial</h3>
-            <p class="pdf-guide-subtitle">Para obtener un PDF de calidad profesional con:</p>
-            <ul class="pdf-guide-benefits">
-                <li><span class="check">✓</span> Texto 100% seleccionable y copiable</li>
-                <li><span class="check">✓</span> Ecuaciones y fórmulas matemáticas vectoriales</li>
-                <li><span class="check">✓</span> Cabecera institucional repetida en cada página</li>
-            </ul>
-
-            <!-- Banner Motor Premium -->
-            <div class="pdf-premium-ad-box" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%); border: 1px dashed rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 18px; margin: 15px 0; text-align: left;">
-                <div style="display: flex; align-items: center; gap: 8px; color: #06b6d4; font-weight: 600; font-size: 0.95rem; margin-bottom: 6px;">
-                    <span>🚀</span> ¡Recomendado: Exportación Premium!
-                </div>
-                <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5; margin-bottom: 12px;">
-                    Para obtener descargas automáticas en 1 segundo con formato físico A4 perfecto y archivos Word (.docx) nativos editables, descarga nuestro <strong>Motor de Exportación Local</strong>.
-                </p>
-                <a href="https://descargas.sypablitodp.site" target="_blank" class="btn" style="display: inline-flex; align-items: center; justify-content: center; width: 100%; font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 600; text-decoration: none; padding: 10px 16px; background: #06b6d4; color: #05070f; border-radius: 8px; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.9" onmouseout="this.style.opacity=1">
-                    💾 Descargar Motor Local (.exe)
-                </a>
+            <h3 class="pdf-guide-title">Exportar Sesión como PDF</h3>
+            
+            <!-- Warning badge for offline print -->
+            <div class="pdf-guide-warning-badge" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #eab308; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; margin-bottom: 12px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                ⚠️ Motor Local Desconectado: Se usará la impresión de Windows
             </div>
+
+            <p class="pdf-guide-subtitle">Para obtener un PDF de calidad con el navegador, sigue estos pasos:</p>
 
             <div class="pdf-guide-steps">
                 <div class="pdf-guide-step">
@@ -86,22 +74,59 @@
                     <span class="step-number">2</span>
                     <div class="step-content">
                         <strong>Más opciones</strong>
-                        <span>Activa <em>"Gráficos de fondo"</em> (para conservar los colores)</span>
+                        <span>Activa <em>"Gráficos de fondo"</em> (para conservar colores)</span>
                     </div>
                 </div>
                 <div class="pdf-guide-step">
                     <span class="step-number">3</span>
                     <div class="step-content">
                         <strong>Cabeceras</strong>
-                        <span>Desactiva <em>"Cabeceras y pies de página"</em> (para limpiar URLs y fechas)</span>
+                        <span>Desactiva <em>"Cabeceras y pies de página"</em> (para limpiar URLs)</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Banner Motor Premium -->
+            <div class="pdf-premium-ad-box" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%); border: 1px dashed rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 15px; margin: 15px 0; text-align: left;">
+                <div style="display: flex; align-items: center; gap: 8px; color: #06b6d4; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px;">
+                    <span>🚀</span> ¡Recomendado: Exportación Premium Directa!
+                </div>
+                <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.4; margin-bottom: 10px;">
+                    Para descargas automáticas inmediatas con paginado físico A4 perfecto y archivos Word (.docx) nativos editables de Office, descarga e inicia el motor.
+                </p>
+                <a href="https://descargas.sypablitodp.site" target="_blank" class="btn" style="display: inline-flex; align-items: center; justify-content: center; width: 100%; font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; font-weight: 600; text-decoration: none; padding: 8px 14px; background: #06b6d4; color: #05070f; border-radius: 8px; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.9" onmouseout="this.style.opacity=1">
+                    💾 Descargar Motor Local (.exe)
+                </a>
+            </div>
+
             <div class="pdf-guide-actions">
                 <button id="pdf-guide-cancel" class="btn btn-ghost">Cancelar</button>
                 <button id="pdf-guide-proceed" class="btn btn-primary pdf-guide-proceed-btn">
-                    <span class="icon">🚀</span> Proceder a Exportar
+                    <span class="icon">🖨️</span> Abrir Impresora
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ ENGINE REQUIRED MODAL ═══════════ -->
+    <div id="engine-required-modal" class="pdf-guide-overlay hidden">
+        <div class="pdf-guide-card glass-card" style="max-width: 420px;">
+            <button id="engine-modal-close" class="pdf-guide-close" title="Cerrar">&times;</button>
+            <div class="pdf-guide-icon" style="color: #f59e0b; font-size: 2.5rem; margin-bottom: 10px;">⚠️</div>
+            <h3 class="pdf-guide-title">Motor Local Requerido</h3>
+            <p class="pdf-guide-subtitle" style="margin-bottom: 15px; font-size: 0.9rem;">
+                La exportación nativa a **Microsoft Word (.docx)** con formato premium no está disponible sin vincular el motor local.
+            </p>
+            
+            <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px; padding: 12px; text-align: left; margin-bottom: 18px; font-size: 0.82rem; line-height: 1.4; color: #fef08a;">
+                Para compilar y descargar un documento de Word limpio y editable con membretes de UGEL/MINEDU integrados, debes descargar e iniciar la aplicación <strong>pablitopyhost.exe</strong> en tu PC.
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <a href="https://descargas.sypablitodp.site" target="_blank" class="btn" style="background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #000; font-weight: 600; text-decoration: none; padding: 10px; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    📥 Descargar Motor Local (.exe)
+                </a>
+                <button id="engine-modal-cancel" class="btn btn-ghost" style="padding: 8px;">Cancelar</button>
             </div>
         </div>
     </div>
@@ -144,10 +169,10 @@
                     <span class="icon">📝</span>
                     <span class="btn-label">Exportar Word</span>
                 </button>
-                <button id="btn-print" class="btn btn-primary" title="Imprimir sesión">
-                    <span class="icon">🖨️</span>
-                    <span class="btn-label">Imprimir</span>
-                </button>
+                <a id="btn-download-engine" href="https://descargas.sypablitodp.site" target="_blank" class="btn btn-primary" title="Descargar Motor de Exportación Local (.exe)">
+                    <span class="icon">📥</span>
+                    <span class="btn-label">Descargar Motor</span>
+                </a>
                 <div id="auth-header-container" class="auth-header-container">
                     <!-- Dinámico por auth-ui.js -->
                 </div>

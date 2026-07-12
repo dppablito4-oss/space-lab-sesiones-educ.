@@ -38,7 +38,7 @@
         btnToggleEdit: $('#btn-toggle-edit'),
         btnPreview: $('#btn-preview'),
         btnExportPdf: $('#btn-export-pdf'),
-        btnPrint: $('#btn-print'),
+        btnDownloadEngine: $('#btn-download-engine'),
         btnSave: $('#btn-save'),
         btnSaveAs: $('#btn-save-as'),
         btnLoad: $('#btn-load'),
@@ -318,7 +318,16 @@
             DOM.inputDuracion.addEventListener('change', checkTimeBalance);
         }
 
-        DOM.btnPrint.addEventListener('click', handlePrint);
+        if (DOM.btnDownloadEngine) {
+            DOM.btnDownloadEngine.addEventListener('click', (e) => {
+                if (AppState.backendOnline) {
+                    e.preventDefault();
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success('⚡ El Motor Local está conectado de forma segura y listo.');
+                    }
+                }
+            });
+        }
 
         // PDF Guide Modal bindings
         const pdfGuideModal = document.getElementById('pdf-guide-modal');
@@ -335,6 +344,18 @@
         if (pdfGuideModal) {
             pdfGuideModal.addEventListener('click', (e) => {
                 if (e.target === pdfGuideModal) closePdfGuide();
+            });
+        }
+
+        // Engine Required Modal bindings
+        const engineRequiredModal = document.getElementById('engine-required-modal');
+        const engineModalClose = document.getElementById('engine-modal-close');
+        const engineModalCancel = document.getElementById('engine-modal-cancel');
+        if (engineModalClose) engineModalClose.addEventListener('click', closeEngineModal);
+        if (engineModalCancel) engineModalCancel.addEventListener('click', closeEngineModal);
+        if (engineRequiredModal) {
+            engineRequiredModal.addEventListener('click', (e) => {
+                if (e.target === engineRequiredModal) closeEngineModal();
             });
         }
 
@@ -1186,6 +1207,45 @@
         if (modal) modal.classList.add('hidden');
     }
 
+    function showEngineModal() {
+        const modal = document.getElementById('engine-required-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeEngineModal() {
+        const modal = document.getElementById('engine-required-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function updateBackendUI() {
+        const btn = document.getElementById('btn-download-engine');
+        if (!btn) return;
+        
+        if (AppState.backendOnline) {
+            btn.href = 'javascript:void(0)';
+            btn.removeAttribute('target');
+            btn.classList.add('btn-connected');
+            btn.title = 'Motor de Exportación Local Conectado';
+            
+            const icon = btn.querySelector('.icon');
+            if (icon) icon.textContent = '⚡';
+            
+            const label = btn.querySelector('.btn-label');
+            if (label) label.textContent = 'Motor Activo';
+        } else {
+            btn.href = 'https://descargas.sypablitodp.site';
+            btn.setAttribute('target', '_blank');
+            btn.classList.remove('btn-connected');
+            btn.title = 'Descargar Motor de Exportación Local (.exe)';
+            
+            const icon = btn.querySelector('.icon');
+            if (icon) icon.textContent = '📥';
+            
+            const label = btn.querySelector('.btn-label');
+            if (label) label.textContent = 'Descargar Motor';
+        }
+    }
+
     let lastBackendState = null;
     let activeHost = 'localhost:8000';
 
@@ -1220,6 +1280,7 @@
                 console.log('[INFO] El motor de exportación local está apagado o inaccesible.');
                 lastBackendState = false;
             }
+            updateBackendUI();
             return;
         }
 
@@ -1231,6 +1292,7 @@
                 console.log('[INFO] El motor local está encendido, pero no hay token de conexión en localStorage.');
                 lastBackendState = false;
             }
+            updateBackendUI();
             return;
         }
 
@@ -1244,6 +1306,7 @@
                         console.log('[OK] Enlace seguro con el motor de exportación en Python confirmado.');
                         lastBackendState = true;
                     }
+                    updateBackendUI();
                     return;
                 }
             }
@@ -1256,6 +1319,7 @@
             console.log('[INFO] El motor local está encendido, pero el token guardado no es válido o expiró.');
             lastBackendState = false;
         }
+        updateBackendUI();
     }
 
     function getFormDataJSON() {
@@ -1807,206 +1871,7 @@
             return;
         }
 
-        if (typeof Toast !== 'undefined') {
-            Toast.info('Generando Word estándar. Para obtener un archivo Word (.docx) nativo con formato profesional, descarga y ejecuta el Motor Local.');
-        }
-
-        const titulo = AppState.currentSession.metadata?.titulo || 'Sesion-de-Aprendizaje';
-        const filename = `${titulo.replace(/[^a-zA-Z0-9-_\s]/g, '')}.docx`;
-
-        Loader.show('📝 Generando archivo de Word (.docx)...');
-
-        try {
-            // Save before exporting
-            saveCurrentState();
-
-            // Clone the session sheet to clean up
-            const clone = DOM.sessionSheet.cloneNode(true);
-            
-            // Remove no-print and resize handle elements
-            const noPrintElements = clone.querySelectorAll('.no-print, #logo-resize-handle');
-            noPrintElements.forEach(el => el.remove());
-
-            // Convert images in the clone to base64 to ensure they embed in the docx
-            const images = clone.querySelectorAll('img');
-            
-            function urlToBase64(url) {
-                return new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.crossOrigin = 'Anonymous';
-                    img.onload = function() {
-                        try {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.naturalWidth || img.width;
-                            canvas.height = img.naturalHeight || img.height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0);
-                            resolve(canvas.toDataURL('image/png'));
-                        } catch (e) {
-                            reject(e);
-                        }
-                    };
-                    img.onerror = function(err) {
-                        reject(err);
-                    };
-                    
-                    // Break cache for CORS if needed, but not for dataURIs
-                    if (url.startsWith('data:')) {
-                        resolve(url);
-                        return;
-                    }
-                    
-                    if (url.indexOf('?') === -1) {
-                        img.src = url + '?t=' + Date.now();
-                    } else {
-                        img.src = url + '&t=' + Date.now();
-                    }
-                });
-            }
-
-            for (let img of images) {
-                if (img.src) {
-                    try {
-                        const base64 = await urlToBase64(img.src);
-                        img.src = base64;
-                    } catch (e) {
-                        console.warn('Could not convert image to base64 for Word export:', img.src, e);
-                        // Fallback: keep original URL
-                    }
-                }
-            }
-
-            const cleanHtml = clone.innerHTML;
-            
-            // Get current styles from sheets to embed in docx
-            let styles = '';
-            const styleSheets = document.styleSheets;
-            for (let i = 0; i < styleSheets.length; i++) {
-                try {
-                    const rules = styleSheets[i].cssRules || styleSheets[i].rules;
-                    if (rules) {
-                        for (let j = 0; j < rules.length; j++) {
-                            styles += rules[j].cssText;
-                        }
-                    }
-                } catch (e) {
-                    // Ignore cross-origin stylesheet errors
-                }
-            }
-
-            // Fallback design properties
-            const activeColor = DOM.designColor ? DOM.designColor.value : '#3b82f6';
-            const activeFont = DOM.designFontFamily ? DOM.designFontFamily.value : 'Arial, sans-serif';
-            const activeSize = DOM.designFontSize ? DOM.designFontSize.value : '11pt';
-            
-            const htmlContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>${titulo}</title>
-                    <style>
-                        body {
-                            font-family: ${activeFont};
-                            font-size: ${activeSize};
-                            color: #000000;
-                            background-color: #ffffff;
-                            margin: 1in;
-                        }
-                        table {
-                            border-collapse: collapse;
-                            width: 100%;
-                            margin-bottom: 15px;
-                        }
-                        th, td {
-                            border: 1px solid ${activeColor};
-                            padding: 6px;
-                            font-size: 9.5pt;
-                            vertical-align: top;
-                        }
-                        th {
-                            background-color: #f1f5f9;
-                            font-weight: bold;
-                        }
-                        .session-title-bar-official {
-                            text-align: center;
-                            font-size: 13pt;
-                            font-weight: bold;
-                            margin-top: 10px;
-                            margin-bottom: 10px;
-                            text-transform: uppercase;
-                        }
-                        .subsection-title-bar {
-                            background-color: #e2e8f0;
-                            font-weight: bold;
-                            font-size: 9.5pt;
-                            padding: 4px 6px;
-                            margin-top: 15px;
-                            margin-bottom: 6px;
-                            border-left: 4px solid #000000;
-                            text-transform: uppercase;
-                        }
-                        .subsection-content-box {
-                            border: 1px solid #000000;
-                            padding: 8px;
-                            margin-bottom: 10px;
-                            font-size: 9pt;
-                        }
-                        .official-logo-cell {
-                            border: none !important;
-                            text-align: center;
-                            vertical-align: middle;
-                        }
-                        .cell-peru {
-                            background-color: #c0392b !important;
-                            color: #ffffff !important;
-                            text-align: center;
-                        }
-                        .cell-minedu {
-                            background-color: #2c3e50 !important;
-                            color: #ffffff !important;
-                            text-align: center;
-                        }
-                        .cell-dre, .cell-ugel, .cell-agp {
-                            background-color: #7f8c8d !important;
-                            color: #ffffff !important;
-                            text-align: center;
-                        }
-                        /* General application print styles */
-                        ${styles}
-                    </style>
-                </head>
-                <body>
-                    ${cleanHtml}
-                </body>
-                </html>
-            `;
-
-            if (typeof htmlDocx === 'undefined') {
-                throw new Error('La librería de conversión html-docx-js no se cargó correctamente.');
-            }
-
-            const blob = htmlDocx.asBlob(htmlContent, {
-                orientation: 'portrait',
-                margins: { top: 720, right: 720, bottom: 720, left: 720 }
-            });
-
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            Loader.hide();
-            Toast.success('¡Sesión exportada a Word (.docx) correctamente!');
-        } catch (error) {
-            console.error('[Word Export] Error:', error);
-            Loader.hide();
-            Toast.error('Error al exportar a Word: ' + error.message);
-        }
+        showEngineModal();
     }
 
     function parseMinutes(text) {
