@@ -248,7 +248,9 @@ PROPOSITO_MAP = {
     'instrumento': 'instrumento',
     'instrumentos': 'instrumento',
     'instrumento_evaluacion': 'instrumento',
-    'instrumentos_evaluacion': 'instrumento'
+    'instrumentos_evaluacion': 'instrumento',
+    'desempeno': 'desempeno',
+    'desempeño': 'desempeno'
 }
 
 COMPETENCIA_TRANSVERSAL_MAP = {
@@ -710,6 +712,7 @@ class PropositoData(BaseModel):
     conocimientos: Optional[str] = ""
     competencia: Optional[str] = ""
     estandar: Optional[str] = ""
+    desempeno: Optional[str] = ""
     capacidades: List[str] = []
     criterios: List[str] = []
     producto_evidencia: Optional[str] = ""
@@ -1113,12 +1116,12 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
                 print-color-adjust: exact;
             }}
 
-            @page {
+            @page {{
                 size: A4 portrait;
                 margin: 0 !important;
-            }
+            }}
 
-            .hoja-a4 {
+            .hoja-a4 {{
                 width: 210mm;
                 height: 297mm;
                 min-height: 297mm;
@@ -1130,7 +1133,7 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
                 page-break-after: always;
                 break-after: page;
                 overflow: hidden;
-            }
+            }}
 
             /* Cabecera */
             .header-table {{

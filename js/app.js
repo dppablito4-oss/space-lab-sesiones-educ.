@@ -1466,6 +1466,7 @@
         const template = DOM.selectTemplate ? DOM.selectTemplate.value : (AppState.currentSession?.template || 'estandar');
         let competencia = DOM.inputCompetencia.value || '';
         let estandar = '';
+        let desempeno = '';
         let capacidades = [];
         let criterios = [];
         let producto_evidencia = '';
@@ -1500,6 +1501,9 @@
 
                         // Columna 1: Estándar
                         estandar = cells[1].textContent.trim();
+
+                        // Columna 2: Desempeño del Grado
+                        desempeno = cells[2].textContent.trim();
 
                         // Columna 3: Criterios de Evaluación
                         const ulsCrit = cells[3].querySelectorAll('ul li');
@@ -1606,6 +1610,7 @@
             conocimientos: sheetConocimientos || AppState.currentSession.proposito?.conocimientos || '',
             competencia,
             estandar,
+            desempeno: desempeno || AppState.currentSession.proposito?.desempeno || '',
             capacidades,
             criterios,
             producto_evidencia,
