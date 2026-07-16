@@ -505,6 +505,420 @@ def preprocess_session_latex(session):
                 f.cargo = format_latex_to_unicode(f.cargo)
 
 
+def append_html_to_cell_or_paragraph(container, html_text: str, default_font_size=9.5):
+    """
+    Parsea HTML básico y lo agrega de forma formateada al contenedor (párrafo o celda).
+    Soporta: <strong>, <b>, <em>, <i>, <u>, <br>, <p>, <ul>, <ol>, <li>
+    """
+    if not html_text:
+        return
+    
+    html_text = html_text.strip()
+    
+    # Si no contiene HTML, procesar como texto plano respetando saltos de línea
+    if not re.search(r'</?(strong|b|em|i|u|ul|ol|li|p|br)\b', html_text, re.IGNORECASE):
+        lines = html_text.split('\n')
+        is_first_line = True
+        for line in lines:
+            line_str = line.strip()
+            if not line_str and not is_first_line:
+                continue
+            if hasattr(container, 'add_paragraph'):
+                p = container.add_paragraph()
+            else:
+                p = container
+            p.paragraph_format.line_spacing = 1.15
+            p.paragraph_format.space_after = Pt(3)
+            r = p.add_run(line)
+            r.font.name = 'Arial'
+            r.font.size = Pt(default_font_size)
+            is_first_line = False
+        return
+
+    # Parsear HTML real
+    soup = BeautifulSoup(html_text, 'html.parser')
+    
+    def process_node(node, current_p, bold=False, italic=False, underline=False):
+        if isinstance(node, NavigableString):
+            txt = str(node)
+            if txt:
+                # Quitar saltos de línea crudos dentro de las etiquetas HTML para evitar espaciados dobles
+                txt_clean = txt.replace('\n', ' ').replace('\r', '')
+                if txt_clean.strip() or txt == ' ':
+                    r = current_p.add_run(txt_clean)
+                    r.font.name = 'Arial'
+                    r.bold = bold
+                    r.italic = italic
+                    r.underline = underline
+                    r.font.size = Pt(default_font_size)
+        elif isinstance(node, Tag):
+            name = node.name.lower()
+            node_bold = bold or (name in ('strong', 'b'))
+            node_italic = italic or (name in ('em', 'i'))
+            node_underline = underline or (name == 'u')
+            
+            if name in ('p', 'div'):
+                if hasattr(container, 'add_paragraph'):
+                    new_p = container.add_paragraph()
+                else:
+                    new_p = current_p
+                new_p.paragraph_format.line_spacing = 1.15
+                new_p.paragraph_format.space_after = Pt(4)
+                for child in node.children:
+                    process_node(child, new_p, node_bold, node_italic, node_underline)
+            elif name == 'br':
+                current_p.add_run('\n')
+            elif name in ('ul', 'ol'):
+                for child in node.children:
+                    if child.name and child.name.lower() == 'li':
+                        if hasattr(container, 'add_paragraph'):
+                            new_p = container.add_paragraph()
+                        else:
+                            new_p = current_p
+                        new_p.paragraph_format.line_spacing = 1.15
+                        new_p.paragraph_format.space_after = Pt(3)
+                        rb = new_p.add_run(u"\u25cf ")
+                        rb.font.name = 'Arial'
+                        rb.font.size = Pt(default_font_size - 1)
+                        rb.font.color.rgb = RGBColor(41, 128, 185)
+                        
+                        for li_child in child.children:
+                            process_node(li_child, new_p, node_bold, node_italic, node_underline)
+            elif name == 'li':
+                if hasattr(container, 'add_paragraph'):
+                    new_p = container.add_paragraph()
+                else:
+                    new_p = current_p
+                new_p.paragraph_format.line_spacing = 1.15
+                new_p.paragraph_format.space_after = Pt(3)
+                rb = new_p.add_run(u"\u25cf ")
+                rb.font.name = 'Arial'
+                rb.font.size = Pt(default_font_size - 1)
+                rb.font.color.rgb = RGBColor(41, 128, 185)
+                for child in node.children:
+                    process_node(child, new_p, node_bold, node_italic, node_underline)
+            else:
+                for child in node.children:
+                    process_node(child, current_p, node_bold, node_italic, node_underline)
+
+    if hasattr(container, 'add_paragraph'):
+        if len(container.paragraphs) == 1 and not container.paragraphs[0].text:
+            first_p = container.paragraphs[0]
+        else:
+            first_p = container.add_paragraph()
+    else:
+        first_p = container
+
+    first_p.paragraph_format.line_spacing = 1.15
+    first_p.paragraph_format.space_after = Pt(4)
+    
+    for child in soup.children:
+        process_node(child, first_p)
+
+
+def build_inicial_docx_layout(doc, session, PEACH, BLUE_HDR, YELLOW_HDR, GRAY_VAL, PEACH_MOM, GRAY_MOM, YELLOW_VAL, BULLET_COLORS, _hdr, _label, _val, _bullet_cell, add_table_borders_black, set_cell_margins, set_cell_background, _write_vertical_cell, _write_momento_cell):
+    # 1. TÍTULO BAR
+    t_tbl = doc.add_table(rows=1, cols=1)
+    t_tbl.autofit = False
+    t_tbl.rows[0].cells[0].width = Inches(6.77)
+    add_table_borders_black(t_tbl)
+    set_cell_text_white_bold(t_tbl.cell(0, 0), "ANEXO 01: PLANIFICACIÓN DE LA ACTIVIDAD DE APRENDIZAJE", font_size_pt=10.5)
+    set_cell_background(t_tbl.cell(0, 0), '2980B9') # Azul Principal
+    set_cell_margins(t_tbl.cell(0, 0), top=100, bottom=100, left=180, right=180)
+
+    doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+    # 2. TABLA DATOS INFORMATIVOS (6 columnas)
+    widths_di = [1500, 2300, 1500, 1500, 1200, 1748] # total = 9748 twips ≈ 6.77 in
+    di = doc.add_table(rows=3, cols=6)
+    di.autofit = False
+    add_table_borders_black(di)
+    set_table_col_widths(di, widths_di)
+
+    def _di_label_inicial(cell, text):
+        set_cell_background(cell, PEACH)
+        set_cell_margins(cell, top=60, bottom=60, left=100, right=100)
+        p = cell.paragraphs[0]
+        r = p.add_run(text.upper())
+        r.bold = True
+        r.font.size = Pt(8)
+        r.font.color.rgb = RGBColor(30, 41, 59)
+        
+    def _di_val_inicial(cell, text, bold=False):
+        set_cell_background(cell, GRAY_VAL)
+        set_cell_margins(cell, top=60, bottom=60, left=100, right=100)
+        p = cell.paragraphs[0]
+        r = p.add_run(text or "")
+        r.bold = bold
+        r.font.size = Pt(8.5)
+
+    # Row 0: IE | [value] | Edad | [value]
+    _di_label_inicial(di.cell(0, 0), "Institución Educativa")
+    c_ie_val = di.cell(0, 1).merge(di.cell(0, 3))
+    _di_val_inicial(c_ie_val, session.metadata.institucion or "I.E. N° 145 Sector 5 Amarilis")
+    
+    _di_label_inicial(di.cell(0, 4), "Edad de niños")
+    _di_val_inicial(di.cell(0, 5), session.metadata.grado or "5 años")
+
+    # Row 1: Practicante/Docente | [value] | Fecha | [value]
+    _di_label_inicial(di.cell(1, 0), "Practicante / Docente")
+    c_doc_val = di.cell(1, 1).merge(di.cell(1, 3))
+    _di_val_inicial(c_doc_val, session.metadata.docente or "No especificado")
+    
+    _di_label_inicial(di.cell(1, 4), "Fecha")
+    _di_val_inicial(di.cell(1, 5), session.metadata.fecha or "2026-07-16")
+
+    # Row 2: Nombre de Actividad | [value] | Tiempo | [value]
+    _di_label_inicial(di.cell(2, 0), "Nombre de Actividad")
+    c_tit_val = di.cell(2, 1).merge(di.cell(2, 3))
+    _di_val_inicial(c_tit_val, f"“{session.metadata.titulo}”" if session.metadata.titulo else "“Sin título”", bold=True)
+    
+    _di_label_inicial(di.cell(2, 4), "Tiempo aprox.")
+    _di_val_inicial(di.cell(2, 5), session.metadata.duracion or "45 minutos")
+
+    doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+    # 3. PROPÓSITO DE APRENDIZAJE BOX
+    p_tbl = doc.add_table(rows=1, cols=1)
+    p_tbl.autofit = False
+    p_tbl.rows[0].cells[0].width = Inches(6.77)
+    add_table_borders_black(p_tbl)
+    
+    cell_p = p_tbl.cell(0, 0)
+    set_cell_background(cell_p, 'F8FAFC')
+    set_cell_margins(cell_p, top=100, bottom=100, left=120, right=120)
+    
+    p_main = cell_p.paragraphs[0]
+    r_prop_lbl = p_main.add_run("PROPÓSITO DE APRENDIZAJE: ")
+    r_prop_lbl.bold = True
+    r_prop_lbl.font.size = Pt(9)
+    
+    append_html_to_cell_or_paragraph(p_main, session.proposito.proposito_texto or "Que los niños exploren, descubran y comuniquen utilizando sus sentidos y materiales.", default_font_size=9)
+
+    doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+    # 4. TABLA PROPÓSITOS DE APRENDIZAJE MATRIX
+    pa = doc.add_table(rows=2, cols=5)
+    pa.autofit = False
+    add_table_borders_black(pa)
+    
+    headers = [
+        "Área / Competencia / Capacidades",
+        "Estándar de Aprendizaje",
+        "Desempeño del Grado",
+        "Criterio de Evaluación",
+        "Evidencia / Instrumento"
+    ]
+    for i, ht in enumerate(headers):
+        _hdr(pa.cell(0, i), ht, bg=BLUE_HDR, sz=8.5)
+
+    # Row 1 Values
+    # Cell 0: Área / Competencia / Capacidades
+    cell_c0 = pa.cell(1, 0)
+    set_cell_background(cell_c0, 'FFFFFF')
+    set_cell_margins(cell_c0, top=100, bottom=100, left=100, right=100)
+    
+    p_area = cell_c0.paragraphs[0]
+    p_area.paragraph_format.space_after = Pt(2)
+    r_area = p_area.add_run(f"ÁREA: {(session.metadata.area or 'Educación Física').upper()}")
+    r_area.bold = True
+    r_area.font.size = Pt(8)
+    r_area.font.color.rgb = RGBColor(192, 57, 43) # Rojo
+    
+    p_comp = cell_c0.add_paragraph()
+    p_comp.paragraph_format.space_after = Pt(4)
+    r_comp = p_comp.add_run(f"“{session.proposito.competencia or 'Se desenvuelve de manera autónoma a través de su motricidad'}”")
+    r_comp.bold = True
+    r_comp.font.size = Pt(8)
+    
+    p_div = cell_c0.add_paragraph()
+    p_div.paragraph_format.space_after = Pt(4)
+    p_div.add_run("-----------------------------").font.size = Pt(7)
+    
+    p_cap_lbl = cell_c0.add_paragraph()
+    p_cap_lbl.paragraph_format.space_after = Pt(2)
+    r_cap_lbl = p_cap_lbl.add_run("CAPACIDADES:")
+    r_cap_lbl.bold = True
+    r_cap_lbl.font.size = Pt(7.5)
+    
+    for cap in (session.proposito.capacidades or []):
+        p_cap = cell_c0.add_paragraph()
+        p_cap.paragraph_format.space_after = Pt(2)
+        rb = p_cap.add_run(u"\u25cb ") # Círculo vacío
+        rb.font.size = Pt(7.5)
+        p_cap.add_run(cap).font.size = Pt(7.5)
+
+    # Cell 1: Estándar
+    cell_c1 = pa.cell(1, 1)
+    set_cell_background(cell_c1, 'FFFFFF')
+    set_cell_margins(cell_c1, top=100, bottom=100, left=100, right=100)
+    append_html_to_cell_or_paragraph(cell_c1, session.proposito.estandar or "", default_font_size=8)
+
+    # Cell 2: Desempeño
+    cell_c2 = pa.cell(1, 2)
+    set_cell_background(cell_c2, 'FFFFFF')
+    set_cell_margins(cell_c2, top=100, bottom=100, left=100, right=100)
+    append_html_to_cell_or_paragraph(cell_c2, session.proposito.desempeno or "", default_font_size=8)
+
+    # Cell 3: Criterios
+    cell_c3 = pa.cell(1, 3)
+    set_cell_background(cell_c3, 'FFFFFF')
+    set_cell_margins(cell_c3, top=100, bottom=100, left=100, right=100)
+    for crit in (session.proposito.criterios or []):
+        p_crit = cell_c3.add_paragraph()
+        p_crit.paragraph_format.space_after = Pt(3)
+        rb = p_crit.add_run(u"\u25aa ")
+        rb.font.size = Pt(7.5)
+        rb.font.color.rgb = RGBColor(127, 140, 141)
+        append_html_to_cell_or_paragraph(p_crit, crit, default_font_size=8)
+
+    # Cell 4: Evidencia / Instrumento
+    cell_c4 = pa.cell(1, 4)
+    set_cell_background(cell_c4, 'FFFFFF')
+    set_cell_margins(cell_c4, top=100, bottom=100, left=100, right=100)
+    
+    p_ev_lbl = cell_c4.paragraphs[0]
+    p_ev_lbl.paragraph_format.space_after = Pt(2)
+    r_ev_lbl = p_ev_lbl.add_run("Evidencia:")
+    r_ev_lbl.bold = True
+    r_ev_lbl.font.size = Pt(8)
+    
+    append_html_to_cell_or_paragraph(cell_c4, session.proposito.producto_evidencia or "", default_font_size=8)
+    
+    p_inst_lbl = cell_c4.add_paragraph()
+    p_inst_lbl.paragraph_format.space_before = Pt(6)
+    p_inst_lbl.paragraph_format.space_after = Pt(2)
+    r_inst_lbl = p_inst_lbl.add_run("Instrumento:")
+    r_inst_lbl.bold = True
+    r_inst_lbl.font.size = Pt(8)
+    
+    p_inst_val = cell_c4.add_paragraph()
+    p_inst_val.add_run(session.proposito.instrumento or "Lista de Cotejo").font.size = Pt(8)
+
+    anchos_pa = [Inches(1.5), Inches(1.8), Inches(1.3), Inches(1.37), Inches(0.8)]
+    for row in pa.rows:
+        for ci, cell in enumerate(row.cells):
+            cell.width = anchos_pa[ci]
+
+    doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+    # 5. RECURSOS Y MATERIALES
+    p_rec = doc.add_paragraph()
+    p_rec.paragraph_format.line_spacing = 1.15
+    p_rec.paragraph_format.space_after = Pt(4)
+    r_rec_lbl = p_rec.add_run("Recursos y Materiales: ")
+    r_rec_lbl.bold = True
+    r_rec_lbl.font.size = Pt(9.5)
+    append_html_to_cell_or_paragraph(p_rec, session.recursos.materiales or "Material de sectores, fichas, colores, crayones, hojas bond.", default_font_size=9.5)
+
+    doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+    # 6. TABLA SECUENCIAL DE MOMENTOS (3 COLUMNAS)
+    mt = doc.add_table(rows=4, cols=3)
+    mt.autofit = False
+    add_table_borders_black(mt)
+    
+    _hdr(mt.cell(0, 0), "MOMENTOS", bg=BLUE_HDR, sz=9.5)
+    _hdr(mt.cell(0, 1), "ESTRATEGÍAS PEDAGÓGICAS / PROCESOS DIDÁCTICOS", bg=BLUE_HDR, sz=9.5)
+    _hdr(mt.cell(0, 2), "EVALUACIÓN", bg=BLUE_HDR, sz=9.5)
+
+    # Merge vertical EVALUACIÓN column
+    mt.cell(1, 2).merge(mt.cell(2, 2)).merge(mt.cell(3, 2))
+    _write_vertical_cell(mt.cell(1, 2), "EVALUACION")
+
+    # Row 1: INICIO
+    _write_momento_cell(mt.cell(1, 0), "INICIO",
+        "• Motivación / Asamblea\n• Saberes Previos\n• Problematización\n• Propósito y acuerdos",
+        session.momentos.inicio.tiempo_total or "15")
+    
+    cell_ini = mt.cell(1, 1)
+    set_cell_margins(cell_ini, top=120, bottom=120, left=140, right=140)
+    cell_ini.text = ""
+    for act in (session.momentos.inicio.actividades or []):
+        append_html_to_cell_or_paragraph(cell_ini, act, default_font_size=9.5)
+
+    # Row 2: DESARROLLO
+    _write_momento_cell(mt.cell(2, 0), "DESARROLLO",
+        "Gestión del Acompañamiento en el Desarrollo de Competencias\n(Vivenciación, manipulación concreta, representación gráfica/plástica y verbalización)",
+        session.momentos.desarrollo.tiempo_total or "20")
+    
+    cell_des = mt.cell(2, 1)
+    set_cell_margins(cell_des, top=120, bottom=120, left=140, right=140)
+    cell_des.text = ""
+    
+    p_title = cell_des.paragraphs[0]
+    p_title.paragraph_format.space_after = Pt(6)
+    r_title = p_title.add_run("GESTIÓN Y ACOMPAÑAMIENTO (PROCESOS DIDÁCTICOS VIVENCIALES)")
+    r_title.bold = True
+    r_title.font.size = Pt(9.5)
+    r_title.font.color.rgb = RGBColor(192, 57, 43) # Rojo
+    
+    procs = session.momentos.desarrollo.procesos
+    if procs:
+        for proc in procs:
+            p_proc = cell_des.add_paragraph()
+            p_proc.paragraph_format.space_before = Pt(4)
+            p_proc.paragraph_format.space_after = Pt(2)
+            r_proc = p_proc.add_run(proc.titulo.upper())
+            r_proc.bold = True
+            r_proc.font.size = Pt(9.5)
+            r_proc.font.color.rgb = RGBColor(44, 62, 80)
+            
+            for par in proc.contenido:
+                append_html_to_cell_or_paragraph(cell_des, par, default_font_size=9.5)
+    else:
+        append_html_to_cell_or_paragraph(cell_des, "Gestión y acompañamiento del desarrollo de competencias...", default_font_size=9.5)
+
+    # Row 3: CIERRE
+    _write_momento_cell(mt.cell(3, 0), "CIERRE",
+        "• Asamblea Final\n• Metacognición\n• Felicitación",
+        session.momentos.cierre.tiempo_total or "10")
+        
+    cell_cie = mt.cell(3, 1)
+    set_cell_margins(cell_cie, top=120, bottom=120, left=140, right=140)
+    cell_cie.text = ""
+    
+    cierre = session.momentos.cierre
+    cierre_has_content = bool(cierre.metacognicion or cierre.evaluacion or cierre.extension)
+    
+    if cierre.metacognicion:
+        p_m = cell_cie.paragraphs[0]
+        p_m.paragraph_format.space_after = Pt(2)
+        r_m = p_m.add_run("Asamblea de Metacognición:")
+        r_m.bold = True
+        r_m.font.size = Pt(9.5)
+        for m in cierre.metacognicion:
+            p_item = cell_cie.add_paragraph()
+            p_item.paragraph_format.space_after = Pt(2)
+            rb = p_item.add_run(u"\u25cf ")
+            rb.font.size = Pt(8.5)
+            rb.font.color.rgb = RGBColor(41, 128, 185)
+            append_html_to_cell_or_paragraph(p_item, m, default_font_size=9.5)
+            
+    if cierre.evaluacion:
+        p_e = cell_cie.add_paragraph()
+        p_e.paragraph_format.space_before = Pt(6)
+        p_e.paragraph_format.space_after = Pt(2)
+        r_e = p_e.add_run("Evaluación Formativa:")
+        r_e.bold = True
+        r_e.font.size = Pt(9.5)
+        for ev in cierre.evaluacion:
+            p_item = cell_cie.add_paragraph()
+            p_item.paragraph_format.space_after = Pt(2)
+            rb = p_item.add_run(u"\u25cf ")
+            rb.font.size = Pt(8.5)
+            rb.font.color.rgb = RGBColor(41, 128, 185)
+            append_html_to_cell_or_paragraph(p_item, ev, default_font_size=9.5)
+            
+    if not cierre_has_content:
+        append_html_to_cell_or_paragraph(cell_cie, "• <strong>Asamblea de Metacognición:</strong> ¿A qué jugamos hoy? ¿Qué descubrimos? ¿Cómo nos sentimos?<br>• <strong>Evaluación formativa:</strong> Felicitación colectiva por el trabajo y orden del aula.", default_font_size=9.5)
+
+    anchos_mom = [Inches(1.8), Inches(4.57), Inches(0.4)]
+    for row in mt.rows:
+        for ci, cell in enumerate(row.cells):
+            cell.width = anchos_mom[ci]
+
+
 def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     # Preprocesar LaTeX a Unicode para asegurar compatibilidad matemática y estética en Word
     preprocess_session_latex(session)
@@ -571,7 +985,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rb = p.add_run(u"\u25cf ")
             rb.font.size = Pt(9)
             rb.font.color.rgb = RGBColor(int(bc[0:2], 16), int(bc[2:4], 16), int(bc[4:6], 16))
-            p.add_run(item).font.size = Pt(9)
+            append_html_to_cell_or_paragraph(p, item, default_font_size=9)
 
     def make_vertical_text(text: str) -> str:
         # Stack characters vertically separated by double newlines to match template
@@ -674,7 +1088,321 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     p_div._p.get_or_add_pPr().append(pBrd)
 
     # ===============================================================
-    # TITULO DE LA SESIÓN DE APRENDIZAJE
+    # INICIO DEL BODY: DETECTAR Y RENDERIZAR LAYOUTS ESPECÍFICOS
+    # ===============================================================
+    is_inicial = (session.metadata.nivel or '').upper().strip() in ('INICIAL', 'EDUCACION INICIAL', 'EDUCACIÓN INICIAL', 'JARDIN', 'JARDÍN')
+    if is_inicial:
+        build_inicial_docx_layout(doc, session, PEACH, BLUE_HDR, YELLOW_HDR, GRAY_VAL, PEACH_MOM, GRAY_MOM, YELLOW_VAL, BULLET_COLORS, _hdr, _label, _val, _bullet_cell, add_table_borders_black, set_cell_margins, set_cell_background, _write_vertical_cell, _write_momento_cell)
+        
+        # 1. Juego Libre en los Sectores
+        jls = getattr(session, 'juego_libre_sectores', None)
+        if jls:
+            doc.add_paragraph().paragraph_format.space_before = Pt(8)
+            jls_header = doc.add_table(rows=1, cols=1)
+            jls_header.autofit = False
+            jls_header.rows[0].cells[0].width = Inches(6.77)
+            add_table_borders_black(jls_header)
+            set_cell_text_white_bold(jls_header.cell(0, 0), "JUEGO LIBRE EN LOS SECTORES", font_size_pt=10)
+            set_cell_background(jls_header.cell(0, 0), '27AE60') # Verde
+            set_cell_margins(jls_header.cell(0, 0), top=100, bottom=100, left=180, right=180)
+
+            jls_steps = [
+                ("1. PLANIFICACIÓN", jls.planificacion or "Los niños y niñas eligen libremente el sector donde desean jugar."),
+                ("2. ORGANIZACIÓN", jls.organizacion or "Se agrupan según el sector elegido y distribuyen roles."),
+                ("3. EJECUCIÓN", jls.ejecucion or "Los niños juegan libremente mientras la docente acompaña y media."),
+                ("4. ORDEN", jls.orden or "A la señal, los niños guardan los materiales con una canción motivadora."),
+                ("5. SOCIALIZACIÓN", jls.socializacion or "Los niños cuentan lo que hicieron en su sector y qué aprendieron."),
+                ("6. REPRESENTACIÓN", jls.representacion or "Los niños dibujan, modelan o dramatizan lo vivido en el juego.")
+            ]
+
+            jls_tbl = doc.add_table(rows=len(jls_steps), cols=2)
+            jls_tbl.autofit = False
+            add_table_borders_black(jls_tbl)
+
+            for ri, (label, content) in enumerate(jls_steps):
+                # Columna etiqueta
+                set_cell_background(jls_tbl.cell(ri, 0), 'D5F5E3')
+                set_cell_margins(jls_tbl.cell(ri, 0), top=80, bottom=80, left=120, right=120)
+                p_lbl = jls_tbl.cell(ri, 0).paragraphs[0]
+                r_lbl = p_lbl.add_run(label)
+                r_lbl.bold = True
+                r_lbl.font.size = Pt(8.5)
+                r_lbl.font.color.rgb = RGBColor(30, 41, 59)
+
+                # Columna contenido
+                set_cell_background(jls_tbl.cell(ri, 1), 'F2F2F2')
+                set_cell_margins(jls_tbl.cell(ri, 1), top=80, bottom=80, left=120, right=120)
+                append_html_to_cell_or_paragraph(jls_tbl.cell(ri, 1), content, default_font_size=8.5)
+
+            anchos_jls = [Inches(1.8), Inches(4.97)]
+            for row in jls_tbl.rows:
+                for ci, cell in enumerate(row.cells):
+                    cell.width = anchos_jls[ci]
+
+            doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+        # 2. Firmas de la sesión
+        doc.add_paragraph().paragraph_format.space_before = Pt(40)
+        ft = doc.add_table(rows=1, cols=2)
+        ft.autofit = True
+        for cell in ft.rows[0].cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcB = OxmlElement('w:tcBorders')
+            for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+                b = OxmlElement(f'w:{edge}')
+                b.set(qn('w:val'), 'nil')
+                tcB.append(b)
+            tcPr.append(tcB)
+        pfd = ft.cell(0, 0).paragraphs[0]
+        pfd.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pfd.add_run("_______________________________\n").bold = True
+        rnd = pfd.add_run((session.metadata.docente or "Docente de la Sesion") + "\n")
+        rnd.bold = True
+        rnd.font.size = Pt(9.5)
+        rcd = pfd.add_run("Docente de la Sesion")
+        rcd.font.size = Pt(8.5)
+
+        pfs = ft.cell(0, 1).paragraphs[0]
+        pfs.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pfs.add_run("_______________________________\n").bold = True
+        rns = pfs.add_run((session.metadata.director or "Director de la I.E.") + "\n")
+        rns.bold = True
+        rns.font.size = Pt(9.5)
+        rcs = pfs.add_run("Director de la I.E.")
+        rcs.font.size = Pt(8.5)
+
+        # 3. Ficha de Trabajo (si se solicita)
+        if session.ficha_trabajo and session.ficha_trabajo.titulo:
+            doc.add_page_break()
+            
+            f_sec = doc.add_section()
+            f_sec.top_margin = Inches(0.8)
+            f_sec.bottom_margin = Inches(0.8)
+            f_sec.left_margin = Inches(0.8)
+            f_sec.right_margin = Inches(0.8)
+
+            ft_tbl = doc.add_table(rows=1, cols=1)
+            ft_tbl.autofit = False
+            ft_tbl.rows[0].cells[0].width = Inches(6.67)
+            add_table_borders_black(ft_tbl)
+            set_cell_text_white_bold(ft_tbl.cell(0, 0), "FICHA DE TRABAJO DE APRENDIZAJE INDEPENDIENTE", font_size_pt=11.5)
+            set_cell_background(ft_tbl.cell(0, 0), '2980B9')
+            set_cell_margins(ft_tbl.cell(0, 0), top=120, bottom=120, left=180, right=180)
+
+            doc.add_paragraph().paragraph_format.space_before = Pt(10)
+
+            stud_tbl = doc.add_table(rows=1, cols=2)
+            stud_tbl.autofit = False
+            add_table_borders(stud_tbl, color='CBD5E1', sz='4')
+            
+            set_cell_margins(stud_tbl.cell(0, 0), top=80, bottom=80, left=120, right=120)
+            p_st1 = stud_tbl.cell(0, 0).paragraphs[0]
+            r_st1 = p_st1.add_run("Estudiante: __________________________________________________")
+            r_st1.bold = True
+            r_st1.font.size = Pt(9.5)
+            
+            set_cell_margins(stud_tbl.cell(0, 1), top=80, bottom=80, left=120, right=120)
+            p_st2 = stud_tbl.cell(0, 1).paragraphs[0]
+            p_st2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            r_st2 = p_st2.add_run("Grado y Sección: ________________")
+            r_st2.bold = True
+            r_st2.font.size = Pt(9.5)
+
+            for row in stud_tbl.rows:
+                row.cells[0].width = Inches(4.5)
+                row.cells[1].width = Inches(2.17)
+
+            doc.add_paragraph().paragraph_format.space_before = Pt(8)
+
+            p_ft_t = doc.add_paragraph()
+            p_ft_t.paragraph_format.space_after = Pt(4)
+            rf_t = p_ft_t.add_run("Actividad: " + session.ficha_trabajo.titulo.upper())
+            rf_t.bold = True
+            rf_t.font.size = Pt(12)
+            rf_t.font.color.rgb = RGBColor(41, 128, 185)
+
+            if session.ficha_trabajo.indicaciones:
+                p_ft_ind = doc.add_paragraph()
+                p_ft_ind.paragraph_format.space_after = Pt(12)
+                p_ft_ind.paragraph_format.line_spacing = 1.15
+                p_ft_ind.add_run("Indicaciones: ").bold = True
+                p_ft_ind.runs[0].font.size = Pt(9.5)
+                p_ft_ind.add_run(session.ficha_trabajo.indicaciones).font.size = Pt(9.5)
+                p_ft_ind.runs[1].font.italic = True
+
+            act_html = session.ficha_trabajo.actividades or ""
+            soup_act = BeautifulSoup(act_html, 'html.parser')
+            
+            def add_act_element(element, is_bold=False, is_italic=False):
+                if isinstance(element, Tag):
+                    if element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                        p = doc.add_paragraph()
+                        p.paragraph_format.space_before = Pt(10)
+                        p.paragraph_format.space_after = Pt(4)
+                        r = p.add_run(element.get_text().strip())
+                        r.bold = True
+                        r.font.size = Pt(11)
+                    elif element.name == 'p':
+                        p = doc.add_paragraph()
+                        p.paragraph_format.space_after = Pt(6)
+                        p.paragraph_format.line_spacing = 1.15
+                        append_html_to_cell_or_paragraph(p, str(element), default_font_size=9.5)
+                    elif element.name == 'ul':
+                        for li in element.find_all('li', recursive=False):
+                            p = doc.add_paragraph()
+                            p.paragraph_format.space_after = Pt(3)
+                            p.paragraph_format.line_spacing = 1.15
+                            rb = p.add_run(u"\u25cf ")
+                            rb.font.size = Pt(8.5)
+                            rb.font.color.rgb = RGBColor(41, 128, 185)
+                            append_html_to_cell_or_paragraph(p, str(li), default_font_size=9.5)
+                    elif element.name == 'ol':
+                        for idx_li, li in enumerate(element.find_all('li', recursive=False)):
+                            p = doc.add_paragraph()
+                            p.paragraph_format.space_after = Pt(3)
+                            p.paragraph_format.line_spacing = 1.15
+                            p.add_run(f"{idx_li+1}. ").bold = True
+                            append_html_to_cell_or_paragraph(p, str(li), default_font_size=9.5)
+                    elif element.name == 'table':
+                        rows = element.find_all('tr')
+                        if rows:
+                            max_c = max(len(r.find_all(['td', 'th'])) for r in rows)
+                            if max_c > 0:
+                                tbl = doc.add_table(rows=len(rows), cols=max_c)
+                                tbl.autofit = True
+                                add_table_borders(tbl)
+                                for ri, row in enumerate(rows):
+                                    cells = row.find_all(['td', 'th'])
+                                    for ci, cell_h in enumerate(cells):
+                                        if ci < max_c:
+                                            c = tbl.cell(ri, ci)
+                                            set_cell_margins(c, top=80, bottom=80, left=100, right=100)
+                                            p_cell = c.paragraphs[0]
+                                            p_cell.paragraph_format.space_after = Pt(0)
+                                            p_cell.paragraph_format.line_spacing = 1.1
+                                            if cell_h.name == 'th':
+                                                set_cell_background(c, 'F2F2F2')
+                                                append_html_to_cell_or_paragraph(p_cell, f"<strong>{cell_h.get_text()}</strong>")
+                                            else:
+                                                append_html_to_cell_or_paragraph(p_cell, str(cell_h))
+                    else:
+                        for child in element.children:
+                            add_act_element(child, is_bold, is_italic)
+
+            for child in soup_act.children:
+                add_act_element(child)
+
+        # 4. Tabla Lista de Cotejo (si se incluyen alumnos)
+        alumnos = session.alumnos
+        criterios = session.proposito.criterios
+        if alumnos and len(alumnos) > 0 and len(criterios) > 0:
+            doc.add_page_break()
+            
+            lc_sec = doc.add_section()
+            lc_sec.page_width = Inches(11.69)
+            lc_sec.page_height = Inches(8.27)
+            lc_sec.top_margin = Inches(0.6)
+            lc_sec.bottom_margin = Inches(0.6)
+            lc_sec.left_margin = Inches(0.6)
+            lc_sec.right_margin = Inches(0.6)
+            
+            lc_tbl = doc.add_table(rows=1, cols=1)
+            lc_tbl.autofit = False
+            lc_tbl.rows[0].cells[0].width = Inches(10.49)
+            add_table_borders_black(lc_tbl)
+            set_cell_text_white_bold(lc_tbl.cell(0, 0), "LISTA DE COTEJO DE EVALUACION FORMATIVA", font_size_pt=12)
+            set_cell_background(lc_tbl.cell(0, 0), '2C3E50')
+            set_cell_margins(lc_tbl.cell(0, 0), top=120, bottom=120, left=180, right=180)
+
+            doc.add_paragraph().paragraph_format.space_before = Pt(8)
+
+            lch_tbl = doc.add_table(rows=1, cols=4)
+            lch_tbl.autofit = False
+            add_table_borders_black(lch_tbl)
+            
+            set_cell_background(lch_tbl.cell(0, 0), PEACH)
+            set_cell_margins(lch_tbl.cell(0, 0), top=80, bottom=80, left=120, right=120)
+            lch_tbl.cell(0, 0).paragraphs[0].add_run("IE / Area").bold = True
+            lch_tbl.cell(0, 0).paragraphs[0].runs[0].font.size = Pt(8.5)
+
+            set_cell_background(lch_tbl.cell(0, 1), GRAY_VAL)
+            set_cell_margins(lch_tbl.cell(0, 1), top=80, bottom=80, left=120, right=120)
+            lch_tbl.cell(0, 1).paragraphs[0].add_run(f"{session.metadata.institucion or 'IE'} / {session.metadata.area or 'Matematica'}")
+
+            set_cell_background(lch_tbl.cell(0, 2), PEACH)
+            set_cell_margins(lch_tbl.cell(0, 2), top=80, bottom=80, left=120, right=120)
+            lch_tbl.cell(0, 2).paragraphs[0].add_run("Grado / Seccion").bold = True
+            lch_tbl.cell(0, 2).paragraphs[0].runs[0].font.size = Pt(8.5)
+
+            set_cell_background(lch_tbl.cell(0, 3), GRAY_VAL)
+            set_cell_margins(lch_tbl.cell(0, 3), top=80, bottom=80, left=120, right=120)
+            lch_tbl.cell(0, 3).paragraphs[0].add_run(f"{session.metadata.grado or ''} \"{session.metadata.seccion or ''}\"")
+
+            for row in lch_tbl.rows:
+                row.cells[0].width = Inches(1.5)
+                row.cells[1].width = Inches(4.5)
+                row.cells[2].width = Inches(1.5)
+                row.cells[3].width = Inches(2.99)
+
+            doc.add_paragraph().paragraph_format.space_before = Pt(8)
+
+            num_cols = 2 + len(criterios) * 2
+            lct = doc.add_table(rows=2 + len(alumnos), cols=num_cols)
+            lct.autofit = False
+            add_table_borders_black(lct)
+
+            lct.cell(0, 0).merge(lct.cell(1, 0))
+            lct.cell(0, 1).merge(lct.cell(1, 1))
+
+            for ci, crit in enumerate(criterios):
+                sc = 2 + ci * 2
+                lct.cell(0, sc).merge(lct.cell(0, sc + 1))
+                lct.cell(0, sc).paragraphs[0].text = f"Criterio {ci + 1}: {crit}"
+                lct.cell(1, sc).paragraphs[0].text = "SI"
+                lct.cell(1, sc + 1).paragraphs[0].text = "NO"
+
+            CRIT_COLORS   = ['D9E1F2', 'FADBD8', 'D5F5E3', 'FCF3CF', 'FDE8D8', 'E8DAEF']
+            SUBCRIT_COLORS = ['BDD7EE', 'FADBD8', 'A9DFBF', 'F9E79F', 'FAD7A0', 'D7BDE2']
+
+            def _lcfmt(cell, width_in, font_size_pt, bold=False, ctr=False, bg=None):
+                cell.width = Inches(width_in)
+                set_cell_margins(cell, top=60, bottom=60, left=60, right=60)
+                if bg:
+                    set_cell_background(cell, bg)
+                p = cell.paragraphs[0]
+                p.paragraph_format.space_after = Pt(0)
+                p.paragraph_format.line_spacing = 1.0
+                if ctr:
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in p.runs:
+                    run.bold = bold
+                    run.font.size = Pt(font_size_pt)
+
+            _lcfmt(lct.cell(0, 0), 0.35, 8.5, bold=True, ctr=True, bg='FFF2CC')
+            _lcfmt(lct.cell(0, 1), 2.2,  8.5, bold=True, ctr=False, bg='FFF2CC')
+            for ci, crit in enumerate(criterios):
+                sc = 2 + ci * 2
+                _lcfmt(lct.cell(0, sc),     0.7,  7.5, bold=True, ctr=True, bg=CRIT_COLORS[ci % len(CRIT_COLORS)])
+                _lcfmt(lct.cell(1, sc),     0.35, 8,   bold=True, ctr=True, bg=SUBCRIT_COLORS[ci % len(SUBCRIT_COLORS)])
+                _lcfmt(lct.cell(1, sc + 1), 0.35, 8,   bold=True, ctr=True, bg=SUBCRIT_COLORS[ci % len(SUBCRIT_COLORS)])
+            for ri, stud in enumerate(alumnos):
+                rn = 2 + ri
+                lct.cell(rn, 0).text = str(ri + 1)
+                lct.cell(rn, 1).text = "" if stud.startswith("Estudiante ") else stud
+                _lcfmt(lct.cell(rn, 0), 0.35, 8.5, bold=True,  ctr=True)
+                _lcfmt(lct.cell(rn, 1), 2.2,  8.5, bold=False, ctr=False)
+                for ci in range(len(criterios)):
+                    sc = 2 + ci * 2
+                    _lcfmt(lct.cell(rn, sc),     0.35, 8, ctr=True)
+                    _lcfmt(lct.cell(rn, sc + 1), 0.35, 8, ctr=True)
+
+        stream = io.BytesIO()
+        doc.save(stream)
+        stream.seek(0)
+        return stream
+
+    # ===============================================================
+    # TITULO DE LA SESIÓN DE APRENDIZAJE (ESTÁNDAR)
     # ===============================================================
     t_tbl = doc.add_table(rows=1, cols=1)
     t_tbl.autofit = False
@@ -782,7 +1510,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     set_cell_margins(cell_prop, top=100, bottom=100, left=120, right=120)
     p_prop = cell_prop.paragraphs[0]
     p_prop.paragraph_format.line_spacing = 1.15
-    p_prop.add_run(session.proposito.proposito_texto or "No especificado").font.size = Pt(9.5)
+    append_html_to_cell_or_paragraph(p_prop, session.proposito.proposito_texto or "No especificado", default_font_size=9.5)
 
     _hdr(pc.cell(4, 0), "CONOCIMIENTOS:", bg=PEACH, sz=9)
     
@@ -790,7 +1518,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     set_cell_margins(cell_con, top=100, bottom=100, left=120, right=120)
     p_con = cell_con.paragraphs[0]
     p_con.paragraph_format.line_spacing = 1.15
-    p_con.add_run(session.proposito.conocimientos or "No especificado").font.size = Pt(9.5)
+    append_html_to_cell_or_paragraph(p_con, session.proposito.conocimientos or "No especificado", default_font_size=9.5)
 
     doc.add_paragraph().paragraph_format.space_before = Pt(4)
 
@@ -1078,10 +1806,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         set_cell_margins(cell_ini, top=120, bottom=120, left=140, right=140)
         cell_ini.text = ""
         for act in (session.momentos.inicio.actividades or []):
-            p = cell_ini.add_paragraph()
-            p.paragraph_format.space_after = Pt(4)
-            p.paragraph_format.line_spacing = 1.15
-            p.add_run(act).font.size = Pt(9.5)
+            append_html_to_cell_or_paragraph(cell_ini, act, default_font_size=9.5)
 
         # Filas 2 a 2+n_proc-1: DESARROLLO
         _write_momento_cell(mt.cell(2, 0), "DESARROLLO",
@@ -1104,12 +1829,9 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
                 rpt.font.size = Pt(9.5)
                 rpt.font.color.rgb = RGBColor(192, 57, 43)
                 for par in proc.contenido:
-                    ppr = cell_des.add_paragraph()
-                    ppr.paragraph_format.space_after = Pt(4)
-                    ppr.paragraph_format.line_spacing = 1.15
-                    ppr.add_run(par).font.size = Pt(9.5)
+                    append_html_to_cell_or_paragraph(cell_des, par, default_font_size=9.5)
             else:
-                cell_des.add_paragraph().add_run("Gestion y Acompanamiento del Desarrollo de Competencias...").font.size = Pt(9.5)
+                append_html_to_cell_or_paragraph(cell_des, "Gestion y Acompanamiento del Desarrollo de Competencias...", default_font_size=9.5)
 
             if idx > 0:
                 _write_vertical_cell(mt.cell(rn, 1), "MOTIVACION")
@@ -1141,9 +1863,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rlbl.bold = True
             rlbl.font.size = Pt(9.5)
             for m in cierre.metacognicion:
-                pi = cell_cie.add_paragraph(style='List Bullet')
-                pi.paragraph_format.space_after = Pt(2)
-                pi.add_run(m).font.size = Pt(9.5)
+                p = cell_cie.add_paragraph()
+                p.paragraph_format.space_after = Pt(2)
+                rb = p.add_run(u"\u25cf ")
+                rb.font.size = Pt(8.5)
+                rb.font.color.rgb = RGBColor(41, 128, 185)
+                append_html_to_cell_or_paragraph(p, m, default_font_size=9.5)
         if cierre.evaluacion:
             plbl = cell_cie.add_paragraph()
             plbl.paragraph_format.space_before = Pt(4)
@@ -1151,9 +1876,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rlbl.bold = True
             rlbl.font.size = Pt(9.5)
             for ev in cierre.evaluacion:
-                pi = cell_cie.add_paragraph(style='List Bullet')
-                pi.paragraph_format.space_after = Pt(2)
-                pi.add_run(ev).font.size = Pt(9.5)
+                p = cell_cie.add_paragraph()
+                p.paragraph_format.space_after = Pt(2)
+                rb = p.add_run(u"\u25cf ")
+                rb.font.size = Pt(8.5)
+                rb.font.color.rgb = RGBColor(41, 128, 185)
+                append_html_to_cell_or_paragraph(p, ev, default_font_size=9.5)
         if cierre.extension:
             plbl = cell_cie.add_paragraph()
             plbl.paragraph_format.space_before = Pt(4)
@@ -1161,9 +1889,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rlbl.bold = True
             rlbl.font.size = Pt(9.5)
             for ext in cierre.extension:
-                pi = cell_cie.add_paragraph(style='List Bullet')
-                pi.paragraph_format.space_after = Pt(2)
-                pi.add_run(ext).font.size = Pt(9.5)
+                p = cell_cie.add_paragraph()
+                p.paragraph_format.space_after = Pt(2)
+                rb = p.add_run(u"\u25cf ")
+                rb.font.size = Pt(8.5)
+                rb.font.color.rgb = RGBColor(41, 128, 185)
+                append_html_to_cell_or_paragraph(p, ext, default_font_size=9.5)
 
         if not cierre_has_content:
             default_sections = [
@@ -1187,9 +1918,12 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
                 rlbl.bold = True
                 rlbl.font.size = Pt(9.5)
                 for item in items:
-                    pi = cell_cie.add_paragraph(style='List Bullet')
-                    pi.paragraph_format.space_after = Pt(2)
-                    pi.add_run(item).font.size = Pt(9.5)
+                    p = cell_cie.add_paragraph()
+                    p.paragraph_format.space_after = Pt(2)
+                    rb = p.add_run(u"\u25cf ")
+                    rb.font.size = Pt(8.5)
+                    rb.font.color.rgb = RGBColor(41, 128, 185)
+                    append_html_to_cell_or_paragraph(p, item, default_font_size=9.5)
 
         anchos_mom = [Inches(1.2), Inches(0.35), Inches(4.87), Inches(0.35)]
         for row in mt.rows:
