@@ -1762,6 +1762,24 @@
             };
         }
 
+        // 9. Juego Libre en los Sectores (Educación Inicial)
+        let juego_libre_sectores = null;
+        const jlsTable = DOM.sessionSheet.querySelector('.jls-table');
+        if (jlsTable) {
+            const jlsRows = jlsTable.querySelectorAll('tbody > tr');
+            const jlsKeys = ['planificacion', 'organizacion', 'ejecucion', 'orden', 'socializacion', 'representacion'];
+            juego_libre_sectores = {};
+            jlsRows.forEach((row, idx) => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2 && jlsKeys[idx]) {
+                    juego_libre_sectores[jlsKeys[idx]] = cells[1].textContent.trim();
+                }
+            });
+        } else if (AppState.currentSession && AppState.currentSession.juego_libre_sectores) {
+            // Fallback: use session data if DOM table not found
+            juego_libre_sectores = AppState.currentSession.juego_libre_sectores;
+        }
+
         return {
             metadata,
             proposito,
@@ -1770,6 +1788,7 @@
             recursos,
             momentos,
             ficha_trabajo,
+            juego_libre_sectores,
             token: localStorage.getItem('connection_token') || ''
         };
     }

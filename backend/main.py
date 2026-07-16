@@ -145,6 +145,7 @@ TOP_LEVEL_MAP = {
     'competenciastransversales': 'competencias_transversales',
     'enfoques_transversales': 'enfoques_transversales',
     'enfoquestransversales': 'enfoques_transversales',
+    'enfoques': 'enfoques_transversales',
     'recursos': 'recursos',
     'recursos_materiales': 'recursos',
     'momentos': 'momentos',
@@ -153,10 +154,16 @@ TOP_LEVEL_MAP = {
     'ficha_trabajo': 'ficha_trabajo',
     'fichatrabajo': 'ficha_trabajo',
     'ficha': 'ficha_trabajo',
+    'juego_libre_sectores': 'juego_libre_sectores',
+    'juego_libre': 'juego_libre_sectores',
+    'juego_libre_en_los_sectores': 'juego_libre_sectores',
     'alumnos': 'alumnos',
     'estudiantes': 'alumnos',
     'lista_alumnos': 'alumnos',
     'lista_estudiantes': 'alumnos',
+    'titulo_sesion_retador': '_titulo_sesion_retador',
+    'titulo_sesion': '_titulo_sesion_retador',
+    'evaluacion': 'evaluacion',
     'token': 'token'
 }
 
@@ -275,6 +282,8 @@ RECURSOS_MAP = {
     'links': 'enlaces',
     'link': 'enlaces',
     'paginas_web': 'enlaces',
+    'paginas_consulta': 'enlaces',
+    'paginas_de_consulta': 'enlaces',
     'materiales': 'materiales',
     'recursos': 'materiales',
     'materiales_recursos': 'materiales',
@@ -283,6 +292,15 @@ RECURSOS_MAP = {
     'reforzamiento': 'refuerzo',
     'actividades_refuerzo': 'refuerzo',
     'actividades_de_refuerzo': 'refuerzo'
+}
+
+JUEGO_LIBRE_MAP = {
+    'planificacion': 'planificacion',
+    'organizacion': 'organizacion',
+    'ejecucion': 'ejecucion',
+    'orden': 'orden',
+    'socializacion': 'socializacion',
+    'representacion': 'representacion'
 }
 
 MOMENTO_INICIO_MAP = {
@@ -353,12 +371,85 @@ FICHA_TRABAJO_MAP = {
     'ejercicios': 'actividades'
 }
 
+def _humanize_key(k: str) -> str:
+    """Convierte 'proceso_1_familiarizacion' -> 'Familiarizacion'."""
+    parts = k.split('_')
+    # Quitar prefijo 'proceso' y numeros
+    cleaned = [p.capitalize() for p in parts if not p.isdigit() and p.lower() not in ('proceso', 'paso')]
+    return ' '.join(cleaned) if cleaned else k.replace('_', ' ').capitalize()
+
+def _flatten_sub_momentos_inicio(inicio_dict: dict) -> list:
+    """Convierte sub-momentos del inicio (motivacion, saberes_previos, etc.) en lista de actividades."""
+    sub_keys = ['motivacion', 'saberes_previos', 'problematizacion', 'proposito_organizacion']
+    labels = {
+        'motivacion': 'Motivacion',
+        'saberes_previos': 'Saberes previos',
+        'problematizacion': 'Problematizacion',
+        'proposito_organizacion': 'Proposito y organizacion'
+    }
+    actividades = []
+    for sk in sub_keys:
+        val = inicio_dict.get(sk) or inicio_dict.get(standardize_key(sk))
+        if val and isinstance(val, str) and val.strip():
+            actividades.append(f"{labels.get(sk, sk)}: {val.strip()}")
+    return actividades
+
+def _extract_flat_procesos(desarrollo_dict: dict) -> list:
+    """Extrae llaves planas proceso_X_... del desarrollo y las convierte en lista de procesos."""
+    procs = []
+    proc_keys = sorted(
+        [k for k in desarrollo_dict if re.match(r'^proceso_\d+', k) or re.match(r'^paso_\d+', k)],
+        key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0
+    )
+    for pk in proc_keys:
+        val = desarrollo_dict[pk]
+        titulo = _humanize_key(pk)
+        contenido = []
+        if isinstance(val, str):
+            contenido = [x.strip() for x in val.split('\n') if x.strip()]
+            if not contenido:
+                contenido = [val.strip()]
+        elif isinstance(val, list):
+            contenido = [str(x).strip() for x in val if str(x).strip()]
+        procs.append({
+            'clave': pk,
+            'titulo': titulo,
+            'contenido': contenido
+        })
+    return procs
+
+def _split_cierre_actividades(text: str) -> dict:
+    """Divide el texto plano de cierre.actividades en metacognicion, evaluacion y extension."""
+    meta, evalu, ext = [], [], []
+    current = meta
+    for line in text.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        ll = line.lower()
+        if 'metacognici' in ll:
+            current = meta
+        elif 'evaluaci' in ll:
+            current = evalu
+        elif 'extensi' in ll or 'tarea' in ll or 'casa' in ll:
+            current = ext
+        clean = re.sub(r'^[•\-\*\d\.\)]+\s*', '', line).strip()
+        if clean:
+            current.append(clean)
+    # Si no se pudo dividir, todo va a metacognicion
+    if not meta and not evalu and not ext:
+        meta = [x.strip() for x in text.split('\n') if x.strip()]
+    return {'metacognicion': meta, 'evaluacion': evalu, 'extension': ext}
+
 def normalize_sesion_data(data: dict) -> dict:
     if not isinstance(data, dict):
         return {}
     
     # 1. Normalizar llaves de nivel superior
     data = clean_and_map_dict(data, TOP_LEVEL_MAP)
+
+    # 1b. Mover titulo_sesion_retador a metadata.titulo si existe
+    titulo_retador = data.pop('_titulo_sesion_retador', None)
     
     # 2. Normalizar metadata
     metadata_raw = data.get('metadata')
@@ -366,6 +457,9 @@ def normalize_sesion_data(data: dict) -> dict:
         metadata_clean = clean_and_map_dict(metadata_raw, METADATA_MAP)
     else:
         metadata_clean = {}
+    # Aplicar titulo_sesion_retador como fallback para titulo
+    if titulo_retador and not metadata_clean.get('titulo'):
+        metadata_clean['titulo'] = titulo_retador
     data['metadata'] = metadata_clean
 
     # 3. Normalizar proposito
@@ -387,9 +481,30 @@ def normalize_sesion_data(data: dict) -> dict:
     data['proposito'] = proposito_clean
 
     # 4. Normalizar competencias_transversales
+    #    La IA manda un objeto {tic: [...], autonoma: [...]}
+    #    El backend espera una lista [{titulo, desempenos}, ...]
     cts_raw = data.get('competencias_transversales', [])
     cts_clean = []
-    if isinstance(cts_raw, list):
+    if isinstance(cts_raw, dict):
+        # FORMATO IA: convertir objeto {tic: [...], autonoma: [...]} a lista
+        tic_items = cts_raw.get('tic', []) or cts_raw.get('TIC', []) or []
+        autonoma_items = cts_raw.get('autonoma', []) or cts_raw.get('gestiona_aprendizaje', []) or []
+        if tic_items:
+            if isinstance(tic_items, str):
+                tic_items = [x.strip() for x in tic_items.split('\n') if x.strip()]
+            cts_clean.append({
+                'titulo': 'Se desenvuelve en los entornos virtuales generados por las TIC',
+                'desempenos': tic_items if isinstance(tic_items, list) else []
+            })
+        if autonoma_items:
+            if isinstance(autonoma_items, str):
+                autonoma_items = [x.strip() for x in autonoma_items.split('\n') if x.strip()]
+            cts_clean.append({
+                'titulo': 'Gestiona su aprendizaje de manera autonoma',
+                'desempenos': autonoma_items if isinstance(autonoma_items, list) else []
+            })
+    elif isinstance(cts_raw, list):
+        # FORMATO FRONTEND: ya viene como lista de objetos
         for ct in cts_raw:
             if isinstance(ct, dict):
                 ct_clean = clean_and_map_dict(ct, COMPETENCIA_TRANSVERSAL_MAP)
@@ -401,7 +516,6 @@ def normalize_sesion_data(data: dict) -> dict:
                         ct_clean['desempenos'] = []
                 else:
                     ct_clean['desempenos'] = []
-                # Validar título requerido
                 if 'titulo' not in ct_clean or not ct_clean['titulo']:
                     ct_clean['titulo'] = "Competencia Transversal"
                 cts_clean.append(ct_clean)
@@ -414,7 +528,6 @@ def normalize_sesion_data(data: dict) -> dict:
         for et in ets_raw:
             if isinstance(et, dict):
                 et_clean = clean_and_map_dict(et, ENFOQUE_TRANSVERSAL_MAP)
-                # Fallbacks obligatorios para cadenas en Pydantic
                 if 'nombre' not in et_clean or not et_clean['nombre']:
                     et_clean['nombre'] = "Enfoque Transversal"
                 if 'valor' not in et_clean or not et_clean['valor']:
@@ -437,10 +550,12 @@ def normalize_sesion_data(data: dict) -> dict:
     if isinstance(momentos_raw, dict):
         momentos_clean = clean_and_map_dict(momentos_raw, MOMENTOS_MAP)
         
-        # 7a. Inicio
+        # 7a. Inicio — soportar sub-momentos de la IA
         inicio_raw = momentos_clean.get('inicio')
         if isinstance(inicio_raw, dict):
             inicio_clean = clean_and_map_dict(inicio_raw, MOMENTO_INICIO_MAP)
+            # Verificar si hay sub-momentos de la IA (motivacion, saberes_previos, etc.)
+            sub_actividades = _flatten_sub_momentos_inicio(inicio_clean)
             if 'actividades' in inicio_clean:
                 val = inicio_clean['actividades']
                 if isinstance(val, str):
@@ -449,21 +564,24 @@ def normalize_sesion_data(data: dict) -> dict:
                     inicio_clean['actividades'] = []
             else:
                 inicio_clean['actividades'] = []
+            # Si se encontraron sub-momentos y actividades esta vacia, usar sub-momentos
+            if sub_actividades and not inicio_clean['actividades']:
+                inicio_clean['actividades'] = sub_actividades
         else:
             inicio_clean = {'actividades': []}
         momentos_clean['inicio'] = inicio_clean
 
-        # 7b. Desarrollo
+        # 7b. Desarrollo — soportar llaves planas proceso_X_... de la IA
         desarrollo_raw = momentos_clean.get('desarrollo')
         if isinstance(desarrollo_raw, dict):
             desarrollo_clean = clean_and_map_dict(desarrollo_raw, MOMENTO_DESARROLLO_MAP)
             procs_raw = desarrollo_clean.get('procesos', [])
             procs_clean = []
-            if isinstance(procs_raw, list):
+            if isinstance(procs_raw, list) and len(procs_raw) > 0:
+                # FORMATO FRONTEND: ya viene como lista de objetos
                 for pr in procs_raw:
                     if isinstance(pr, dict):
                         pr_clean = clean_and_map_dict(pr, PROCESO_DESARROLLO_MAP)
-                        # Validaciones de estructura
                         if 'clave' not in pr_clean or not pr_clean['clave']:
                             pr_clean['clave'] = secrets.token_hex(4)
                         if 'titulo' not in pr_clean or not pr_clean['titulo']:
@@ -477,15 +595,24 @@ def normalize_sesion_data(data: dict) -> dict:
                         else:
                             pr_clean['contenido'] = []
                         procs_clean.append(pr_clean)
+            else:
+                # FORMATO IA: extraer llaves planas proceso_X_...
+                procs_clean = _extract_flat_procesos(desarrollo_clean)
             desarrollo_clean['procesos'] = procs_clean
+            # Limpiar llaves planas residuales del dict
+            keys_to_remove = [k for k in list(desarrollo_clean.keys()) if re.match(r'^proceso_\d+', k) or re.match(r'^paso_\d+', k)]
+            for k in keys_to_remove:
+                del desarrollo_clean[k]
         else:
             desarrollo_clean = {'procesos': []}
         momentos_clean['desarrollo'] = desarrollo_clean
 
-        # 7c. Cierre
+        # 7c. Cierre — soportar texto plano en 'actividades' de la IA
         cierre_raw = momentos_clean.get('cierre')
         if isinstance(cierre_raw, dict):
             cierre_clean = clean_and_map_dict(cierre_raw, MOMENTO_CIERRE_MAP)
+            # Verificar si la IA mando un solo campo 'actividades' como texto plano
+            actividades_text = cierre_clean.pop('actividades', None) if 'actividades' in cierre_clean else None
             for list_field in ['metacognicion', 'evaluacion', 'extension']:
                 if list_field in cierre_clean:
                     val = cierre_clean[list_field]
@@ -495,6 +622,14 @@ def normalize_sesion_data(data: dict) -> dict:
                         cierre_clean[list_field] = []
                 else:
                     cierre_clean[list_field] = []
+            # Si hay texto en actividades y las listas estan vacias, dividir
+            if actividades_text and isinstance(actividades_text, str):
+                has_content = bool(cierre_clean.get('metacognicion') or cierre_clean.get('evaluacion') or cierre_clean.get('extension'))
+                if not has_content:
+                    split = _split_cierre_actividades(actividades_text)
+                    cierre_clean['metacognicion'] = split['metacognicion']
+                    cierre_clean['evaluacion'] = split['evaluacion']
+                    cierre_clean['extension'] = split['extension']
         else:
             cierre_clean = {'metacognicion': [], 'evaluacion': [], 'extension': []}
         momentos_clean['cierre'] = cierre_clean
@@ -514,16 +649,27 @@ def normalize_sesion_data(data: dict) -> dict:
         ficha_clean = None
     data['ficha_trabajo'] = ficha_clean
 
-    # 9. Normalizar alumnos
+    # 9. Normalizar juego_libre_sectores
+    jls_raw = data.get('juego_libre_sectores')
+    if isinstance(jls_raw, dict):
+        jls_clean = clean_and_map_dict(jls_raw, JUEGO_LIBRE_MAP)
+    else:
+        jls_clean = None
+    data['juego_libre_sectores'] = jls_clean
+
+    # 10. Normalizar alumnos
     alumnos_raw = data.get('alumnos', [])
     if isinstance(alumnos_raw, list):
         data['alumnos'] = [str(x) for x in alumnos_raw]
     else:
         data['alumnos'] = []
 
-    # 10. Token
+    # 11. Token
     if 'token' not in data:
         data['token'] = ""
+
+    # Limpiar campos internos temporales
+    data.pop('evaluacion', None)
 
     return data
 
@@ -612,6 +758,14 @@ class FichaTrabajoData(BaseModel):
     indicaciones: Optional[str] = ""
     actividades: Optional[str] = ""
 
+class JuegoLibreSectoresData(BaseModel):
+    planificacion: Optional[str] = ""
+    organizacion: Optional[str] = ""
+    ejecucion: Optional[str] = ""
+    orden: Optional[str] = ""
+    socializacion: Optional[str] = ""
+    representacion: Optional[str] = ""
+
 class SesionAprendizajeRequest(BaseModel):
     metadata: MetadataData
     proposito: PropositoData
@@ -620,6 +774,7 @@ class SesionAprendizajeRequest(BaseModel):
     recursos: RecursosData
     momentos: MomentosData
     ficha_trabajo: Optional[FichaTrabajoData] = None
+    juego_libre_sectores: Optional[JuegoLibreSectoresData] = None
     alumnos: Optional[List[str]] = []
     token: str
 

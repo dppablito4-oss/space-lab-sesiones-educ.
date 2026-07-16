@@ -565,20 +565,54 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
 
     /**
      * Normalize dynamic session keys (e.g. momentos.desarrollo proceso_X_ keys)
+     * Also handles AI-specific formats:
+     * - titulo_sesion_retador → metadata.titulo
+     * - competencias_transversales as object {tic, autonoma} → keep for templates
+     * - enfoques (short key) → enfoques (already handled by templates.js)
+     * - recursos.paginas_consulta → recursos.paginas_consulta (kept for web view)
+     * - momentos.inicio sub-moments (motivacion, saberes_previos, etc.)
+     * - momentos.cierre.actividades text → kept as-is for web rendering
      */
     function normalizeSessionData(obj) {
         if (!obj || typeof obj !== 'object') return obj;
 
+        // 1. Map titulo_sesion_retador to metadata.titulo if missing
+        if (obj.titulo_sesion_retador && !obj.metadata?.titulo) {
+            if (!obj.metadata) obj.metadata = {};
+            obj.metadata.titulo = obj.titulo_sesion_retador;
+        }
+
+        // 2. Map 'enfoques' shorthand to top-level (templates.js reads data.enfoques)
+        if (obj.enfoques && !Array.isArray(obj.enfoques_transversales)) {
+            // Keep as 'enfoques' for templates.js which reads data.enfoques
+        }
+
+        // 3. Normalize competencias_transversales
+        //    AI sends: { tic: [...], autonoma: [...] }
+        //    Templates.js reads: { tic: [...], autonoma: [...] } — same format, keep as-is
+        //    No conversion needed for frontend, backend handles its own conversion
+
+        // 4. Map recursos keys for frontend compatibility
+        if (obj.recursos && typeof obj.recursos === 'object') {
+            if (obj.recursos.paginas_consulta && !obj.recursos.enlaces) {
+                obj.recursos.enlaces = obj.recursos.paginas_consulta;
+            }
+            if (obj.recursos.actividades_refuerzo && !obj.recursos.refuerzo) {
+                obj.recursos.refuerzo = obj.recursos.actividades_refuerzo;
+            }
+        }
+
+        // 5. Normalize desarrollo process keys
         if (obj.momentos && obj.momentos.desarrollo && typeof obj.momentos.desarrollo === 'object') {
             const desarrollo = obj.momentos.desarrollo;
             const newDesarrollo = {};
             let index = 1;
 
-            // 1. Copy standard non-process keys
+            // Copy standard non-process keys
             if (desarrollo.tiempo_total) newDesarrollo.tiempo_total = desarrollo.tiempo_total;
             if (desarrollo.actividades) newDesarrollo.actividades = desarrollo.actividades;
 
-            // 2. Identify and sort process/step keys
+            // Identify and sort process/step keys
             const otherKeys = Object.keys(desarrollo).filter(k => k !== 'tiempo_total' && k !== 'actividades');
 
             otherKeys.sort((a, b) => {
@@ -587,14 +621,12 @@ Asegúrate de que la estructura JSON contenga este nuevo campo "ficha_trabajo" e
                 if (!isNaN(numA) && !isNaN(numB)) {
                     return numA - numB;
                 }
-                // Fallback to alphabetical if no numbers
                 return a.localeCompare(b);
             });
 
-            // 3. Normalize keys to 'proceso_X_[name]' format
+            // Normalize keys to 'proceso_X_[name]' format
             otherKeys.forEach(key => {
                 const val = desarrollo[key];
-                // Strip existing prefix 'proceso_1_', 'proceso_', 'paso_1_', 'paso_'
                 const cleanKey = key
                     .replace(/^(proceso|paso)_\d+_/, '')
                     .replace(/^(proceso|paso)_/, '');

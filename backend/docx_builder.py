@@ -1001,6 +1001,56 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         doc.add_paragraph().paragraph_format.space_before = Pt(4)
 
     # ===============================================================
+    # JUEGO LIBRE EN LOS SECTORES (SOLO EDUCACIÓN INICIAL)
+    # ===============================================================
+    jls = getattr(session, 'juego_libre_sectores', None)
+    if jls and (session.metadata.nivel or '').upper().strip() in ('INICIAL', 'EDUCACION INICIAL', 'EDUCACIÓN INICIAL', 'JARDIN', 'JARDÍN'):
+        jls_header = doc.add_table(rows=1, cols=1)
+        jls_header.autofit = False
+        jls_header.rows[0].cells[0].width = Inches(6.77)
+        add_table_borders_black(jls_header)
+        set_cell_text_white_bold(jls_header.cell(0, 0), "JUEGO LIBRE EN LOS SECTORES", font_size_pt=10)
+        set_cell_background(jls_header.cell(0, 0), '27AE60')  # Verde
+        set_cell_margins(jls_header.cell(0, 0), top=100, bottom=100, left=180, right=180)
+
+        jls_steps = [
+            ("1. PLANIFICACIÓN", jls.planificacion or "Los niños y niñas eligen libremente el sector donde desean jugar."),
+            ("2. ORGANIZACIÓN", jls.organizacion or "Se agrupan según el sector elegido y distribuyen roles."),
+            ("3. EJECUCIÓN", jls.ejecucion or "Los niños juegan libremente mientras la docente acompaña y media."),
+            ("4. ORDEN", jls.orden or "A la señal, los niños guardan los materiales con una canción motivadora."),
+            ("5. SOCIALIZACIÓN", jls.socializacion or "Los niños cuentan lo que hicieron en su sector y qué aprendieron."),
+            ("6. REPRESENTACIÓN", jls.representacion or "Los niños dibujan, modelan o dramatizan lo vivido en el juego.")
+        ]
+
+        jls_tbl = doc.add_table(rows=len(jls_steps), cols=2)
+        jls_tbl.autofit = False
+        add_table_borders_black(jls_tbl)
+
+        for ri, (label, content) in enumerate(jls_steps):
+            # Columna etiqueta
+            set_cell_background(jls_tbl.cell(ri, 0), 'D5F5E3')
+            set_cell_margins(jls_tbl.cell(ri, 0), top=80, bottom=80, left=120, right=120)
+            p_lbl = jls_tbl.cell(ri, 0).paragraphs[0]
+            r_lbl = p_lbl.add_run(label)
+            r_lbl.bold = True
+            r_lbl.font.size = Pt(8.5)
+            r_lbl.font.color.rgb = RGBColor(30, 41, 59)
+
+            # Columna contenido
+            set_cell_background(jls_tbl.cell(ri, 1), 'F2F2F2')
+            set_cell_margins(jls_tbl.cell(ri, 1), top=80, bottom=80, left=120, right=120)
+            p_cnt = jls_tbl.cell(ri, 1).paragraphs[0]
+            p_cnt.paragraph_format.line_spacing = 1.15
+            p_cnt.add_run(content).font.size = Pt(8.5)
+
+        anchos_jls = [Inches(1.8), Inches(4.97)]
+        for row in jls_tbl.rows:
+            for ci, cell in enumerate(row.cells):
+                cell.width = anchos_jls[ci]
+
+        doc.add_paragraph().paragraph_format.space_before = Pt(4)
+
+    # ===============================================================
     # TABLA SECUENCIAL DE MOMENTOS DE LA SESIÓN (DISEÑO 4 COLUMNAS PREMIUM)
     # ===============================================================
     if getattr(session, 'momentos', None):
