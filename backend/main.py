@@ -37,7 +37,7 @@ if sys.platform.startswith('win'):
     except Exception:
         pass
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
@@ -110,6 +110,422 @@ else:
     except Exception:
         pass
 CLIENT_CONNECTED = False
+
+# ── NORMALIZACIÓN Y MAPEO DE LLAVES DE ENTRADA (ADAPTADOR JSON) ──
+def standardize_key(k: str) -> str:
+    # 1. Minúsculas y limpieza
+    k = k.lower().strip()
+    # 2. Normalizar acentos y caracteres españoles comunes
+    k = k.replace('ñ', 'n')
+    k = k.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+    k = k.replace('ü', 'u')
+    # 3. Reemplazar cualquier caracter no alfanumérico con guion bajo
+    k = re.sub(r'[^a-z0-9_]', '_', k)
+    # 4. Colapsar guiones bajos múltiples
+    k = re.sub(r'_+', '_', k)
+    # 5. Eliminar guiones bajos al inicio o al final
+    k = k.strip('_')
+    return k
+
+def clean_and_map_dict(data: dict, schema_map: dict) -> dict:
+    if not isinstance(data, dict):
+        return data
+    cleaned = {}
+    for k, v in data.items():
+        sk = standardize_key(k)
+        mapped_key = schema_map.get(sk, sk)
+        cleaned[mapped_key] = v
+    return cleaned
+
+TOP_LEVEL_MAP = {
+    'metadata': 'metadata',
+    'proposito': 'proposito',
+    'propositos': 'proposito',
+    'competencias_transversales': 'competencias_transversales',
+    'competenciastransversales': 'competencias_transversales',
+    'enfoques_transversales': 'enfoques_transversales',
+    'enfoquestransversales': 'enfoques_transversales',
+    'recursos': 'recursos',
+    'recursos_materiales': 'recursos',
+    'momentos': 'momentos',
+    'momentos_didacticos': 'momentos',
+    'secuencia_didactica': 'momentos',
+    'ficha_trabajo': 'ficha_trabajo',
+    'fichatrabajo': 'ficha_trabajo',
+    'ficha': 'ficha_trabajo',
+    'alumnos': 'alumnos',
+    'estudiantes': 'alumnos',
+    'lista_alumnos': 'alumnos',
+    'lista_estudiantes': 'alumnos',
+    'token': 'token'
+}
+
+METADATA_MAP = {
+    'institucion': 'institucion',
+    'institucion_educativa': 'institucion',
+    'institucioneducativa': 'institucion',
+    'ie': 'institucion',
+    'i_e': 'institucion',
+    'colegio': 'institucion',
+    'dre': 'dre',
+    'd_r_e': 'dre',
+    'ugel': 'ugel',
+    'u_g_e_l': 'ugel',
+    'docente': 'docente',
+    'profesor': 'docente',
+    'profesora': 'docente',
+    'maestro': 'docente',
+    'maestra': 'docente',
+    'director': 'director',
+    'directora': 'director',
+    'director_ie': 'director',
+    'director_de_la_ie': 'director',
+    'fecha': 'fecha',
+    'date': 'fecha',
+    'nivel': 'nivel',
+    'level': 'nivel',
+    'numero_sesion': 'numero_sesion',
+    'sesion_numero': 'numero_sesion',
+    'numero_de_sesion': 'numero_sesion',
+    'n_sesion': 'numero_sesion',
+    'grado': 'grado',
+    'grade': 'grado',
+    'seccion': 'seccion',
+    'sección': 'seccion',
+    'section': 'seccion',
+    'area': 'area',
+    'curso': 'area',
+    'materia': 'area',
+    'duracion': 'duracion',
+    'duracion_minutos': 'duracion',
+    'unidad': 'unidad',
+    'unidad_proyecto': 'unidad',
+    'proyecto': 'unidad',
+    'nombre_unidad': 'unidad',
+    'titulo': 'titulo',
+    'titulo_sesion': 'titulo',
+    'nombre_sesion': 'titulo',
+    'logo_left_url': 'logo_left_url',
+    'logo_left': 'logo_left_url',
+    'logo_institucional': 'logo_left_url',
+    'logo_regional_url': 'logo_regional_url',
+    'logo_regional': 'logo_regional_url',
+    'logo_right': 'logo_regional_url',
+    'logo_ugel': 'logo_regional_url',
+    'logo_dre': 'logo_regional_url'
+}
+
+PROPOSITO_MAP = {
+    'proposito_texto': 'proposito_texto',
+    'proposito': 'proposito_texto',
+    'proposito_sesion': 'proposito_texto',
+    'conocimientos': 'conocimientos',
+    'contenido': 'conocimientos',
+    'contenidos': 'conocimientos',
+    'temas': 'conocimientos',
+    'competencia': 'competencia',
+    'competencias': 'competencia',
+    'estandar': 'estandar',
+    'estandar_aprendizaje': 'estandar',
+    'capacidades': 'capacidades',
+    'capacidad': 'capacidades',
+    'criterios': 'criterios',
+    'criterio': 'criterios',
+    'criterios_evaluacion': 'criterios',
+    'criterios_de_evaluacion': 'criterios',
+    'producto_evidencia': 'producto_evidencia',
+    'evidencia': 'producto_evidencia',
+    'producto': 'producto_evidencia',
+    'evidencia_aprendizaje': 'producto_evidencia',
+    'producto_aprendizaje': 'producto_evidencia',
+    'instrumento': 'instrumento',
+    'instrumentos': 'instrumento',
+    'instrumento_evaluacion': 'instrumento',
+    'instrumentos_evaluacion': 'instrumento'
+}
+
+COMPETENCIA_TRANSVERSAL_MAP = {
+    'titulo': 'titulo',
+    'nombre': 'titulo',
+    'competencia': 'titulo',
+    'desempenos': 'desempenos',
+    'desempeños': 'desempenos',
+    'desempeno': 'desempenos',
+    'desempeño': 'desempenos',
+    'desempenos_precisados': 'desempenos',
+    'desempeños_precisados': 'desempenos'
+}
+
+ENFOQUE_TRANSVERSAL_MAP = {
+    'nombre': 'nombre',
+    'enfoque': 'nombre',
+    'titulo': 'nombre',
+    'valor': 'valor',
+    'valores': 'valor',
+    'actitudes': 'actitudes',
+    'actitud': 'actitudes',
+    'acciones_observables': 'actitudes',
+    'acciones': 'actitudes',
+    'actitudes_o_acciones_observables': 'actitudes'
+}
+
+RECURSOS_MAP = {
+    'enlaces': 'enlaces',
+    'enlace': 'enlaces',
+    'links': 'enlaces',
+    'link': 'enlaces',
+    'paginas_web': 'enlaces',
+    'materiales': 'materiales',
+    'recursos': 'materiales',
+    'materiales_recursos': 'materiales',
+    'materiales_y_recursos': 'materiales',
+    'refuerzo': 'refuerzo',
+    'reforzamiento': 'refuerzo',
+    'actividades_refuerzo': 'refuerzo',
+    'actividades_de_refuerzo': 'refuerzo'
+}
+
+MOMENTO_INICIO_MAP = {
+    'tiempo_total': 'tiempo_total',
+    'tiempo': 'tiempo_total',
+    'duracion': 'tiempo_total',
+    'actividades': 'actividades',
+    'secuencia': 'actividades',
+    'estrategias': 'actividades',
+    'procesos': 'actividades'
+}
+
+PROCESO_DESARROLLO_MAP = {
+    'clave': 'clave',
+    'key': 'clave',
+    'id': 'clave',
+    'titulo': 'titulo',
+    'nombre': 'titulo',
+    'proceso': 'titulo',
+    'contenido': 'contenido',
+    'contenidos': 'contenido',
+    'actividades': 'contenido',
+    'descripcion': 'contenido'
+}
+
+MOMENTO_DESARROLLO_MAP = {
+    'tiempo_total': 'tiempo_total',
+    'tiempo': 'tiempo_total',
+    'duracion': 'tiempo_total',
+    'procesos': 'procesos',
+    'procesos_didacticos': 'procesos',
+    'actividades': 'procesos'
+}
+
+MOMENTO_CIERRE_MAP = {
+    'tiempo_total': 'tiempo_total',
+    'tiempo': 'tiempo_total',
+    'duracion': 'tiempo_total',
+    'metacognicion': 'metacognicion',
+    'preguntas_metacognicion': 'metacognicion',
+    'evaluacion': 'evaluacion',
+    'evaluacion_formativa': 'evaluacion',
+    'extension': 'extension',
+    'tarea': 'extension',
+    'casa': 'extension',
+    'extension_casa': 'extension'
+}
+
+MOMENTOS_MAP = {
+    'inicio': 'inicio',
+    'introduccion': 'inicio',
+    'desarrollo': 'desarrollo',
+    'proceso': 'desarrollo',
+    'cuerpo': 'desarrollo',
+    'cierre': 'cierre',
+    'conclusion': 'cierre'
+}
+
+FICHA_TRABAJO_MAP = {
+    'titulo': 'titulo',
+    'actividad': 'titulo',
+    'nombre': 'titulo',
+    'indicaciones': 'indicaciones',
+    'indicacion': 'indicaciones',
+    'instrucciones': 'indicaciones',
+    'actividades': 'actividades',
+    'contenido': 'actividades',
+    'ejercicios': 'actividades'
+}
+
+def normalize_sesion_data(data: dict) -> dict:
+    if not isinstance(data, dict):
+        return {}
+    
+    # 1. Normalizar llaves de nivel superior
+    data = clean_and_map_dict(data, TOP_LEVEL_MAP)
+    
+    # 2. Normalizar metadata
+    metadata_raw = data.get('metadata')
+    if isinstance(metadata_raw, dict):
+        metadata_clean = clean_and_map_dict(metadata_raw, METADATA_MAP)
+    else:
+        metadata_clean = {}
+    data['metadata'] = metadata_clean
+
+    # 3. Normalizar proposito
+    proposito_raw = data.get('proposito')
+    if isinstance(proposito_raw, dict):
+        proposito_clean = clean_and_map_dict(proposito_raw, PROPOSITO_MAP)
+        # Asegurar que los campos tipo lista sean listas
+        for list_field in ['capacidades', 'criterios']:
+            if list_field in proposito_clean:
+                val = proposito_clean[list_field]
+                if isinstance(val, str):
+                    proposito_clean[list_field] = [x.strip() for x in val.split('\n') if x.strip()]
+                elif not isinstance(val, list):
+                    proposito_clean[list_field] = []
+            else:
+                proposito_clean[list_field] = []
+    else:
+        proposito_clean = {'capacidades': [], 'criterios': []}
+    data['proposito'] = proposito_clean
+
+    # 4. Normalizar competencias_transversales
+    cts_raw = data.get('competencias_transversales', [])
+    cts_clean = []
+    if isinstance(cts_raw, list):
+        for ct in cts_raw:
+            if isinstance(ct, dict):
+                ct_clean = clean_and_map_dict(ct, COMPETENCIA_TRANSVERSAL_MAP)
+                if 'desempenos' in ct_clean:
+                    val = ct_clean['desempenos']
+                    if isinstance(val, str):
+                        ct_clean['desempenos'] = [x.strip() for x in val.split('\n') if x.strip()]
+                    elif not isinstance(val, list):
+                        ct_clean['desempenos'] = []
+                else:
+                    ct_clean['desempenos'] = []
+                # Validar título requerido
+                if 'titulo' not in ct_clean or not ct_clean['titulo']:
+                    ct_clean['titulo'] = "Competencia Transversal"
+                cts_clean.append(ct_clean)
+    data['competencias_transversales'] = cts_clean
+
+    # 5. Normalizar enfoques_transversales
+    ets_raw = data.get('enfoques_transversales', [])
+    ets_clean = []
+    if isinstance(ets_raw, list):
+        for et in ets_raw:
+            if isinstance(et, dict):
+                et_clean = clean_and_map_dict(et, ENFOQUE_TRANSVERSAL_MAP)
+                # Fallbacks obligatorios para cadenas en Pydantic
+                if 'nombre' not in et_clean or not et_clean['nombre']:
+                    et_clean['nombre'] = "Enfoque Transversal"
+                if 'valor' not in et_clean or not et_clean['valor']:
+                    et_clean['valor'] = ""
+                if 'actitudes' not in et_clean or not et_clean['actitudes']:
+                    et_clean['actitudes'] = ""
+                ets_clean.append(et_clean)
+    data['enfoques_transversales'] = ets_clean
+
+    # 6. Normalizar recursos
+    recursos_raw = data.get('recursos')
+    if isinstance(recursos_raw, dict):
+        recursos_clean = clean_and_map_dict(recursos_raw, RECURSOS_MAP)
+    else:
+        recursos_clean = {}
+    data['recursos'] = recursos_clean
+
+    # 7. Normalizar momentos
+    momentos_raw = data.get('momentos')
+    if isinstance(momentos_raw, dict):
+        momentos_clean = clean_and_map_dict(momentos_raw, MOMENTOS_MAP)
+        
+        # 7a. Inicio
+        inicio_raw = momentos_clean.get('inicio')
+        if isinstance(inicio_raw, dict):
+            inicio_clean = clean_and_map_dict(inicio_raw, MOMENTO_INICIO_MAP)
+            if 'actividades' in inicio_clean:
+                val = inicio_clean['actividades']
+                if isinstance(val, str):
+                    inicio_clean['actividades'] = [x.strip() for x in val.split('\n') if x.strip()]
+                elif not isinstance(val, list):
+                    inicio_clean['actividades'] = []
+            else:
+                inicio_clean['actividades'] = []
+        else:
+            inicio_clean = {'actividades': []}
+        momentos_clean['inicio'] = inicio_clean
+
+        # 7b. Desarrollo
+        desarrollo_raw = momentos_clean.get('desarrollo')
+        if isinstance(desarrollo_raw, dict):
+            desarrollo_clean = clean_and_map_dict(desarrollo_raw, MOMENTO_DESARROLLO_MAP)
+            procs_raw = desarrollo_clean.get('procesos', [])
+            procs_clean = []
+            if isinstance(procs_raw, list):
+                for pr in procs_raw:
+                    if isinstance(pr, dict):
+                        pr_clean = clean_and_map_dict(pr, PROCESO_DESARROLLO_MAP)
+                        # Validaciones de estructura
+                        if 'clave' not in pr_clean or not pr_clean['clave']:
+                            pr_clean['clave'] = secrets.token_hex(4)
+                        if 'titulo' not in pr_clean or not pr_clean['titulo']:
+                            pr_clean['titulo'] = "Proceso"
+                        if 'contenido' in pr_clean:
+                            val = pr_clean['contenido']
+                            if isinstance(val, str):
+                                pr_clean['contenido'] = [x.strip() for x in val.split('\n') if x.strip()]
+                            elif not isinstance(val, list):
+                                pr_clean['contenido'] = []
+                        else:
+                            pr_clean['contenido'] = []
+                        procs_clean.append(pr_clean)
+            desarrollo_clean['procesos'] = procs_clean
+        else:
+            desarrollo_clean = {'procesos': []}
+        momentos_clean['desarrollo'] = desarrollo_clean
+
+        # 7c. Cierre
+        cierre_raw = momentos_clean.get('cierre')
+        if isinstance(cierre_raw, dict):
+            cierre_clean = clean_and_map_dict(cierre_raw, MOMENTO_CIERRE_MAP)
+            for list_field in ['metacognicion', 'evaluacion', 'extension']:
+                if list_field in cierre_clean:
+                    val = cierre_clean[list_field]
+                    if isinstance(val, str):
+                        cierre_clean[list_field] = [x.strip() for x in val.split('\n') if x.strip()]
+                    elif not isinstance(val, list):
+                        cierre_clean[list_field] = []
+                else:
+                    cierre_clean[list_field] = []
+        else:
+            cierre_clean = {'metacognicion': [], 'evaluacion': [], 'extension': []}
+        momentos_clean['cierre'] = cierre_clean
+    else:
+        momentos_clean = {
+            'inicio': {'actividades': []},
+            'desarrollo': {'procesos': []},
+            'cierre': {'metacognicion': [], 'evaluacion': [], 'extension': []}
+        }
+    data['momentos'] = momentos_clean
+
+    # 8. Normalizar ficha_trabajo
+    ficha_raw = data.get('ficha_trabajo')
+    if isinstance(ficha_raw, dict):
+        ficha_clean = clean_and_map_dict(ficha_raw, FICHA_TRABAJO_MAP)
+    else:
+        ficha_clean = None
+    data['ficha_trabajo'] = ficha_clean
+
+    # 9. Normalizar alumnos
+    alumnos_raw = data.get('alumnos', [])
+    if isinstance(alumnos_raw, list):
+        data['alumnos'] = [str(x) for x in alumnos_raw]
+    else:
+        data['alumnos'] = []
+
+    # 10. Token
+    if 'token' not in data:
+        data['token'] = ""
+
+    return data
 
 # Esquemas de Datos con Token obligatorio para mayor seguridad
 class ExportPDFRequest(BaseModel):
@@ -995,12 +1411,20 @@ def build_pdf_html_from_json(session: SesionAprendizajeRequest) -> str:
 
 
 @app.post("/exportar-pdf-json")
-async def exportar_pdf_json(payload: SesionAprendizajeRequest):
+async def exportar_pdf_json(raw: dict = Body(...)):
     """
     Genera un archivo PDF a partir del JSON estructurado de la sesión de aprendizaje.
+    Normaliza cualquier variante de llaves del JSON antes de validar con Pydantic.
     Intenta utilizar la conversión nativa de Word (docx2pdf) si está disponible en Windows,
     y si falla o no está disponible, cae de vuelta al renderizado con Playwright.
     """
+    # Normalizar y adaptar llaves antes de validar con Pydantic
+    normalized = normalize_sesion_data(raw)
+    try:
+        payload = SesionAprendizajeRequest(**normalized)
+    except Exception as ve:
+        raise HTTPException(status_code=422, detail=f"Error de validación tras normalización: {str(ve)}")
+
     if payload.token != CONNECTION_TOKEN:
         raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
 
@@ -1144,11 +1568,19 @@ async def exportar_docx(payload: ExportDocxRequest):
 
 
 @app.post("/exportar-docx-json")
-async def exportar_docx_json(payload: SesionAprendizajeRequest):
+async def exportar_docx_json(raw: dict = Body(...)):
     """
     Exporta una sesión de aprendizaje completa desde JSON a un archivo Word (.docx) nativo premium.
+    Normaliza cualquier variante de llaves del JSON antes de validar con Pydantic.
     Requiere token de conexión.
     """
+    # Normalizar y adaptar llaves antes de validar con Pydantic
+    normalized = normalize_sesion_data(raw)
+    try:
+        payload = SesionAprendizajeRequest(**normalized)
+    except Exception as ve:
+        raise HTTPException(status_code=422, detail=f"Error de validación tras normalización: {str(ve)}")
+
     if payload.token != CONNECTION_TOKEN:
         raise HTTPException(status_code=401, detail="No autorizado: Token de conexión inválido.")
 

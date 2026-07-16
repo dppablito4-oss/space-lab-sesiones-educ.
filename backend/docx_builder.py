@@ -729,29 +729,29 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
 
     # Fila 0: Institución Educativa  |  (valor)  |  Nivel  |  (valor)
     _di_label(di.cell(0, 0), "Institución Educativa")
-    _di_val(di.cell(0, 1), session.metadata.institucion or "I.E. N° — Nombre")
+    _di_val(di.cell(0, 1), session.metadata.institucion or "No especificada")
     _di_label(di.cell(0, 2), "Nivel")
     _di_val(di.cell(0, 3), session.metadata.nivel or "SECUNDARIA")
 
     # Fila 1: Docente  |  (valor)  |  Área  |  (valor)
     _di_label(di.cell(1, 0), "Docente")
-    _di_val(di.cell(1, 1), session.metadata.docente or "")
+    _di_val(di.cell(1, 1), session.metadata.docente or "No especificado")
     _di_label(di.cell(1, 2), "Área")
-    _di_val(di.cell(1, 3), session.metadata.area or "")
+    _di_val(di.cell(1, 3), session.metadata.area or "No especificada")
 
     # Fila 2: Grado  |  (valor)  |  Unidad/Proyecto  |  (valor)
     _di_label(di.cell(2, 0), "Grado y Sección")
     grado_seccion = " ".join(filter(None, [
         session.metadata.grado or "",
         session.metadata.seccion or ""
-    ]))
+    ])) or "No especificado"
     _di_val(di.cell(2, 1), grado_seccion)
     _di_label(di.cell(2, 2), "Unidad / Proyecto")
-    _di_val(di.cell(2, 3), session.metadata.unidad or "")
+    _di_val(di.cell(2, 3), session.metadata.unidad or "No especificada")
 
     # Fila 3: Fecha  |  (valor)  |  Duración  |  (valor)
     _di_label(di.cell(3, 0), "Fecha")
-    _di_val(di.cell(3, 1), session.metadata.fecha or "")
+    _di_val(di.cell(3, 1), session.metadata.fecha or "No especificada")
     _di_label(di.cell(3, 2), "Duración (min)")
     _di_val(di.cell(3, 3), session.metadata.duracion or "90 min")
 
@@ -782,7 +782,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     set_cell_margins(cell_prop, top=100, bottom=100, left=120, right=120)
     p_prop = cell_prop.paragraphs[0]
     p_prop.paragraph_format.line_spacing = 1.15
-    p_prop.add_run(session.proposito.proposito_texto or "").font.size = Pt(9.5)
+    p_prop.add_run(session.proposito.proposito_texto or "No especificado").font.size = Pt(9.5)
 
     _hdr(pc.cell(4, 0), "CONOCIMIENTOS:", bg=PEACH, sz=9)
     
@@ -790,7 +790,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     set_cell_margins(cell_con, top=100, bottom=100, left=120, right=120)
     p_con = cell_con.paragraphs[0]
     p_con.paragraph_format.line_spacing = 1.15
-    p_con.add_run(session.proposito.conocimientos or "").font.size = Pt(9.5)
+    p_con.add_run(session.proposito.conocimientos or "No especificado").font.size = Pt(9.5)
 
     doc.add_paragraph().paragraph_format.space_before = Pt(4)
 
@@ -812,7 +812,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     rc1 = p_comp.add_run("Competencia: ")
     rc1.bold = True
     rc1.font.size = Pt(9.5)
-    rc2 = p_comp.add_run(session.proposito.competencia or "")
+    rc2 = p_comp.add_run(session.proposito.competencia or "No especificada")
     rc2.font.size = Pt(9.5)
 
     c_est = pa.cell(2, 0).merge(pa.cell(2, 4))
@@ -823,7 +823,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     re1 = p_est.add_run("Estándar de aprendizaje: ")
     re1.bold = True
     re1.font.size = Pt(9.5)
-    re2 = p_est.add_run(session.proposito.estandar or "")
+    re2 = p_est.add_run(session.proposito.estandar or "No especificado")
     re2.font.size = Pt(9.5)
 
     headers_pa = ["COMPETENCIAS", "CAPACIDADES", "CRITERIOS DE EVALUACIÓN", "PRODUCTO / EVIDENCIA", "INSTRUMENTOS DE EVALUACIÓN"]
@@ -835,7 +835,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     set_cell_margins(c_comp_v, top=100, bottom=100, left=100, right=100)
     p_cv = c_comp_v.paragraphs[0]
     p_cv.paragraph_format.line_spacing = 1.1
-    p_cv.add_run(session.proposito.competencia or "").font.size = Pt(8.5)
+    p_cv.add_run(session.proposito.competencia or "No especificada").font.size = Pt(8.5)
 
     _bullet_cell(pa.cell(4, 1), session.proposito.capacidades)
     _bullet_cell(pa.cell(4, 2), session.proposito.criterios)
@@ -844,7 +844,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
     set_cell_margins(c_ev, top=100, bottom=100, left=100, right=100)
     p_ev = c_ev.paragraphs[0]
     p_ev.paragraph_format.line_spacing = 1.1
-    p_ev.add_run(session.proposito.producto_evidencia or "").font.size = Pt(8.5)
+    p_ev.add_run(session.proposito.producto_evidencia or "No especificado").font.size = Pt(8.5)
 
     c_ins_v = pa.cell(4, 4).merge(pa.cell(5, 4))
     set_cell_background(c_ins_v, 'F2F2F2')
@@ -884,8 +884,8 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rn = 1 + ci
             set_cell_background(ct_tbl.cell(rn, 0), 'F2F2F2')
             set_cell_margins(ct_tbl.cell(rn, 0), top=100, bottom=100, left=120, right=120)
-            ct_tbl.cell(rn, 0).paragraphs[0].add_run(ct.titulo).font.size = Pt(8.5)
-            _bullet_cell(ct_tbl.cell(rn, 1), ct.desempenos)
+            ct_tbl.cell(rn, 0).paragraphs[0].add_run(ct.titulo or "Competencia Transversal").font.size = Pt(8.5)
+            _bullet_cell(ct_tbl.cell(rn, 1), ct.desempenos if ct.desempenos else ["No especificado"])
     else:
         defaults_ct = [
             ("Gestiona su aprendizaje de manera autonoma", [
@@ -931,15 +931,15 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
             rn = 1 + ci
             set_cell_background(et_tbl.cell(rn, 0), 'F2F2F2')
             set_cell_margins(et_tbl.cell(rn, 0), top=80, bottom=80, left=120, right=120)
-            et_tbl.cell(rn, 0).paragraphs[0].add_run(et.nombre).font.size = Pt(8.5)
+            et_tbl.cell(rn, 0).paragraphs[0].add_run(et.nombre or "Enfoque Transversal").font.size = Pt(8.5)
             
             set_cell_background(et_tbl.cell(rn, 1), 'FFF2CC')
             set_cell_margins(et_tbl.cell(rn, 1), top=80, bottom=80, left=120, right=120)
-            et_tbl.cell(rn, 1).paragraphs[0].add_run(et.valor).font.size = Pt(8.5)
+            et_tbl.cell(rn, 1).paragraphs[0].add_run(et.valor or "No especificado").font.size = Pt(8.5)
             
             set_cell_background(et_tbl.cell(rn, 2), 'FFF2CC')
             set_cell_margins(et_tbl.cell(rn, 2), top=80, bottom=80, left=120, right=120)
-            et_tbl.cell(rn, 2).paragraphs[0].add_run(et.actitudes).font.size = Pt(8.5)
+            et_tbl.cell(rn, 2).paragraphs[0].add_run(et.actitudes or "No especificadas").font.size = Pt(8.5)
     else:
         defaults_et = [
             ("Enfoque Ambiental", "Justicia y solidaridad", "Reduce el uso de materiales desechables, reutilizando cuadernos, hojas y envases cuando sea posible durante las actividades del aula."),
@@ -991,7 +991,7 @@ def build_docx_from_json(session: SesionAprendizajeRequest) -> io.BytesIO:
         _hdr(rec.cell(3, 0), "Actividades de Refuerzo Escolar (N° ficha y Título)", bg=YELLOW_HDR, sz=8.5)
         set_cell_background(rec.cell(3, 1), 'F2F2F2')
         set_cell_margins(rec.cell(3, 1), top=80, bottom=80, left=120, right=120)
-        rec.cell(3, 1).paragraphs[0].add_run(session.recursos.refuerzo or "").font.size = Pt(8.5)
+        rec.cell(3, 1).paragraphs[0].add_run(session.recursos.refuerzo or "No especificado").font.size = Pt(8.5)
 
         anchos_rec = [Inches(2.5), Inches(4.27)]
         for row in rec.rows:
