@@ -1463,45 +1463,93 @@
         };
 
         // 3. Extraer Propósitos de Aprendizaje
+        const template = DOM.selectTemplate ? DOM.selectTemplate.value : (AppState.currentSession?.template || 'estandar');
         let competencia = DOM.inputCompetencia.value || '';
         let estandar = '';
         let capacidades = [];
         let criterios = [];
         let producto_evidencia = '';
         let instrumento = '';
-
-        // Extraer estándar y competencia complementaria del DOM
-        const compEstTable = DOM.sessionSheet.querySelector('.content-table');
-        if (compEstTable) {
-            const tds = compEstTable.querySelectorAll('td');
-            if (tds[1]) competencia = tds[1].textContent.trim();
-            if (tds[3]) estandar = tds[3].textContent.trim();
-        }
-
-        // Extraer matriz de propósitos
-        const matrizTable = DOM.sessionSheet.querySelector('.propositos-table');
-        if (matrizTable) {
-            const rows = matrizTable.querySelectorAll('tbody > tr');
-            if (rows.length > 0) {
-                const cells = rows[0].querySelectorAll('td');
-                if (cells.length >= 5) {
-                    // Celdas: 0:Competencia, 1:Capacidades, 2:Criterios, 3:Producto, 4:Instrumento
-                    const ulsCap = cells[1].querySelectorAll('ul.session-list li');
-                    capacidades = Array.from(ulsCap).map(li => li.textContent.trim());
-
-                    const ulsCrit = cells[2].querySelectorAll('ul.session-list li');
-                    criterios = Array.from(ulsCrit).map(li => li.textContent.trim());
-
-                    producto_evidencia = cells[3].textContent.trim();
-                    instrumento = cells[4].textContent.trim();
-                }
-            }
-        }
-
-        // Parse purpose text and knowledge directly from sheet (either from pc-table or subsection boxes)
         let sheetPropositoTexto = '';
         let sheetConocimientos = '';
-        if (DOM.sessionSheet) {
+
+        if (template === 'inicial') {
+            // --- PARSER INICIAL ---
+            // 1. Propósito de Aprendizaje (text)
+            const propDivs = Array.from(DOM.sessionSheet.querySelectorAll('div'));
+            const propDiv = propDivs.find(d => d.textContent.includes('PROPÓSITO DE APRENDIZAJE'));
+            if (propDiv) {
+                const span = propDiv.querySelector('span');
+                if (span) sheetPropositoTexto = span.textContent.trim();
+            }
+
+            // 2. Tabla de Propósitos
+            const contentTable = DOM.sessionSheet.querySelector('table.content-table');
+            if (contentTable) {
+                const rows = contentTable.querySelectorAll('tbody > tr');
+                if (rows.length > 0) {
+                    const cells = rows[0].querySelectorAll('td');
+                    if (cells.length >= 5) {
+                        // Columna 0: Área / Competencia / Capacidades
+                        const compDiv = cells[0].querySelector('div[style*="font-size:8.5pt"]');
+                        if (compDiv) {
+                            competencia = compDiv.textContent.replace(/[“”"]/g, '').trim();
+                        }
+                        const ulsCap = cells[0].querySelectorAll('ul li');
+                        capacidades = Array.from(ulsCap).map(li => li.textContent.trim());
+
+                        // Columna 1: Estándar
+                        estandar = cells[1].textContent.trim();
+
+                        // Columna 3: Criterios de Evaluación
+                        const ulsCrit = cells[3].querySelectorAll('ul li');
+                        criterios = Array.from(ulsCrit).map(li => li.textContent.trim());
+
+                        // Columna 4: Evidencia / Instrumento
+                        const spans = cells[4].querySelectorAll('span');
+                        if (spans.length >= 2) {
+                            producto_evidencia = spans[0].textContent.trim();
+                            instrumento = spans[1].textContent.trim();
+                        } else {
+                            const rawText = cells[4].textContent.trim();
+                            const parts = rawText.split(/Inst\.:/i);
+                            producto_evidencia = parts[0].replace(/Evidencia:/i, '').trim();
+                            instrumento = parts[1] || 'Lista de Cotejo';
+                        }
+                    }
+                }
+            }
+        } else if (template === 'estandar') {
+            // --- PARSER ESTÁNDAR ---
+            // 1. Competencia y Estándar
+            const tables = DOM.sessionSheet.querySelectorAll('table.content-table');
+            const compEstTable = Array.from(tables).find(t => !t.classList.contains('propositos-table') && !t.classList.contains('ct-table') && t.querySelectorAll('tr').length === 2);
+            if (compEstTable) {
+                const tds = compEstTable.querySelectorAll('td');
+                if (tds[1]) competencia = tds[1].textContent.trim();
+                if (tds[3]) estandar = tds[3].textContent.trim();
+            }
+
+            // 2. Tabla de Propósitos (propositos-table)
+            const matrizTable = DOM.sessionSheet.querySelector('.propositos-table');
+            if (matrizTable) {
+                const rows = matrizTable.querySelectorAll('tbody > tr');
+                if (rows.length > 0) {
+                    const cells = rows[0].querySelectorAll('td');
+                    if (cells.length >= 5) {
+                        const ulsCap = cells[1].querySelectorAll('ul.session-list li, ul li');
+                        capacidades = Array.from(ulsCap).map(li => li.textContent.trim());
+
+                        const ulsCrit = cells[2].querySelectorAll('ul.session-list li, ul li');
+                        criterios = Array.from(ulsCrit).map(li => li.textContent.trim());
+
+                        producto_evidencia = cells[3].textContent.trim();
+                        instrumento = cells[4].textContent.trim();
+                    }
+                }
+            }
+
+            // 3. Propósito Texto & Conocimientos (pc-table)
             const pcTable = DOM.sessionSheet.querySelector('.pc-table');
             if (pcTable) {
                 const tds = pcTable.querySelectorAll('td');
@@ -1517,21 +1565,40 @@
                         }
                     }
                 });
-            } else {
-                const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
-                subSections.forEach(bar => {
-                    const text = bar.textContent.trim().toLowerCase();
-                    const contentBox = bar.nextElementSibling;
-                    if (contentBox && contentBox.classList.contains('subsection-content-box')) {
-                        const val = contentBox.textContent.trim();
-                        if (text.includes('propósito de la sesión') || text.includes('proposito de la sesion')) {
-                            sheetPropositoTexto = val;
-                        } else if (text.includes('conocimientos')) {
-                            sheetConocimientos = val;
-                        }
-                    }
-                });
             }
+        } else {
+            // --- PARSER LABORATORIO Y REFUERZO ---
+            const tables = DOM.sessionSheet.querySelectorAll('table.content-table');
+            const propTable = Array.from(tables).find(t => t.querySelectorAll('tr').length === 3 && t.querySelector('th'));
+            if (propTable) {
+                const rows = propTable.querySelectorAll('tr');
+                competencia = rows[0].querySelector('td')?.textContent.trim() || '';
+                const capVal = rows[1].querySelector('td')?.textContent.trim() || '';
+                if (template === 'laboratorio') {
+                    capacidades = [capVal];
+                }
+                const desVal = rows[2].querySelector('td')?.textContent.trim() || '';
+                if (template === 'laboratorio') {
+                    criterios = [desVal];
+                } else {
+                    producto_evidencia = desVal;
+                }
+            }
+
+            // Subsections fallback/extra
+            const subSections = DOM.sessionSheet.querySelectorAll('.subsection-title-bar');
+            subSections.forEach(bar => {
+                const text = bar.textContent.trim().toLowerCase();
+                const contentBox = bar.nextElementSibling;
+                if (contentBox && contentBox.classList.contains('subsection-content-box')) {
+                    const val = contentBox.textContent.trim();
+                    if (text.includes('propósito de la sesión') || text.includes('proposito de la sesion') || text.includes('diagnóstico') || text.includes('diagnostico')) {
+                        sheetPropositoTexto = val;
+                    } else if (text.includes('conocimientos') || text.includes('materiales')) {
+                        sheetConocimientos = val;
+                    }
+                }
+            });
         }
 
         const proposito = {
